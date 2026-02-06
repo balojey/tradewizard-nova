@@ -120,8 +120,8 @@ This implementation plan adds a new polling intelligence agent to the TradeWizar
     - **Property 16: Confidence Calibration - Noise**
     - **Validates: Requirements 6.2**
 
-- [ ] 8. Implement polling baseline comparison logic in system prompt
-  - [ ] 8.1 Add polling baseline instructions to system prompt
+- [x] 8. Implement polling baseline comparison logic in system prompt
+  - [x] 8.1 Add polling baseline instructions to system prompt
     - Define baseline accuracy rates by eventType (election: 0.75, policy: 0.60, court: 0.70, geopolitical: 0.55, economic: 0.65, other: 0.50)
     - Instruct LLM to calculate marketDeviation from baseline
     - Specify flagging threshold (deviation > 10%)

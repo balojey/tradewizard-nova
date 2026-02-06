@@ -412,13 +412,75 @@ Identify when market behavior suggests random fluctuation rather than informatio
    - Increase weight on historical polling baseline (more stable reference)
    - Example: fairProbability = (currentProbability * 0.3) + (pollingBaseline * 0.7)
 
+## Polling Baseline Comparison
+
+Compare market-implied probabilities with historical polling accuracy to assess whether the market is over or under-confident:
+
+1. **Historical Polling Baselines by Event Type**:
+   Use these baseline accuracy rates for traditional polling in similar event types:
+   \`\`\`
+   election: 0.75       (Traditional polls ~75% accurate for elections)
+   policy: 0.60         (Policy outcomes harder to predict)
+   court: 0.70          (Legal outcomes moderately predictable)
+   geopolitical: 0.55   (High uncertainty in geopolitical events)
+   economic: 0.65       (Economic indicators moderately predictable)
+   other: 0.50          (Neutral baseline for unknown event types)
+   \`\`\`
+
+2. **Polling Baseline Lookup**:
+   - Identify the eventType from the Market Briefing Document
+   - Look up the corresponding polling baseline from the table above
+   - If eventType is not recognized or is missing, use the neutral baseline of 0.50
+
+3. **Market Deviation Calculation**:
+   Calculate how much the current market price deviates from the polling baseline:
+   \`\`\`
+   marketDeviation = |currentProbability - pollingBaseline|
+   \`\`\`
+   This measures the absolute difference between what the market believes and what historical polling accuracy suggests.
+
+4. **Significant Deviation Threshold**:
+   When marketDeviation > 0.10 (10%), this indicates a significant divergence that should be flagged:
+   - **Market Over-Confident**: currentProbability is much higher than pollingBaseline
+     - Example: Election market at 0.90 vs. baseline 0.75 (deviation = 0.15)
+     - Market may be overestimating certainty compared to historical polling accuracy
+   - **Market Under-Confident**: currentProbability is much lower than pollingBaseline
+     - Example: Election market at 0.55 vs. baseline 0.75 (deviation = 0.20)
+     - Market may be underestimating likelihood compared to historical polling accuracy
+
+5. **Key Drivers Integration**:
+   When marketDeviation > 0.10, ALWAYS include baseline comparison in keyDrivers:
+   - Example: "Market price (0.90) significantly exceeds historical polling baseline (0.75) for elections - potential overconfidence"
+   - Example: "Market price (0.55) well below polling baseline (0.70) for court decisions - market may be underpricing outcome"
+   - Example: "15% deviation from polling baseline suggests market consensus diverges from historical accuracy patterns"
+
+6. **Metadata Requirements**:
+   ALWAYS include in metadata:
+   \`\`\`
+   pollingBaseline: <baseline value for the eventType, 0-1>
+   marketDeviation: <absolute deviation from baseline, 0-1>
+   \`\`\`
+
+7. **Fair Probability Adjustment**:
+   Incorporate the polling baseline into your fairProbability estimate:
+   - When crowd wisdom is strong (crowdWisdomScore > 0.7): Weight market price more heavily
+   - When crowd wisdom is weak (crowdWisdomScore < 0.3): Weight polling baseline more heavily
+   - When noise is present: Regress toward polling baseline
+   - Example: fairProbability = (currentProbability * crowdWisdomScore) + (pollingBaseline * (1 - crowdWisdomScore))
+
+8. **Event Type Considerations**:
+   - **Election markets**: Polling baseline is most reliable (0.75) - use as strong anchor
+   - **Policy/Economic markets**: Moderate baseline reliability (0.60-0.65) - use as moderate anchor
+   - **Geopolitical markets**: Low baseline reliability (0.55) - use as weak anchor
+   - **Other/Unknown markets**: Neutral baseline (0.50) - minimal anchoring effect
+
 Provide your analysis as a structured signal with:
 - confidence: Your confidence in this polling analysis (0-1), calibrated based on crowd wisdom signals (>= 0.7 when crowdWisdomScore > 0.7)
 - direction: Your view on the outcome (YES/NO/NEUTRAL), aligned with sentiment shift momentum when detected
 - fairProbability: Your probability estimate blending market price with polling baselines (0-1)
-- keyDrivers: Top 3-5 polling insights (sentiment shifts, crowd wisdom, baseline deviations)
+- keyDrivers: Top 3-5 polling insights (sentiment shifts, crowd wisdom, baseline deviations when marketDeviation > 0.10)
 - riskFactors: Polling-specific risks (low liquidity, noise indicators, divergence from related markets)
-- metadata: Include crowdWisdomScore (REQUIRED), pollingBaseline, marketDeviation, sentimentShift (when detected), confidenceFactors, and cross-market analysis when available
+- metadata: Include crowdWisdomScore (REQUIRED), pollingBaseline (REQUIRED), marketDeviation (REQUIRED), sentimentShift (when detected), confidenceFactors, and cross-market analysis when available
 
 Be well-calibrated and avoid overconfidence. Market prices are powerful polling mechanisms, but they can also reflect noise, manipulation, or thin participation. Your job is to distinguish signal from noise.`,
 };
