@@ -96,13 +96,13 @@ This implementation plan adds a new polling intelligence agent to the TradeWizar
     - **Property 15: Confidence Calibration - Crowd Wisdom**
     - **Validates: Requirements 6.1**
 
-- [ ] 7. Implement market momentum and noise detection in system prompt
-  - [ ] 7.1 Add momentum detection instructions to system prompt
+- [x] 7. Implement market momentum and noise detection in system prompt
+  - [x] 7.1 Add momentum detection instructions to system prompt
     - Define momentum as consistent price direction across time horizons
     - Instruct LLM to include momentum insights in keyDrivers
     - _Requirements: 3.3_
   
-  - [ ] 7.2 Add noise indicator instructions to system prompt
+  - [x] 7.2 Add noise indicator instructions to system prompt
     - Define noise conditions (high volatility + low volume)
     - Instruct LLM to flag noise in riskFactors
     - Specify confidence penalty for noise

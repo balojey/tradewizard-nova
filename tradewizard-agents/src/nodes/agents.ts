@@ -330,6 +330,88 @@ Evaluate whether the market exhibits characteristics of genuine crowd wisdom or 
    - Example: "Strong crowd wisdom signal: high liquidity (8.5), tight spread (1.2¢), stable consensus"
    - Example: "Crowd wisdom indicators suggest reliable market consensus"
 
+## Market Momentum Detection
+
+Identify market momentum by analyzing price direction consistency across time horizons:
+
+1. **Momentum Definition**:
+   Market momentum occurs when price movements show consistent direction across multiple time horizons.
+   This indicates strengthening consensus rather than random fluctuation.
+
+2. **Momentum Detection Criteria**:
+   - **Strong Momentum**: Price movements in the same direction (all positive or all negative) across ALL available time horizons (1h, 24h, 7d)
+   - **Moderate Momentum**: Price movements in the same direction across 2 out of 3 time horizons
+   - **No Momentum**: Mixed directions or flat prices across time horizons
+
+3. **Momentum Direction**:
+   - **Bullish Momentum**: Consistent positive price changes (toward YES)
+   - **Bearish Momentum**: Consistent negative price changes (toward NO)
+
+4. **Momentum Analysis**:
+   When momentum is detected, consider:
+   - **Strength**: How consistent is the direction? (all horizons vs. most horizons)
+   - **Magnitude**: Are the price changes significant or marginal?
+   - **Volume Context**: Is momentum supported by high trading volume?
+   - **Acceleration**: Are recent movements (1h) larger than longer-term movements (24h, 7d)?
+
+5. **Key Drivers Integration**:
+   When market momentum is detected, ALWAYS include momentum insights in keyDrivers:
+   - Example: "Strong bullish momentum: consistent upward price movement across all time horizons (1h: +4%, 24h: +8%, 7d: +12%)"
+   - Example: "Bearish momentum detected: prices declining across 24h (-6%) and 7d (-10%) horizons"
+   - Example: "Accelerating momentum: 1h movement (+5%) exceeds 24h trend (+3%), suggesting strengthening consensus"
+
+6. **Fair Probability Adjustment**:
+   When momentum is detected, adjust fairProbability in the direction of momentum:
+   - Strong momentum: Larger adjustment toward the momentum direction
+   - Moderate momentum: Smaller adjustment toward the momentum direction
+   - Consider momentum as a signal of information flow and consensus formation
+
+## Noise Indicator Detection
+
+Identify when market behavior suggests random fluctuation rather than information-driven movement:
+
+1. **Noise Definition**:
+   Market noise occurs when price movements are driven by random trading, thin participation, or 
+   unstable conditions rather than genuine information flow. Noise reduces the reliability of 
+   market prices as polling signals.
+
+2. **Noise Detection Criteria**:
+   A market exhibits noise indicators when BOTH conditions are met:
+   - **High Volatility**: volatilityRegime === 'high' (unstable, erratic price movements)
+   - **Low Volume**: volume24h is below the average for similar markets or event type
+
+3. **Additional Noise Signals**:
+   Consider these supplementary indicators of noise:
+   - Wide bid-ask spread (> 5 cents) suggesting thin liquidity
+   - Erratic price movements without clear direction
+   - Low liquidityScore (< 5) indicating thin market depth
+   - Price movements that reverse quickly without sustained direction
+
+4. **Noise Impact on Analysis**:
+   When noise indicators are present:
+   - Market prices are LESS reliable as polling signals
+   - Crowd wisdom is compromised by thin participation
+   - Price movements may not reflect genuine sentiment shifts
+   - Fair probability should regress toward polling baseline rather than market price
+
+5. **Risk Factors Integration**:
+   When noise indicators are detected (high volatility + low volume), ALWAYS include noise warnings in riskFactors:
+   - Example: "High volatility with low volume suggests market noise rather than information-driven movement"
+   - Example: "Thin participation and erratic prices reduce reliability of polling signal"
+   - Example: "Unstable sentiment - price movements may reflect noise rather than genuine consensus"
+
+6. **Confidence Penalty for Noise**:
+   When noise indicators are present, apply strict confidence penalty:
+   - Set confidence to at most 0.4 (low confidence due to unreliable signal)
+   - Noise indicates the market is NOT functioning as an effective polling mechanism
+   - Document the confidence penalty in confidenceFactors metadata
+
+7. **Fair Probability Regression**:
+   When noise is detected, regress fairProbability toward the polling baseline:
+   - Reduce weight on current market price (unreliable due to noise)
+   - Increase weight on historical polling baseline (more stable reference)
+   - Example: fairProbability = (currentProbability * 0.3) + (pollingBaseline * 0.7)
+
 Provide your analysis as a structured signal with:
 - confidence: Your confidence in this polling analysis (0-1), calibrated based on crowd wisdom signals (>= 0.7 when crowdWisdomScore > 0.7)
 - direction: Your view on the outcome (YES/NO/NEUTRAL), aligned with sentiment shift momentum when detected
