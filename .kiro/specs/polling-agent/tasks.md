@@ -6,7 +6,7 @@ This implementation plan adds a new polling intelligence agent to the TradeWizar
 
 ## Tasks
 
-- [ ] 1. Add polling agent system prompt and LLM configuration
+- [x] 1. Add polling agent system prompt and LLM configuration
   - Add `pollingIntelligence` system prompt to `AGENT_PROMPTS` constant in `src/nodes/agents.ts`
   - Update `createLLMInstances()` return type to include `pollingIntelligence: LLMInstance`
   - Add LLM instance creation for polling agent (primary: Google, fallbacks: Anthropic, OpenAI, Nova)

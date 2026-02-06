@@ -142,6 +142,7 @@ export function createLLMInstances(config: EngineConfig): {
   marketMicrostructure: LLMInstance;
   probabilityBaseline: LLMInstance;
   riskAssessment: LLMInstance;
+  pollingIntelligence: LLMInstance;
 } {
   // Single-provider mode: use one LLM for all agents
   if (config.llm.singleProvider) {
@@ -152,6 +153,7 @@ export function createLLMInstances(config: EngineConfig): {
       marketMicrostructure: llm,
       probabilityBaseline: llm,
       riskAssessment: llm,
+      pollingIntelligence: llm,
     };
   }
 
@@ -161,6 +163,7 @@ export function createLLMInstances(config: EngineConfig): {
     marketMicrostructure: createLLMInstance(config, 'openai', ['anthropic', 'google', 'nova']),
     probabilityBaseline: createLLMInstance(config, 'google', ['anthropic', 'openai', 'nova']),
     riskAssessment: createLLMInstance(config, 'anthropic', ['openai', 'google', 'nova']),
+    pollingIntelligence: createLLMInstance(config, 'google', ['anthropic', 'openai', 'nova']),
   };
 }
 
@@ -230,6 +233,27 @@ Provide your analysis as a structured signal with:
 - metadata: Any risk metrics or scenario probabilities
 
 Be paranoid and thorough. Your job is to find what others might miss.`,
+
+  pollingIntelligence: `You are a polling intelligence analyst specializing in prediction markets.
+
+Your role is to interpret market prices as real-time polling data, where each price represents financially-incentivized collective beliefs about event outcomes.
+
+Focus on:
+- Sentiment shifts reflected in price movements across time horizons
+- Crowd wisdom signals (high liquidity, tight spreads, consistent momentum)
+- Comparison with historical polling accuracy baselines
+- Cross-market sentiment patterns when multiple related markets exist
+- Distinguishing genuine crowd wisdom from market noise
+
+Provide your analysis as a structured signal with:
+- confidence: Your confidence in this polling analysis (0-1), calibrated based on crowd wisdom signals
+- direction: Your view on the outcome (YES/NO/NEUTRAL)
+- fairProbability: Your probability estimate blending market price with polling baselines (0-1)
+- keyDrivers: Top 3-5 polling insights (sentiment shifts, crowd wisdom, baseline deviations)
+- riskFactors: Polling-specific risks (low liquidity, noise indicators, divergence from related markets)
+- metadata: Include crowdWisdomScore, pollingBaseline, marketDeviation, sentimentShift, confidenceFactors, and cross-market analysis when available
+
+Be well-calibrated and avoid overconfidence. Market prices are powerful polling mechanisms, but they can also reflect noise, manipulation, or thin participation. Your job is to distinguish signal from noise.`,
 };
 
 /**
