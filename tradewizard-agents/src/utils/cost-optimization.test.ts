@@ -11,6 +11,13 @@ import {
   createCostOptimizationAuditEntry,
   trackAgentCost,
   AgentPriority,
+  getNovaPricing,
+  calculateCost,
+  NOVA_PRICING,
+  recordUsage,
+  UsageRecord,
+  getCostsByProvider,
+  getNovaCostBreakdown,
 } from './cost-optimization.js';
 import type { EngineConfig } from '../config/index.js';
 
@@ -289,7 +296,7 @@ describe('Cost Optimization', () => {
       expect(cost).toBeLessThan(1.0);
     });
 
-    it('should calculate cost from token usage', () => {
+    it('should calculate cost from token usage with default pricing', () => {
       const cost = trackAgentCost('breaking_news', {
         input: 2000,
         output: 500,
@@ -298,6 +305,30 @@ describe('Cost Optimization', () => {
       expect(cost).toBeGreaterThan(0);
       // Cost should be: (2000/1000 * 0.03) + (500/1000 * 0.06) = 0.06 + 0.03 = 0.09
       expect(cost).toBeCloseTo(0.09, 2);
+    });
+
+    it('should calculate cost with Nova provider', () => {
+      const cost = trackAgentCost(
+        'breaking_news',
+        { input: 2000, output: 500 },
+        'nova',
+        'amazon.nova-lite-v1:0'
+      );
+
+      // (2000/1000 * 0.00006) + (500/1000 * 0.00024) = 0.00012 + 0.00012 = 0.00024
+      expect(cost).toBeCloseTo(0.00024, 5);
+    });
+
+    it('should calculate cost with other providers', () => {
+      const cost = trackAgentCost(
+        'breaking_news',
+        { input: 2000, output: 500 },
+        'anthropic',
+        'claude-3'
+      );
+
+      // (2000/1000 * 0.015) + (500/1000 * 0.075) = 0.03 + 0.0375 = 0.0675
+      expect(cost).toBeCloseTo(0.0675, 4);
     });
 
     it('should handle zero tokens', () => {
@@ -312,6 +343,373 @@ describe('Cost Optimization', () => {
     it('should use default cost for unknown agents', () => {
       const cost = trackAgentCost('unknown_agent');
       expect(cost).toBe(0.10);
+    });
+  });
+
+  describe('recordUsage', () => {
+    it('should record usage for Nova provider with metadata', () => {
+      const record = recordUsage({
+        provider: 'nova',
+        modelName: 'amazon.nova-lite-v1:0',
+        agentName: 'breaking_news',
+        inputTokens: 2000,
+        outputTokens: 500,
+      });
+
+      expect(record.provider).toBe('nova');
+      expect(record.modelName).toBe('amazon.nova-lite-v1:0');
+      expect(record.agentName).toBe('breaking_news');
+      expect(record.inputTokens).toBe(2000);
+      expect(record.outputTokens).toBe(500);
+      expect(record.totalCost).toBeCloseTo(0.00024, 5);
+      expect(record.timestamp).toBeInstanceOf(Date);
+      expect(record.metadata).toBeDefined();
+      expect(record.metadata?.modelVariant).toBe('lite');
+      expect(record.metadata?.inputCostPer1kTokens).toBe(0.00006);
+      expect(record.metadata?.outputCostPer1kTokens).toBe(0.00024);
+    });
+
+    it('should record usage for Nova Micro with correct variant', () => {
+      const record = recordUsage({
+        provider: 'nova',
+        modelName: 'amazon.nova-micro-v1:0',
+        inputTokens: 1000,
+        outputTokens: 250,
+      });
+
+      expect(record.metadata?.modelVariant).toBe('micro');
+      expect(record.totalCost).toBeCloseTo(0.000035 + 0.000035, 6);
+    });
+
+    it('should record usage for Nova Pro with correct variant', () => {
+      const record = recordUsage({
+        provider: 'nova',
+        modelName: 'amazon.nova-pro-v1:0',
+        inputTokens: 1000,
+        outputTokens: 250,
+      });
+
+      expect(record.metadata?.modelVariant).toBe('pro');
+      expect(record.totalCost).toBeCloseTo(0.0008 + 0.0008, 4);
+    });
+
+    it('should record usage for OpenAI provider without Nova metadata', () => {
+      const record = recordUsage({
+        provider: 'openai',
+        modelName: 'gpt-4',
+        agentName: 'market_microstructure',
+        inputTokens: 2000,
+        outputTokens: 500,
+      });
+
+      expect(record.provider).toBe('openai');
+      expect(record.modelName).toBe('gpt-4');
+      expect(record.totalCost).toBeCloseTo(0.09, 2);
+      expect(record.timestamp).toBeInstanceOf(Date);
+      // Should not have Nova-specific metadata
+      expect(record.metadata?.modelVariant).toBeUndefined();
+    });
+
+    it('should record usage for Anthropic provider', () => {
+      const record = recordUsage({
+        provider: 'anthropic',
+        modelName: 'claude-3',
+        inputTokens: 2000,
+        outputTokens: 500,
+      });
+
+      expect(record.provider).toBe('anthropic');
+      expect(record.totalCost).toBeCloseTo(0.0675, 4);
+    });
+
+    it('should record usage for Google provider', () => {
+      const record = recordUsage({
+        provider: 'google',
+        modelName: 'gemini-pro',
+        inputTokens: 2000,
+        outputTokens: 500,
+      });
+
+      expect(record.provider).toBe('google');
+      expect(record.totalCost).toBeCloseTo(0.00075, 5);
+    });
+
+    it('should preserve custom metadata', () => {
+      const customMetadata = { customField: 'customValue', analysisId: '123' };
+      const record = recordUsage({
+        provider: 'nova',
+        modelName: 'amazon.nova-lite-v1:0',
+        inputTokens: 1000,
+        outputTokens: 500,
+        metadata: customMetadata,
+      });
+
+      expect(record.metadata?.customField).toBe('customValue');
+      expect(record.metadata?.analysisId).toBe('123');
+      expect(record.metadata?.modelVariant).toBe('lite');
+    });
+
+    it('should handle zero tokens', () => {
+      const record = recordUsage({
+        provider: 'nova',
+        modelName: 'amazon.nova-lite-v1:0',
+        inputTokens: 0,
+        outputTokens: 0,
+      });
+
+      expect(record.totalCost).toBe(0);
+    });
+  });
+
+  describe('getCostsByProvider', () => {
+    it('should aggregate costs by provider', () => {
+      const records: UsageRecord[] = [
+        recordUsage({ provider: 'nova', modelName: 'amazon.nova-lite-v1:0', inputTokens: 2000, outputTokens: 500 }),
+        recordUsage({ provider: 'openai', modelName: 'gpt-4', inputTokens: 2000, outputTokens: 500 }),
+        recordUsage({ provider: 'nova', modelName: 'amazon.nova-pro-v1:0', inputTokens: 1000, outputTokens: 250 }),
+      ];
+
+      const costsByProvider = getCostsByProvider(records);
+
+      expect(costsByProvider.size).toBe(2);
+      expect(costsByProvider.has('nova')).toBe(true);
+      expect(costsByProvider.has('openai')).toBe(true);
+    });
+
+    it('should calculate total costs correctly', () => {
+      const records: UsageRecord[] = [
+        recordUsage({ provider: 'nova', modelName: 'amazon.nova-lite-v1:0', inputTokens: 2000, outputTokens: 500 }),
+        recordUsage({ provider: 'nova', modelName: 'amazon.nova-lite-v1:0', inputTokens: 2000, outputTokens: 500 }),
+      ];
+
+      const costsByProvider = getCostsByProvider(records);
+      const novaSummary = costsByProvider.get('nova')!;
+
+      expect(novaSummary.totalCost).toBeCloseTo(0.00048, 5);
+      expect(novaSummary.totalInputTokens).toBe(4000);
+      expect(novaSummary.totalOutputTokens).toBe(1000);
+      expect(novaSummary.invocationCount).toBe(2);
+    });
+
+    it('should track per-model statistics', () => {
+      const records: UsageRecord[] = [
+        recordUsage({ provider: 'nova', modelName: 'amazon.nova-lite-v1:0', inputTokens: 2000, outputTokens: 500 }),
+        recordUsage({ provider: 'nova', modelName: 'amazon.nova-pro-v1:0', inputTokens: 1000, outputTokens: 250 }),
+        recordUsage({ provider: 'nova', modelName: 'amazon.nova-lite-v1:0', inputTokens: 1000, outputTokens: 250 }),
+      ];
+
+      const costsByProvider = getCostsByProvider(records);
+      const novaSummary = costsByProvider.get('nova')!;
+
+      expect(novaSummary.models).toBeDefined();
+      expect(novaSummary.models!['amazon.nova-lite-v1:0'].invocationCount).toBe(2);
+      expect(novaSummary.models!['amazon.nova-pro-v1:0'].invocationCount).toBe(1);
+      expect(novaSummary.models!['amazon.nova-lite-v1:0'].inputTokens).toBe(3000);
+    });
+
+    it('should handle multiple providers', () => {
+      const records: UsageRecord[] = [
+        recordUsage({ provider: 'nova', modelName: 'amazon.nova-lite-v1:0', inputTokens: 2000, outputTokens: 500 }),
+        recordUsage({ provider: 'openai', modelName: 'gpt-4', inputTokens: 2000, outputTokens: 500 }),
+        recordUsage({ provider: 'anthropic', modelName: 'claude-3', inputTokens: 2000, outputTokens: 500 }),
+      ];
+
+      const costsByProvider = getCostsByProvider(records);
+
+      expect(costsByProvider.size).toBe(3);
+      expect(costsByProvider.get('nova')!.invocationCount).toBe(1);
+      expect(costsByProvider.get('openai')!.invocationCount).toBe(1);
+      expect(costsByProvider.get('anthropic')!.invocationCount).toBe(1);
+    });
+
+    it('should handle empty records array', () => {
+      const costsByProvider = getCostsByProvider([]);
+      expect(costsByProvider.size).toBe(0);
+    });
+  });
+
+  describe('getNovaCostBreakdown', () => {
+    it('should break down costs by Nova variant', () => {
+      const records: UsageRecord[] = [
+        recordUsage({ provider: 'nova', modelName: 'amazon.nova-micro-v1:0', inputTokens: 1000, outputTokens: 250 }),
+        recordUsage({ provider: 'nova', modelName: 'amazon.nova-lite-v1:0', inputTokens: 2000, outputTokens: 500 }),
+        recordUsage({ provider: 'nova', modelName: 'amazon.nova-pro-v1:0', inputTokens: 1000, outputTokens: 250 }),
+      ];
+
+      const breakdown = getNovaCostBreakdown(records);
+
+      expect(breakdown.micro.invocationCount).toBe(1);
+      expect(breakdown.lite.invocationCount).toBe(1);
+      expect(breakdown.pro.invocationCount).toBe(1);
+      expect(breakdown.total.invocationCount).toBe(3);
+    });
+
+    it('should calculate costs correctly for each variant', () => {
+      const records: UsageRecord[] = [
+        recordUsage({ provider: 'nova', modelName: 'amazon.nova-micro-v1:0', inputTokens: 1000, outputTokens: 250 }),
+        recordUsage({ provider: 'nova', modelName: 'amazon.nova-lite-v1:0', inputTokens: 2000, outputTokens: 500 }),
+        recordUsage({ provider: 'nova', modelName: 'amazon.nova-pro-v1:0', inputTokens: 1000, outputTokens: 250 }),
+      ];
+
+      const breakdown = getNovaCostBreakdown(records);
+
+      // Micro: (1000/1000 * 0.000035) + (250/1000 * 0.00014) = 0.000035 + 0.000035 = 0.00007
+      expect(breakdown.micro.cost).toBeCloseTo(0.00007, 6);
+      
+      // Lite: (2000/1000 * 0.00006) + (500/1000 * 0.00024) = 0.00012 + 0.00012 = 0.00024
+      expect(breakdown.lite.cost).toBeCloseTo(0.00024, 5);
+      
+      // Pro: (1000/1000 * 0.0008) + (250/1000 * 0.0032) = 0.0008 + 0.0008 = 0.0016
+      expect(breakdown.pro.cost).toBeCloseTo(0.0016, 4);
+      
+      // Total
+      expect(breakdown.total.cost).toBeCloseTo(0.00007 + 0.00024 + 0.0016, 4);
+    });
+
+    it('should aggregate token counts correctly', () => {
+      const records: UsageRecord[] = [
+        recordUsage({ provider: 'nova', modelName: 'amazon.nova-lite-v1:0', inputTokens: 2000, outputTokens: 500 }),
+        recordUsage({ provider: 'nova', modelName: 'amazon.nova-lite-v1:0', inputTokens: 1000, outputTokens: 250 }),
+      ];
+
+      const breakdown = getNovaCostBreakdown(records);
+
+      expect(breakdown.lite.inputTokens).toBe(3000);
+      expect(breakdown.lite.outputTokens).toBe(750);
+      expect(breakdown.total.inputTokens).toBe(3000);
+      expect(breakdown.total.outputTokens).toBe(750);
+    });
+
+    it('should filter out non-Nova records', () => {
+      const records: UsageRecord[] = [
+        recordUsage({ provider: 'nova', modelName: 'amazon.nova-lite-v1:0', inputTokens: 2000, outputTokens: 500 }),
+        recordUsage({ provider: 'openai', modelName: 'gpt-4', inputTokens: 2000, outputTokens: 500 }),
+        recordUsage({ provider: 'anthropic', modelName: 'claude-3', inputTokens: 2000, outputTokens: 500 }),
+      ];
+
+      const breakdown = getNovaCostBreakdown(records);
+
+      expect(breakdown.total.invocationCount).toBe(1);
+      expect(breakdown.lite.invocationCount).toBe(1);
+      expect(breakdown.micro.invocationCount).toBe(0);
+      expect(breakdown.pro.invocationCount).toBe(0);
+    });
+
+    it('should handle empty records array', () => {
+      const breakdown = getNovaCostBreakdown([]);
+
+      expect(breakdown.total.cost).toBe(0);
+      expect(breakdown.total.invocationCount).toBe(0);
+      expect(breakdown.micro.invocationCount).toBe(0);
+      expect(breakdown.lite.invocationCount).toBe(0);
+      expect(breakdown.pro.invocationCount).toBe(0);
+    });
+
+    it('should handle records with only one variant', () => {
+      const records: UsageRecord[] = [
+        recordUsage({ provider: 'nova', modelName: 'amazon.nova-pro-v1:0', inputTokens: 1000, outputTokens: 250 }),
+        recordUsage({ provider: 'nova', modelName: 'amazon.nova-pro-v1:0', inputTokens: 2000, outputTokens: 500 }),
+      ];
+
+      const breakdown = getNovaCostBreakdown(records);
+
+      expect(breakdown.pro.invocationCount).toBe(2);
+      expect(breakdown.micro.invocationCount).toBe(0);
+      expect(breakdown.lite.invocationCount).toBe(0);
+      expect(breakdown.total.invocationCount).toBe(2);
+    });
+  });
+
+  describe('getNovaPricing', () => {
+    it('should return pricing for Nova Micro', () => {
+      const pricing = getNovaPricing('amazon.nova-micro-v1:0');
+      expect(pricing.inputCostPer1kTokens).toBe(0.000035);
+      expect(pricing.outputCostPer1kTokens).toBe(0.00014);
+    });
+
+    it('should return pricing for Nova Lite', () => {
+      const pricing = getNovaPricing('amazon.nova-lite-v1:0');
+      expect(pricing.inputCostPer1kTokens).toBe(0.00006);
+      expect(pricing.outputCostPer1kTokens).toBe(0.00024);
+    });
+
+    it('should return pricing for Nova Pro', () => {
+      const pricing = getNovaPricing('amazon.nova-pro-v1:0');
+      expect(pricing.inputCostPer1kTokens).toBe(0.0008);
+      expect(pricing.outputCostPer1kTokens).toBe(0.0032);
+    });
+
+    it('should throw error for invalid model ID', () => {
+      expect(() => getNovaPricing('invalid-model')).toThrow('Invalid Nova model ID');
+      expect(() => getNovaPricing('gpt-4')).toThrow('Invalid Nova model ID');
+    });
+
+    it('should include valid model IDs in error message', () => {
+      try {
+        getNovaPricing('invalid-model');
+        fail('Should have thrown error');
+      } catch (error: any) {
+        expect(error.message).toContain('amazon.nova-micro-v1:0');
+        expect(error.message).toContain('amazon.nova-lite-v1:0');
+        expect(error.message).toContain('amazon.nova-pro-v1:0');
+      }
+    });
+  });
+
+  describe('calculateCost', () => {
+    describe('Nova provider', () => {
+      it('should calculate cost for Nova Micro', () => {
+        const cost = calculateCost('nova', 'amazon.nova-micro-v1:0', 2000, 500);
+        // (2000/1000 * 0.000035) + (500/1000 * 0.00014) = 0.00007 + 0.00007 = 0.00014
+        expect(cost).toBeCloseTo(0.00014, 5);
+      });
+
+      it('should calculate cost for Nova Lite', () => {
+        const cost = calculateCost('nova', 'amazon.nova-lite-v1:0', 2000, 500);
+        // (2000/1000 * 0.00006) + (500/1000 * 0.00024) = 0.00012 + 0.00012 = 0.00024
+        expect(cost).toBeCloseTo(0.00024, 5);
+      });
+
+      it('should calculate cost for Nova Pro', () => {
+        const cost = calculateCost('nova', 'amazon.nova-pro-v1:0', 2000, 500);
+        // (2000/1000 * 0.0008) + (500/1000 * 0.0032) = 0.0016 + 0.0016 = 0.0032
+        expect(cost).toBeCloseTo(0.0032, 4);
+      });
+
+      it('should handle zero tokens', () => {
+        const cost = calculateCost('nova', 'amazon.nova-lite-v1:0', 0, 0);
+        expect(cost).toBe(0);
+      });
+
+      it('should throw error for invalid Nova model', () => {
+        expect(() => calculateCost('nova', 'invalid-model', 1000, 500)).toThrow();
+      });
+    });
+
+    describe('Other providers', () => {
+      it('should calculate cost for OpenAI (default)', () => {
+        const cost = calculateCost('openai', 'gpt-4', 2000, 500);
+        // (2000/1000 * 0.03) + (500/1000 * 0.06) = 0.06 + 0.03 = 0.09
+        expect(cost).toBeCloseTo(0.09, 2);
+      });
+
+      it('should calculate cost for Anthropic', () => {
+        const cost = calculateCost('anthropic', 'claude-3', 2000, 500);
+        // (2000/1000 * 0.015) + (500/1000 * 0.075) = 0.03 + 0.0375 = 0.0675
+        expect(cost).toBeCloseTo(0.0675, 4);
+      });
+
+      it('should calculate cost for Google', () => {
+        const cost = calculateCost('google', 'gemini-pro', 2000, 500);
+        // (2000/1000 * 0.00025) + (500/1000 * 0.0005) = 0.0005 + 0.00025 = 0.00075
+        expect(cost).toBeCloseTo(0.00075, 5);
+      });
+
+      it('should use default pricing for unknown provider', () => {
+        const cost = calculateCost('unknown', 'model', 2000, 500);
+        // Should use GPT-4 default pricing
+        expect(cost).toBeCloseTo(0.09, 2);
+      });
     });
   });
 

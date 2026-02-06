@@ -180,20 +180,20 @@ This implementation plan breaks down the Amazon Nova integration into discrete, 
 - [x] 7. Checkpoint - Verify factory integration
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 8. Extend cost tracking for Nova
-  - [ ] 8.1 Add Nova pricing data to CostTracker
+- [x] 8. Extend cost tracking for Nova
+  - [x] 8.1 Add Nova pricing data to CostTracker
     - Define pricing constants for Nova Micro, Lite, Pro
     - Implement getNovaPricing() static method
     - Update calculateCost() to handle Nova provider
     - _Requirements: 6.2_
   
-  - [ ] 8.2 Implement Nova usage recording
+  - [x] 8.2 Implement Nova usage recording
     - Update recordUsage() to accept Nova provider
     - Capture Nova-specific metadata (model variant, agent name)
     - Calculate costs using Nova pricing tiers
     - _Requirements: 6.1, 6.4_
   
-  - [ ] 8.3 Add Nova cost reporting
+  - [x] 8.3 Add Nova cost reporting
     - Update getCostsByProvider() to include Nova
     - Add Nova-specific cost breakdown by model variant
     - Include Nova in analysis history queries
