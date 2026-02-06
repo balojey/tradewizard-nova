@@ -24,7 +24,8 @@ const program = new Command();
 
 program
   .name('tradewizard-cli')
-  .description('Market Intelligence Engine CLI - Analyze prediction markets with AI agents')
+  .description('Market Intelligence Engine CLI - Analyze prediction markets with AI agents\n\n' +
+    'Supported LLM Providers: OpenAI, Anthropic, Google, Amazon Nova (AWS Bedrock)')
   .version('1.0.0');
 
 // ============================================================================
@@ -38,10 +39,15 @@ program
   .option('-d, --debug', 'Show debug information and graph state')
   .option('-v, --visualize', 'Generate LangGraph workflow visualization (Mermaid)')
   .option('--opik-trace', 'Open Opik trace in browser after analysis')
-  .option('--single-provider <provider>', 'Use single LLM provider (openai|anthropic|google)')
+  .option('--single-provider <provider>', 'Use single LLM provider (openai|anthropic|google|nova)')
   .option('--model <model>', 'Override default model for single-provider mode')
   .option('--project <name>', 'Override Opik project name')
   .option('--show-costs', 'Display LLM cost tracking from Opik')
+  // Nova-specific options
+  .option('--nova-model <model>', 'Nova model variant (micro|lite|pro)')
+  .option('--nova-region <region>', 'AWS region for Nova (e.g., us-east-1)')
+  .option('--nova-temperature <temp>', 'Temperature for Nova models (0.0-1.0)', parseFloat)
+  .option('--nova-max-tokens <tokens>', 'Max tokens for Nova models', parseInt)
   .option('--replay', 'Replay from checkpoint (if available)')
   // Advanced Agent Configuration
   .option('--enable-event-intelligence', 'Enable Event Intelligence agents (Breaking News, Event Impact)')
@@ -64,7 +70,7 @@ program
       const configOverrides: Partial<EngineConfig> = {};
 
       if (options.singleProvider) {
-        const provider = options.singleProvider as 'openai' | 'anthropic' | 'google';
+        const provider = options.singleProvider as 'openai' | 'anthropic' | 'google' | 'nova';
         configOverrides.llm = {
           singleProvider: provider,
         };
@@ -85,6 +91,24 @@ program
             configOverrides.llm.google = {
               apiKey: process.env.GOOGLE_API_KEY || '',
               defaultModel: options.model,
+            };
+          } else if (provider === 'nova') {
+            // Nova configuration from CLI options
+            const novaModelMap: Record<string, string> = {
+              'micro': 'amazon.nova-micro-v1:0',
+              'lite': 'amazon.nova-lite-v1:0',
+              'pro': 'amazon.nova-pro-v1:0',
+            };
+            
+            const modelName = options.novaModel 
+              ? novaModelMap[options.novaModel] || options.novaModel
+              : options.model || 'amazon.nova-lite-v1:0';
+
+            configOverrides.llm.nova = {
+              awsRegion: options.novaRegion || process.env.AWS_REGION || 'us-east-1',
+              modelName: modelName,
+              temperature: options.novaTemperature,
+              maxTokens: options.novaMaxTokens,
             };
           }
         }
@@ -153,6 +177,19 @@ program
       if (options.debug) {
         console.log(chalk.dim('\nConfiguration:'));
         console.log(chalk.dim(`  LLM Mode: ${config.llm.singleProvider ? 'Single-Provider (' + config.llm.singleProvider + ')' : 'Multi-Provider'}`));
+        
+        // Display Nova-specific configuration if using Nova
+        if (config.llm.singleProvider === 'nova' && config.llm.nova) {
+          console.log(chalk.dim(`  Nova Model: ${config.llm.nova.modelName}`));
+          console.log(chalk.dim(`  Nova Region: ${config.llm.nova.awsRegion}`));
+          if (config.llm.nova.temperature !== undefined) {
+            console.log(chalk.dim(`  Nova Temperature: ${config.llm.nova.temperature}`));
+          }
+          if (config.llm.nova.maxTokens !== undefined) {
+            console.log(chalk.dim(`  Nova Max Tokens: ${config.llm.nova.maxTokens}`));
+          }
+        }
+        
         console.log(chalk.dim(`  Opik Project: ${config.opik.projectName}`));
         console.log(chalk.dim(`  Min Agents: ${config.agents.minAgentsRequired}`));
         console.log(chalk.dim(`  Edge Threshold: ${(config.consensus.minEdgeThreshold * 100).toFixed(1)}%`));
@@ -370,6 +407,127 @@ program
 
     } catch (error) {
       spinner.fail(chalk.red('Failed to load checkpoint'));
+      console.error(chalk.red('\n❌ Error:'), error instanceof Error ? error.message : String(error));
+      process.exit(1);
+    }
+  });
+
+// ============================================================================
+// Nova Status Command
+// ============================================================================
+
+program
+  .command('nova-status')
+  .description('Check Nova configuration and display available models with pricing')
+  .option('--show-usage', 'Show Nova usage statistics from recent analyses')
+  .action(async (options) => {
+    const spinner = ora('Checking Nova configuration...').start();
+
+    try {
+      // Import required modules
+      const { LLMConfigManager } = await import('./config/llm-config.js');
+      const { BedrockClient } = await import('./utils/bedrock-client.js');
+
+      // Check if Nova is configured
+      const isConfigured = LLMConfigManager.isNovaConfigured();
+
+      if (!isConfigured) {
+        spinner.warn(chalk.yellow('Nova is not configured'));
+        
+        console.log(chalk.cyan('\n🔧 Nova Configuration'));
+        console.log(chalk.dim('─'.repeat(60)));
+        console.log(chalk.yellow('\nNova is not currently configured.'));
+        console.log(chalk.dim('\nRequired environment variables:'));
+        
+        const missing = LLMConfigManager.getMissingNovaVariables();
+        missing.forEach(varName => {
+          console.log(chalk.dim(`  - ${varName}`));
+        });
+        
+        console.log(chalk.dim('\nTo configure Nova, set these environment variables:'));
+        console.log(chalk.dim('  export AWS_REGION=us-east-1'));
+        console.log(chalk.dim('  export AWS_ACCESS_KEY_ID=your_access_key'));
+        console.log(chalk.dim('  export AWS_SECRET_ACCESS_KEY=your_secret_key'));
+        console.log(chalk.dim('  export NOVA_MODEL_NAME=amazon.nova-lite-v1:0  # optional'));
+      } else {
+        spinner.succeed(chalk.green('Nova is configured!'));
+        
+        // Display current configuration
+        console.log(chalk.cyan('\n🔧 Nova Configuration'));
+        console.log(chalk.dim('─'.repeat(60)));
+        
+        const env = process.env;
+        console.log(chalk.bold('\nAWS Region:'), env.AWS_REGION || 'Not set');
+        console.log(chalk.bold('Model:'), env.NOVA_MODEL_NAME || 'amazon.nova-lite-v1:0 (default)');
+        
+        if (env.NOVA_TEMPERATURE) {
+          console.log(chalk.bold('Temperature:'), env.NOVA_TEMPERATURE);
+        }
+        if (env.NOVA_MAX_TOKENS) {
+          console.log(chalk.bold('Max Tokens:'), env.NOVA_MAX_TOKENS);
+        }
+        if (env.NOVA_TOP_P) {
+          console.log(chalk.bold('Top P:'), env.NOVA_TOP_P);
+        }
+        
+        console.log(chalk.bold('Credentials:'), env.AWS_ACCESS_KEY_ID ? '✓ Configured' : '✗ Using default credential chain');
+      }
+
+      // Display available models and pricing
+      console.log(chalk.cyan('\n💰 Available Nova Models'));
+      console.log(chalk.dim('─'.repeat(60)));
+      
+      const models = BedrockClient.getAvailableModels();
+      
+      console.log(chalk.bold('\nModel Variants:\n'));
+      
+      models.forEach(model => {
+        const isCurrentModel = process.env.NOVA_MODEL_NAME === model.modelId;
+        const marker = isCurrentModel ? chalk.green('→ ') : '  ';
+        
+        console.log(marker + chalk.bold(model.name));
+        console.log(`  Model ID: ${chalk.dim(model.modelId)}`);
+        console.log(`  Input:  ${chalk.green('$' + model.inputCostPer1kTokens.toFixed(6))} per 1K tokens`);
+        console.log(`  Output: ${chalk.green('$' + model.outputCostPer1kTokens.toFixed(6))} per 1K tokens`);
+        console.log(`  Max Tokens: ${chalk.dim(model.maxTokens.toLocaleString())}`);
+        
+        // Calculate example costs
+        const exampleInputTokens = 1000;
+        const exampleOutputTokens = 500;
+        const exampleCost = (exampleInputTokens / 1000 * model.inputCostPer1kTokens) + 
+                           (exampleOutputTokens / 1000 * model.outputCostPer1kTokens);
+        console.log(`  Example: ${chalk.dim(`1K input + 500 output = $${exampleCost.toFixed(4)}`)}`);
+        console.log('');
+      });
+
+      // Display usage statistics if requested
+      if (options.showUsage) {
+        console.log(chalk.cyan('\n📊 Nova Usage Statistics'));
+        console.log(chalk.dim('─'.repeat(60)));
+        console.log(chalk.yellow('\nNote: Usage statistics are tracked in Opik.'));
+        console.log(chalk.dim('To view detailed Nova usage:'));
+        console.log(chalk.dim('  1. Open the Opik web UI'));
+        console.log(chalk.dim('  2. Filter traces by provider tag: "nova"'));
+        console.log(chalk.dim('  3. View token usage and costs in trace metadata'));
+        
+        if (process.env.OPIK_PROJECT_NAME) {
+          console.log(chalk.dim(`\nOpik Project: ${process.env.OPIK_PROJECT_NAME}`));
+        }
+      }
+
+      // Display CLI usage examples
+      console.log(chalk.cyan('\n📖 Usage Examples'));
+      console.log(chalk.dim('─'.repeat(60)));
+      console.log(chalk.dim('\nAnalyze a market with Nova:'));
+      console.log(chalk.dim('  npm run cli -- analyze <conditionId> --single-provider nova'));
+      console.log(chalk.dim('\nUse specific Nova model:'));
+      console.log(chalk.dim('  npm run cli -- analyze <conditionId> --single-provider nova --nova-model pro'));
+      console.log(chalk.dim('\nSet Nova parameters:'));
+      console.log(chalk.dim('  npm run cli -- analyze <conditionId> --single-provider nova \\'));
+      console.log(chalk.dim('    --nova-temperature 0.5 --nova-max-tokens 2048'));
+
+    } catch (error) {
+      spinner.fail(chalk.red('Failed to check Nova status'));
       console.error(chalk.red('\n❌ Error:'), error instanceof Error ? error.message : String(error));
       process.exit(1);
     }

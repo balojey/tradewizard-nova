@@ -260,14 +260,14 @@ This implementation plan breaks down the Amazon Nova integration into discrete, 
 - [x] 11. Checkpoint - Verify end-to-end workflow
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 12. Add CLI support for Nova
-  - [ ] 12.1 Update CLI to support Nova configuration
+- [x] 12. Add CLI support for Nova
+  - [x] 12.1 Update CLI to support Nova configuration
     - Add Nova-specific command-line flags
     - Update help text to include Nova options
     - Maintain consistent CLI interface across providers
     - _Requirements: 10.5_
   
-  - [ ] 12.2 Add Nova status command
+  - [x] 12.2 Add Nova status command
     - Implement command to check Nova configuration
     - Display available Nova models and pricing
     - Show current Nova usage statistics
