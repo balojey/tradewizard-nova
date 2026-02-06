@@ -259,7 +259,7 @@ Be well-calibrated and avoid overconfidence. Market prices are powerful polling 
 /**
  * Create all agent nodes with configured LLM instances
  *
- * This factory function creates the three specialized agent nodes
+ * This factory function creates the specialized agent nodes
  * with appropriate LLM instances based on configuration.
  *
  * @param config - Engine configuration
@@ -269,6 +269,7 @@ export function createAgentNodes(config: EngineConfig): {
   marketMicrostructureAgent: (state: GraphStateType) => Promise<Partial<GraphStateType>>;
   probabilityBaselineAgent: (state: GraphStateType) => Promise<Partial<GraphStateType>>;
   riskAssessmentAgent: (state: GraphStateType) => Promise<Partial<GraphStateType>>;
+  pollingIntelligenceAgent: (state: GraphStateType) => Promise<Partial<GraphStateType>>;
 } {
   const llms = createLLMInstances(config);
 
@@ -288,5 +289,32 @@ export function createAgentNodes(config: EngineConfig): {
       llms.riskAssessment,
       AGENT_PROMPTS.riskAssessment
     ),
+    pollingIntelligenceAgent: createAgentNode(
+      'polling_intelligence',
+      llms.pollingIntelligence,
+      AGENT_PROMPTS.pollingIntelligence
+    ),
   };
+}
+
+/**
+ * Create polling intelligence agent node
+ *
+ * Creates a specialized agent that interprets market prices as real-time polling data,
+ * analyzing sentiment shifts, crowd wisdom signals, and comparing market-implied
+ * probabilities with historical polling baselines.
+ *
+ * @param config - Engine configuration
+ * @returns LangGraph node function for polling intelligence agent
+ */
+export function createPollingIntelligenceAgentNode(
+  config: EngineConfig
+): (state: GraphStateType) => Promise<Partial<GraphStateType>> {
+  const llms = createLLMInstances(config);
+  
+  return createAgentNode(
+    'polling_intelligence',
+    llms.pollingIntelligence,
+    AGENT_PROMPTS.pollingIntelligence
+  );
 }

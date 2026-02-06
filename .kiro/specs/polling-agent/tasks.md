@@ -16,8 +16,8 @@ This implementation plan adds a new polling intelligence agent to the TradeWizar
   - **Property: For any engine configuration, createLLMInstances() returns valid LLM instance for polling agent**
   - **Validates: Requirements 1.5**
 
-- [ ] 2. Implement polling agent node function
-  - [ ] 2.1 Create `createPollingIntelligenceAgentNode()` function in `src/nodes/agents.ts`
+- [x] 2. Implement polling agent node function
+  - [x] 2.1 Create `createPollingIntelligenceAgentNode()` function in `src/nodes/agents.ts`
     - Use `createAgentNode()` factory with polling agent name and system prompt
     - Follow existing agent pattern (market_microstructure, probability_baseline, risk_assessment)
     - _Requirements: 1.1, 1.3, 1.4, 1.6_
