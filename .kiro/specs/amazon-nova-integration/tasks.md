@@ -217,14 +217,14 @@ This implementation plan breaks down the Amazon Nova integration into discrete, 
     - **Property 17: Observability Metadata Completeness**
     - **Validates: Requirements 6.4**
 
-- [ ] 9. Integrate Nova with Opik observability
-  - [ ] 9.1 Extend Opik tracing for Nova
+- [x] 9. Integrate Nova with Opik observability
+  - [x] 9.1 Extend Opik tracing for Nova
     - Add Nova provider tag to Opik traces
     - Include Nova model variant in trace metadata
     - Track Nova-specific metrics (latency, token counts, costs)
     - _Requirements: 6.3, 6.4_
   
-  - [ ] 9.2 Implement trackNovaInvocation helper
+  - [x] 9.2 Implement trackNovaInvocation helper
     - Create utility function for Nova-specific Opik tracking
     - Include all required metadata fields
     - Calculate and include cost information
