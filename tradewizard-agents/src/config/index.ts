@@ -101,7 +101,7 @@ const EngineConfigSchema = z
     }),
     llm: z.object({
       // Single-provider mode: use one LLM for all agents (cost-effective)
-      singleProvider: z.enum(['openai', 'anthropic', 'google']).optional(),
+      singleProvider: z.enum(['openai', 'anthropic', 'google', 'nova']).optional(),
 
       // Multi-provider mode: configure each provider separately (default, better quality)
       openai: z
@@ -120,6 +120,17 @@ const EngineConfigSchema = z
         .object({
           apiKey: z.string(),
           defaultModel: z.string(),
+        })
+        .optional(),
+      nova: z
+        .object({
+          modelName: z.string(),
+          awsRegion: z.string(),
+          awsAccessKeyId: z.string().optional(),
+          awsSecretAccessKey: z.string().optional(),
+          temperature: z.number().min(0).max(1).optional(),
+          maxTokens: z.number().positive().optional(),
+          topP: z.number().min(0).max(1).optional(),
         })
         .optional(),
     }),
@@ -268,9 +279,12 @@ const EngineConfigSchema = z
         if (provider === 'google' && !config.llm.google) {
           return false;
         }
+        if (provider === 'nova' && !config.llm.nova) {
+          return false;
+        }
       } else {
         // Multi-provider mode: at least one provider must be configured
-        if (!config.llm.openai && !config.llm.anthropic && !config.llm.google) {
+        if (!config.llm.openai && !config.llm.anthropic && !config.llm.google && !config.llm.nova) {
           return false;
         }
       }
@@ -447,7 +461,7 @@ export function loadConfig(): EngineConfig {
       trackCosts: process.env.OPIK_TRACK_COSTS !== 'false',
     },
     llm: {
-      singleProvider: process.env.LLM_SINGLE_PROVIDER as 'openai' | 'anthropic' | 'google' | undefined,
+      singleProvider: process.env.LLM_SINGLE_PROVIDER as 'openai' | 'anthropic' | 'google' | 'nova' | undefined,
       openai: process.env.OPENAI_API_KEY
         ? {
             apiKey: process.env.OPENAI_API_KEY,
@@ -464,6 +478,17 @@ export function loadConfig(): EngineConfig {
         ? {
             apiKey: process.env.GOOGLE_API_KEY,
             defaultModel: process.env.GOOGLE_DEFAULT_MODEL || 'gemini-1.5-flash',
+          }
+        : undefined,
+      nova: process.env.AWS_REGION
+        ? {
+            modelName: process.env.NOVA_MODEL_NAME || 'amazon.nova-lite-v1:0',
+            awsRegion: process.env.AWS_REGION,
+            awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,
+            awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+            temperature: process.env.NOVA_TEMPERATURE ? parseFloat(process.env.NOVA_TEMPERATURE) : undefined,
+            maxTokens: process.env.NOVA_MAX_TOKENS ? parseInt(process.env.NOVA_MAX_TOKENS, 10) : undefined,
+            topP: process.env.NOVA_TOP_P ? parseFloat(process.env.NOVA_TOP_P) : undefined,
           }
         : undefined,
     },

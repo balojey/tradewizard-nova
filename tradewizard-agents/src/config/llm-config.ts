@@ -372,8 +372,8 @@ export class LLMConfigManager {
       } catch (error) {
         if (error instanceof z.ZodError) {
           errors.push(
-            `Invalid ${llmConfig.provider} configuration: ${error.errors
-              .map((e) => e.message)
+            `Invalid ${llmConfig.provider} configuration: ${error.issues
+              .map((e: z.ZodIssue) => e.message)
               .join(', ')}`
           );
         }

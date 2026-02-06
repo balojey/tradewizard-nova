@@ -126,21 +126,21 @@ This implementation plan breaks down the Amazon Nova integration into discrete, 
     - **Property 12: Missing Required Configuration Detection**
     - **Validates: Requirements 4.5**
 
-- [ ] 6. Extend LLM factory to support Nova
-  - [ ] 6.1 Add Nova provider to LLMFactory
+- [x] 6. Extend LLM factory to support Nova
+  - [x] 6.1 Add Nova provider to LLMFactory
     - Add "nova" to LLMProvider type union
     - Add Nova case to createLLM() switch statement
     - Delegate Nova instantiation to BedrockClient
     - Validate Nova configuration before instantiation
     - _Requirements: 3.1, 3.5_
   
-  - [ ] 6.2 Implement parameter application for Nova models
+  - [x] 6.2 Implement parameter application for Nova models
     - Apply temperature, maxTokens, topP from configuration
     - Handle optional parameters with defaults
     - Ensure parameters are passed to BedrockChat correctly
     - _Requirements: 3.2, 4.4_
   
-  - [ ] 6.3 Add multi-provider support for Nova
+  - [x] 6.3 Add multi-provider support for Nova
     - Update createAgentLLMs() to handle Nova in agent configs
     - Support mixed configurations (Nova + other providers)
     - Maintain backward compatibility with existing providers
