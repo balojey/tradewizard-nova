@@ -236,14 +236,14 @@ This implementation plan breaks down the Amazon Nova integration into discrete, 
     - Test trace filtering by Nova provider
     - _Requirements: 9.1_
 
-- [ ] 10. Update agent nodes to support Nova
-  - [ ] 10.1 Update workflow.ts to use LLMConfigManager
+- [x] 10. Update agent nodes to support Nova
+  - [x] 10.1 Update workflow.ts to use LLMConfigManager
     - Replace hardcoded provider logic with LLMConfigManager
     - Load agent-specific configurations from environment
     - Pass correct LLM instances to each agent node
     - _Requirements: 5.1, 5.3_
   
-  - [ ] 10.2 Verify agent node compatibility
+  - [x] 10.2 Verify agent node compatibility
     - Test each agent node (News, Polling, Market, Sentiment, Risk) with Nova
     - Ensure input/output interfaces remain consistent
     - Verify state management works across providers

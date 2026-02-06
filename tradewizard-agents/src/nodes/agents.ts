@@ -5,7 +5,7 @@
  * from different perspectives using LangChain LLM integration.
  */
 
-import { createLLMInstance, type LLMInstance } from '../utils/llm-factory.js';
+import { createLLMInstance, type LLMInstance, withStructuredOutput } from '../utils/llm-factory.js';
 import type { GraphStateType } from '../models/state.js';
 import type { AgentSignal } from '../models/types.js';
 import { AgentSignalSchema } from '../models/schemas.js';
@@ -61,7 +61,7 @@ export function createAgentNode(
 
     try {
       // Use structured output with Zod schema
-      const structuredLLM = llm.withStructuredOutput(AgentSignalSchema);
+      const structuredLLM = withStructuredOutput(llm, AgentSignalSchema);
 
       // Prepare the market context for the agent
       const marketContext = JSON.stringify(state.mbd, null, 2);
@@ -133,6 +133,7 @@ export function createAgentNode(
  *
  * Creates LLM instances for each agent based on configuration.
  * Supports both single-provider mode (one LLM for all) and multi-provider mode (different LLMs per agent).
+ * Now supports Nova provider through LLMConfigManager.
  *
  * @param config - Engine configuration
  * @returns Object with LLM instances for each agent
@@ -155,10 +156,11 @@ export function createLLMInstances(config: EngineConfig): {
   }
 
   // Multi-provider mode: use different LLMs per agent (default for optimal performance)
+  // Now includes Nova as a fallback option
   return {
-    marketMicrostructure: createLLMInstance(config, 'openai', ['anthropic', 'google']),
-    probabilityBaseline: createLLMInstance(config, 'google', ['anthropic', 'openai']),
-    riskAssessment: createLLMInstance(config, 'anthropic', ['openai', 'google']),
+    marketMicrostructure: createLLMInstance(config, 'openai', ['anthropic', 'google', 'nova']),
+    probabilityBaseline: createLLMInstance(config, 'google', ['anthropic', 'openai', 'nova']),
+    riskAssessment: createLLMInstance(config, 'anthropic', ['openai', 'google', 'nova']),
   };
 }
 

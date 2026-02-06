@@ -447,10 +447,10 @@ describe('Agent Nodes', () => {
         },
       };
 
-      expect(() => createLLMInstances(config)).toThrow('Invalid single provider configuration');
+      expect(() => createLLMInstances(config)).toThrow("Single provider mode configured for 'openai' but provider not available");
     });
 
-    it('should throw error for multi-provider mode with missing providers', () => {
+    it('should not throw error for multi-provider mode with only one provider (Nova fallback available)', () => {
       const config: EngineConfig = {
         polymarket: {
           gammaApiUrl: 'https://gamma-api.polymarket.com',
@@ -468,7 +468,8 @@ describe('Agent Nodes', () => {
           trackCosts: true,
         },
         llm: {
-          // Multi-provider mode but missing some providers
+          // Multi-provider mode with only OpenAI configured
+          // Nova is now available as fallback, so this should not throw
           openai: {
             apiKey: 'test-openai-key',
             defaultModel: 'gpt-4-turbo',
@@ -488,9 +489,14 @@ describe('Agent Nodes', () => {
         },
       };
 
-      expect(() => createLLMInstances(config)).toThrow(
-        'Multi-provider mode requires all three LLM providers'
-      );
+      // Should not throw because Nova is available as fallback
+      expect(() => createLLMInstances(config)).not.toThrow();
+      
+      // Verify LLM instances are created successfully
+      const llms = createLLMInstances(config);
+      expect(llms.marketMicrostructure).toBeDefined();
+      expect(llms.probabilityBaseline).toBeDefined();
+      expect(llms.riskAssessment).toBeDefined();
     });
   });
 

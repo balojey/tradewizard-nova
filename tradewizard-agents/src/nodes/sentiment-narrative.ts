@@ -10,7 +10,7 @@ import { z } from 'zod';
 import type { GraphStateType } from '../models/state.js';
 import type { AgentSignal } from '../models/types.js';
 import type { EngineConfig } from '../config/index.js';
-import { createLLMInstance } from '../utils/llm-factory.js';
+import { createLLMInstance, withStructuredOutput } from '../utils/llm-factory.js';
 
 // ============================================================================
 // Media Sentiment Agent Signal Schema
@@ -240,7 +240,7 @@ export function createMediaSentimentAgentNode(
 ): (state: GraphStateType) => Promise<Partial<GraphStateType>> {
   // Use configured LLM respecting single/multi provider mode
   // In multi-provider mode, prefer OpenAI for media sentiment analysis (good at sentiment and tone)
-  const llm = createLLMInstance(config, 'openai', ['anthropic', 'google']);
+  const llm = createLLMInstance(config, 'openai', ['anthropic', 'google', 'nova']);
 
   // Return the agent node function
   return async (state: GraphStateType): Promise<Partial<GraphStateType>> => {
@@ -304,7 +304,7 @@ export function createMediaSentimentAgentNode(
       } : null;
 
       // Use structured output with custom schema
-      const structuredLLM = llm.withStructuredOutput(MediaSentimentSignalSchema);
+      const structuredLLM = withStructuredOutput(llm, MediaSentimentSignalSchema);
 
       // Prepare enhanced market context with news data and event-based keywords
       const marketContext = JSON.stringify(state.mbd, null, 2);
@@ -389,7 +389,7 @@ export function createSocialSentimentAgentNode(
 ): (state: GraphStateType) => Promise<Partial<GraphStateType>> {
   // Use configured LLM respecting single/multi provider mode
   // In multi-provider mode, prefer OpenAI for social sentiment analysis (good at sentiment and psychology)
-  const llm = createLLMInstance(config, 'openai', ['anthropic', 'google']);
+  const llm = createLLMInstance(config, 'openai', ['anthropic', 'google', 'nova']);
 
   // Return the agent node function
   return async (state: GraphStateType): Promise<Partial<GraphStateType>> => {
@@ -453,7 +453,7 @@ export function createSocialSentimentAgentNode(
       } : null;
 
       // Use structured output with custom schema
-      const structuredLLM = llm.withStructuredOutput(SocialSentimentSignalSchema);
+      const structuredLLM = withStructuredOutput(llm, SocialSentimentSignalSchema);
 
       // Prepare enhanced market context with social data and event-based keywords
       const marketContext = JSON.stringify(state.mbd, null, 2);
@@ -547,7 +547,7 @@ export function createNarrativeVelocityAgentNode(
 ): (state: GraphStateType) => Promise<Partial<GraphStateType>> {
   // Use configured LLM respecting single/multi provider mode
   // In multi-provider mode, prefer Anthropic for narrative velocity analysis (good at reasoning and prediction)
-  const llm = createLLMInstance(config, 'anthropic', ['openai', 'google']);
+  const llm = createLLMInstance(config, 'anthropic', ['openai', 'google', 'nova']);
 
   // Return the agent node function
   return async (state: GraphStateType): Promise<Partial<GraphStateType>> => {
@@ -612,7 +612,7 @@ export function createNarrativeVelocityAgentNode(
       } : null;
 
       // Use structured output with custom schema
-      const structuredLLM = llm.withStructuredOutput(NarrativeVelocitySignalSchema);
+      const structuredLLM = withStructuredOutput(llm, NarrativeVelocitySignalSchema);
 
       // Prepare enhanced market context with media and social data and event-based keywords
       const marketContext = JSON.stringify(state.mbd, null, 2);

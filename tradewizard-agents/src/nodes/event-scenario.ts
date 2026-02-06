@@ -9,7 +9,7 @@ import { z } from 'zod';
 import type { GraphStateType } from '../models/state.js';
 import type { AgentSignal } from '../models/types.js';
 import type { EngineConfig } from '../config/index.js';
-import { createLLMInstance } from '../utils/llm-factory.js';
+import { createLLMInstance, withStructuredOutput } from '../utils/llm-factory.js';
 
 // ============================================================================
 // Catalyst Agent Signal Schema
@@ -173,7 +173,7 @@ export function createCatalystAgentNode(
 ): (state: GraphStateType) => Promise<Partial<GraphStateType>> {
   // Use configured LLM respecting single/multi provider mode
   // In multi-provider mode, prefer Anthropic for catalyst analysis (good at reasoning and scenario modeling)
-  const llm = createLLMInstance(config, 'anthropic', ['openai', 'google']);
+  const llm = createLLMInstance(config, 'anthropic', ['openai', 'google', 'nova']);
 
   // Return the agent node function
   return async (state: GraphStateType): Promise<Partial<GraphStateType>> => {
@@ -214,7 +214,7 @@ export function createCatalystAgentNode(
       } : null;
 
       // Use structured output with custom schema
-      const structuredLLM = llm.withStructuredOutput(CatalystSignalSchema);
+      const structuredLLM = withStructuredOutput(llm, CatalystSignalSchema);
 
       // Prepare market context with catalysts from MBD and external data
       const marketContext = JSON.stringify(state.mbd, null, 2);
@@ -309,7 +309,7 @@ export function createTailRiskAgentNode(
 ): (state: GraphStateType) => Promise<Partial<GraphStateType>> {
   // Use configured LLM respecting single/multi provider mode
   // In multi-provider mode, prefer Anthropic for tail-risk analysis (good at reasoning about edge cases)
-  const llm = createLLMInstance(config, 'anthropic', ['openai', 'google']);
+  const llm = createLLMInstance(config, 'anthropic', ['openai', 'google', 'nova']);
 
   // Return the agent node function
   return async (state: GraphStateType): Promise<Partial<GraphStateType>> => {
@@ -350,7 +350,7 @@ export function createTailRiskAgentNode(
       } : null;
 
       // Use structured output with custom schema
-      const structuredLLM = llm.withStructuredOutput(TailRiskSignalSchema);
+      const structuredLLM = withStructuredOutput(llm, TailRiskSignalSchema);
 
       // Prepare market context with event-based keywords
       const marketContext = JSON.stringify(state.mbd, null, 2);

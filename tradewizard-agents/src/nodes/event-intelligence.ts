@@ -9,7 +9,7 @@ import { z } from 'zod';
 import type { GraphStateType } from '../models/state.js';
 import type { AgentSignal } from '../models/types.js';
 import type { EngineConfig } from '../config/index.js';
-import { createLLMInstance } from '../utils/llm-factory.js';
+import { createLLMInstance, withStructuredOutput } from '../utils/llm-factory.js';
 
 // ============================================================================
 // Breaking News Agent Signal Schema
@@ -175,7 +175,7 @@ export function createBreakingNewsAgentNode(
 ): (state: GraphStateType) => Promise<Partial<GraphStateType>> {
   // Use configured LLM respecting single/multi provider mode
   // In multi-provider mode, prefer OpenAI for breaking news analysis (fast and good at factual analysis)
-  const llm = createLLMInstance(config, 'openai', ['anthropic', 'google']);
+  const llm = createLLMInstance(config, 'openai', ['anthropic', 'google', 'nova']);
 
   // Return the agent node function
   return async (state: GraphStateType): Promise<Partial<GraphStateType>> => {
@@ -239,7 +239,7 @@ export function createBreakingNewsAgentNode(
       } : null;
 
       // Use structured output with custom schema
-      const structuredLLM = llm.withStructuredOutput(BreakingNewsSignalSchema);
+      const structuredLLM = withStructuredOutput(llm, BreakingNewsSignalSchema);
 
       // Prepare enhanced market context with news data and event-based keywords
       const marketContext = JSON.stringify(state.mbd, null, 2);
@@ -261,7 +261,7 @@ export function createBreakingNewsAgentNode(
       // This ensures Property 12 (event intelligence relevance filtering) is satisfied
       const MIN_RELEVANCE_THRESHOLD = 0.5;
       const filteredRelevantArticles = response.metadata.relevantArticles.filter(
-        (article) => article.relevanceScore >= MIN_RELEVANCE_THRESHOLD
+        (article: { relevanceScore: number }) => article.relevanceScore >= MIN_RELEVANCE_THRESHOLD
       );
 
       // If regime change is flagged but no high-relevance articles exist, set it to false
@@ -338,7 +338,7 @@ export function createEventImpactAgentNode(
 ): (state: GraphStateType) => Promise<Partial<GraphStateType>> {
   // Use configured LLM respecting single/multi provider mode
   // In multi-provider mode, prefer Anthropic for event impact modeling (good at reasoning and historical analysis)
-  const llm = createLLMInstance(config, 'anthropic', ['openai', 'google']);
+  const llm = createLLMInstance(config, 'anthropic', ['openai', 'google', 'nova']);
 
   // Return the agent node function
   return async (state: GraphStateType): Promise<Partial<GraphStateType>> => {
@@ -379,7 +379,7 @@ export function createEventImpactAgentNode(
       } : null;
 
       // Use structured output with custom schema
-      const structuredLLM = llm.withStructuredOutput(EventImpactSignalSchema);
+      const structuredLLM = withStructuredOutput(llm, EventImpactSignalSchema);
 
       // Prepare market context with catalysts and event-based keywords
       const marketContext = JSON.stringify(state.mbd, null, 2);

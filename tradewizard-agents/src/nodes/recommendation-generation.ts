@@ -139,7 +139,7 @@ function determineLiquidityRisk(liquidityScore: number): LiquidityRisk {
 function createExplanationLLM(config: EngineConfig): LLMInstance {
   // Use configured LLM respecting single/multi provider mode
   // In multi-provider mode, prefer OpenAI for explanation generation (good at clear explanations)
-  return createLLMInstance(config, 'openai', ['anthropic', 'google']);
+  return createLLMInstance(config, 'openai', ['anthropic', 'google', 'nova']);
 }
 
 /**

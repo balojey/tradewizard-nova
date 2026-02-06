@@ -27,7 +27,7 @@ import type { EngineConfig } from '../config/index.js';
 function createCrossExaminationLLM(config: EngineConfig): LLMInstance {
   // Use configured LLM respecting single/multi provider mode
   // In multi-provider mode, prefer OpenAI for cross-examination (good at adversarial reasoning)
-  return createLLMInstance(config, 'openai', ['anthropic', 'google']);
+  return createLLMInstance(config, 'openai', ['anthropic', 'google', 'nova']);
 }
 
 /**

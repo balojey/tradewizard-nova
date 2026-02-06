@@ -5,7 +5,7 @@
  * momentum patterns, and mean reversion opportunities.
  */
 
-import { createLLMInstance } from '../utils/llm-factory.js';
+import { createLLMInstance, withStructuredOutput } from '../utils/llm-factory.js';
 import { z } from 'zod';
 import type { GraphStateType } from '../models/state.js';
 import type { AgentSignal } from '../models/types.js';
@@ -193,7 +193,7 @@ export function createMomentumAgentNode(
 ): (state: GraphStateType) => Promise<Partial<GraphStateType>> {
   // Use configured LLM respecting single/multi provider mode
   // In multi-provider mode, prefer OpenAI for momentum analysis (fast and good at pattern recognition)
-  const llm = createLLMInstance(config, 'openai', ['anthropic', 'google']);
+  const llm = createLLMInstance(config, 'openai', ['anthropic', 'google', 'nova']);
   
   return async (state: GraphStateType): Promise<Partial<GraphStateType>> => {
     const startTime = Date.now();
@@ -249,7 +249,7 @@ export function createMomentumAgentNode(
       const indicators = calculateMomentumIndicators(state.mbd);
 
       // Use structured output with Zod schema
-      const structuredLLM = llm.withStructuredOutput(MomentumSignalSchema);
+      const structuredLLM = withStructuredOutput(llm, MomentumSignalSchema);
 
       // Prepare the market context with momentum indicators
       const marketContext = JSON.stringify({
@@ -336,7 +336,7 @@ export function createMeanReversionAgentNode(
 ): (state: GraphStateType) => Promise<Partial<GraphStateType>> {
   // Use configured LLM respecting single/multi provider mode
   // In multi-provider mode, prefer OpenAI for mean reversion analysis (fast and good at statistical patterns)
-  const llm = createLLMInstance(config, 'openai', ['anthropic', 'google']);
+  const llm = createLLMInstance(config, 'openai', ['anthropic', 'google', 'nova']);
   
   return async (state: GraphStateType): Promise<Partial<GraphStateType>> => {
     const startTime = Date.now();
@@ -392,7 +392,7 @@ export function createMeanReversionAgentNode(
       const indicators = calculateReversionIndicators(state.mbd);
 
       // Use structured output with Zod schema
-      const structuredLLM = llm.withStructuredOutput(MeanReversionSignalSchema);
+      const structuredLLM = withStructuredOutput(llm, MeanReversionSignalSchema);
 
       // Prepare the market context with reversion indicators
       const marketContext = JSON.stringify({

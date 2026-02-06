@@ -9,7 +9,7 @@
 import { z } from 'zod';
 import type { GraphStateType } from '../models/state.js';
 import type { EngineConfig } from '../config/index.js';
-import { createLLMInstance, type LLMInstance } from '../utils/llm-factory.js';
+import { createLLMInstance, type LLMInstance, withStructuredOutput } from '../utils/llm-factory.js';
 
 /**
  * Type for supported LLM instances
@@ -218,7 +218,7 @@ function createRiskPhilosophyAgentNode<T extends z.ZodType>(
 
     try {
       // Use structured output with Zod schema
-      const structuredLLM = llm.withStructuredOutput(schema);
+      const structuredLLM = withStructuredOutput(llm, schema);
 
       // Prepare context for the agent
       const context = {
@@ -304,7 +304,7 @@ export function createAggressiveAgentNode(
 ): (state: GraphStateType) => Promise<Partial<GraphStateType>> {
   // Use configured LLM respecting single/multi provider mode
   // In multi-provider mode, prefer OpenAI for aggressive analysis (fast, good at numerical reasoning)
-  const llm = createLLMInstance(config, 'openai', ['anthropic', 'google']);
+  const llm = createLLMInstance(config, 'openai', ['anthropic', 'google', 'nova']);
 
   return createRiskPhilosophyAgentNode(
     'risk_philosophy_aggressive',
@@ -322,7 +322,7 @@ export function createConservativeAgentNode(
 ): (state: GraphStateType) => Promise<Partial<GraphStateType>> {
   // Use configured LLM respecting single/multi provider mode
   // In multi-provider mode, prefer Google for conservative analysis (good at structured reasoning)
-  const llm = createLLMInstance(config, 'google', ['anthropic', 'openai']);
+  const llm = createLLMInstance(config, 'google', ['anthropic', 'openai', 'nova']);
 
   return createRiskPhilosophyAgentNode(
     'risk_philosophy_conservative',
@@ -340,7 +340,7 @@ export function createNeutralAgentNode(
 ): (state: GraphStateType) => Promise<Partial<GraphStateType>> {
   // Use configured LLM respecting single/multi provider mode
   // In multi-provider mode, prefer Google for neutral analysis (good at structured analysis)
-  const llm = createLLMInstance(config, 'google', ['anthropic', 'openai']);
+  const llm = createLLMInstance(config, 'google', ['anthropic', 'openai', 'nova']);
 
   return createRiskPhilosophyAgentNode(
     'risk_philosophy_neutral',

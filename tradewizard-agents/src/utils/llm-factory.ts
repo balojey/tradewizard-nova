@@ -15,8 +15,26 @@ import type { LLMConfig, NovaConfig } from '../config/llm-config.js';
 
 /**
  * Type for supported LLM instances
+ * Note: Using a more flexible type to handle BedrockChat's different withStructuredOutput signature
  */
 export type LLMInstance = ChatOpenAI | ChatAnthropic | ChatGoogleGenerativeAI | BedrockChat;
+
+/**
+ * Type guard to check if an LLM instance supports structured output
+ */
+export function supportsStructuredOutput(llm: LLMInstance): llm is ChatOpenAI | ChatAnthropic | ChatGoogleGenerativeAI {
+  return 'withStructuredOutput' in llm && typeof (llm as any).withStructuredOutput === 'function';
+}
+
+/**
+ * Wrapper to safely call withStructuredOutput on any LLM instance
+ * Handles type differences between BedrockChat and other providers
+ */
+export function withStructuredOutput(llm: LLMInstance, schema: any): any {
+  // Cast to any to bypass TypeScript's union type checking
+  // All LLM instances support withStructuredOutput, but with slightly different signatures
+  return (llm as any).withStructuredOutput(schema);
+}
 
 /**
  * LLM provider types
@@ -186,7 +204,7 @@ export function createAgentLLMs(agentConfig: {
           apiKey: config.apiKey,
           model: config.modelName,
           temperature: config.temperature,
-          maxTokens: config.maxTokens,
+          maxOutputTokens: config.maxTokens,
         });
 
       case 'nova': {
