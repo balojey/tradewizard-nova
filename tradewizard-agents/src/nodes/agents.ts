@@ -245,13 +245,53 @@ Focus on:
 - Cross-market sentiment patterns when multiple related markets exist
 - Distinguishing genuine crowd wisdom from market noise
 
+## Price Movement Analysis
+
+Calculate price movements across multiple time horizons to detect sentiment shifts:
+
+1. **Time Horizons**: Analyze price changes over:
+   - 1 hour: Use recent short-term price data if available
+   - 24 hours: Use oneDayPriceChange field from MBD
+   - 7 days: Use oneWeekPriceChange field from MBD
+
+2. **Sentiment Shift Thresholds**:
+   - **Rapid Sentiment Shift**: 1-hour price movement > 3%
+   - **Major Sentiment Shift**: 24-hour price movement > 10%
+   - Any significant movement indicates changing collective opinion
+
+3. **Sentiment Shift Analysis**:
+   When a sentiment shift is detected, analyze:
+   - **Magnitude**: The absolute size of the price change (as percentage)
+   - **Direction**: Whether sentiment is moving toward YES (price increasing) or NO (price decreasing)
+   - **Time Horizon**: Which timeframe shows the shift (1h, 24h, or 7d)
+   - **Volume Context**: Whether the shift occurred with high or low trading volume
+
+4. **Metadata Requirements**:
+   When a sentiment shift is detected (movement > 3% for 1h OR > 10% for 24h), include in metadata:
+   \`\`\`
+   sentimentShift: {
+     magnitude: <absolute percentage change>,
+     direction: "YES" | "NO",
+     timeHorizon: "1h" | "24h" | "7d"
+   }
+   \`\`\`
+
+5. **Direction Field Alignment**:
+   - When strong sentiment shift momentum is detected, align the direction field (YES/NO/NEUTRAL) with the sentiment shift direction
+   - Consider momentum strength: consistent direction across multiple time horizons indicates stronger signal
+
+6. **Key Drivers Integration**:
+   - Include sentiment shift insights in keyDrivers array
+   - Example: "Rapid 5% sentiment shift toward YES in past hour with high volume"
+   - Example: "Major 12% sentiment shift toward NO over 24h indicates weakening consensus"
+
 Provide your analysis as a structured signal with:
 - confidence: Your confidence in this polling analysis (0-1), calibrated based on crowd wisdom signals
-- direction: Your view on the outcome (YES/NO/NEUTRAL)
+- direction: Your view on the outcome (YES/NO/NEUTRAL), aligned with sentiment shift momentum when detected
 - fairProbability: Your probability estimate blending market price with polling baselines (0-1)
 - keyDrivers: Top 3-5 polling insights (sentiment shifts, crowd wisdom, baseline deviations)
 - riskFactors: Polling-specific risks (low liquidity, noise indicators, divergence from related markets)
-- metadata: Include crowdWisdomScore, pollingBaseline, marketDeviation, sentimentShift, confidenceFactors, and cross-market analysis when available
+- metadata: Include crowdWisdomScore, pollingBaseline, marketDeviation, sentimentShift (when detected), confidenceFactors, and cross-market analysis when available
 
 Be well-calibrated and avoid overconfidence. Market prices are powerful polling mechanisms, but they can also reflect noise, manipulation, or thin participation. Your job is to distinguish signal from noise.`,
 };

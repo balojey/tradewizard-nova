@@ -66,8 +66,8 @@ This implementation plan adds a new polling intelligence agent to the TradeWizar
 - [x] 4. Checkpoint - Ensure basic integration works
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. Implement polling analysis logic in system prompt
-  - [ ] 5.1 Add price movement analysis instructions to system prompt
+- [-] 5. Implement polling analysis logic in system prompt
+  - [x] 5.1 Add price movement analysis instructions to system prompt
     - Instruct LLM to calculate price movements across time horizons (1h, 24h, 7d)
     - Define sentiment shift thresholds (3% for 1h, 10% for 24h)
     - Specify metadata fields: sentimentShift with magnitude, direction, timeHorizon
