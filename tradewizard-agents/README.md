@@ -179,6 +179,7 @@ TradeRecommendation
   - OpenAI (GPT-4) - Recommended for multi-provider mode
   - Anthropic (Claude) - Optional for multi-provider mode
   - Google (Gemini) - Optional for multi-provider mode
+  - Amazon Nova (AWS Bedrock) - Optional, ultra-low cost option
 - **Opik API Key** (optional, for observability)
 
 ### Installation
@@ -248,12 +249,23 @@ ANTHROPIC_DEFAULT_MODEL=claude-3-sonnet-20240229
 
 GOOGLE_API_KEY=...
 GOOGLE_DEFAULT_MODEL=gemini-1.5-flash
+
+# Optional: Amazon Nova (AWS Bedrock)
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+NOVA_MODEL_NAME=amazon.nova-lite-v1:0
 ```
 
 **Agent-LLM Mapping:**
 - Market Microstructure Agent → GPT-4-turbo (OpenAI)
 - Probability Baseline Agent → Gemini-2.5-flash (Google)
 - Risk Assessment Agent → Claude-3-sonnet (Anthropic)
+
+**Alternative with Nova (Cost-Optimized):**
+- Market Microstructure Agent → Nova Pro (Amazon)
+- Probability Baseline Agent → Nova Lite (Amazon)
+- Risk Assessment Agent → Nova Lite (Amazon)
 
 **Pros:**
 - ✅ Diverse perspectives reduce model-specific biases
@@ -288,6 +300,17 @@ OPENAI_DEFAULT_MODEL=gemini-2.5-flash
 - `openai` - Use OpenAI models (gpt-4-turbo, gpt-4o-mini, etc.)
 - `anthropic` - Use Anthropic models (claude-3-sonnet, claude-3-haiku, etc.)
 - `google` - Use Google models (gemini-1.5-pro, gemini-1.5-flash, etc.)
+- `nova` - Use Amazon Nova models (amazon.nova-micro-v1:0, amazon.nova-lite-v1:0, amazon.nova-pro-v1:0)
+
+**Cost Comparison (per 100 analyses):**
+- Multi-provider (premium): $10-15
+- Multi-provider (Nova-optimized): $0.80-2
+- Single-provider (OpenAI gpt-4o-mini): $1-2
+- Single-provider (Google Gemini): $0.60-1
+- Single-provider (Nova Lite): $0.20-0.40
+- Single-provider (Nova Micro): $0.10-0.20 (cheapest)
+
+**For detailed setup instructions for all providers, see [LLM Provider Setup Guide](./docs/LLM_PROVIDERS.md)**
 
 ### Opik Configuration
 
@@ -859,6 +882,8 @@ View cost breakdown in Opik:
 ### Additional Resources
 
 - **[CLI Documentation](./CLI.md)** - Complete CLI reference
+- **[LLM Provider Setup Guide](./docs/LLM_PROVIDERS.md)** - Setup instructions for OpenAI, Anthropic, Google, and Amazon Nova
+- **[Nova Troubleshooting Guide](./docs/NOVA_TROUBLESHOOTING.md)** - Amazon Nova integration troubleshooting
 - **[Design Document](./.kiro/specs/market-intelligence-engine/design.md)** - System architecture and design decisions
 - **[Requirements Document](./.kiro/specs/market-intelligence-engine/requirements.md)** - Functional requirements
 - **[Tasks Document](./.kiro/specs/market-intelligence-engine/tasks.md)** - Implementation plan

@@ -1,6 +1,6 @@
 # LLM Provider Setup Guide
 
-This guide covers setting up API access for all supported LLM providers: OpenAI, Anthropic, and Google Gemini.
+This guide covers setting up API access for all supported LLM providers: OpenAI, Anthropic, Google Gemini, and Amazon Nova.
 
 ## Table of Contents
 
@@ -8,19 +8,21 @@ This guide covers setting up API access for all supported LLM providers: OpenAI,
 - [OpenAI Setup](#openai-setup)
 - [Anthropic Setup](#anthropic-setup)
 - [Google Gemini Setup](#google-gemini-setup)
+- [Amazon Nova Setup](#amazon-nova-setup)
 - [Configuration Modes](#configuration-modes)
 - [Cost Optimization](#cost-optimization)
 - [Troubleshooting](#troubleshooting)
 
 ## Overview
 
-The Market Intelligence Engine supports three LLM providers, each with different strengths:
+The Market Intelligence Engine supports four LLM providers, each with different strengths:
 
 | Provider | Best For | Cost | Speed | Quality |
 |----------|----------|------|-------|---------|
 | **OpenAI** | General reasoning, structured output | $$$ | Fast | Excellent |
 | **Anthropic** | Long context, safety, nuanced analysis | $$$ | Medium | Excellent |
 | **Google Gemini** | Cost-effective, fast inference | $ | Very Fast | Good |
+| **Amazon Nova** | AWS integration, ultra-low cost | $ | Fast | Good |
 
 ### Recommended Configuration
 
@@ -29,10 +31,16 @@ The Market Intelligence Engine supports three LLM providers, each with different
 - Probability Baseline Agent → Google Gemini-1.5-flash
 - Risk Assessment Agent → Anthropic Claude-3-sonnet
 
+**Multi-Provider Mode (Cost-Optimized with Nova):**
+- Market Microstructure Agent → Amazon Nova Pro
+- Probability Baseline Agent → Amazon Nova Lite
+- Risk Assessment Agent → Amazon Nova Lite
+
 **Single-Provider Mode (Budget-Friendly):**
-- All agents → OpenAI GPT-4o-mini (best balance)
-- All agents → Google Gemini-1.5-flash (lowest cost)
-- All agents → Anthropic Claude-3-haiku (fast + quality)
+- All agents → Amazon Nova Micro (ultra-low cost)
+- All agents → Amazon Nova Lite (best balance)
+- All agents → OpenAI GPT-4o-mini (good quality)
+- All agents → Google Gemini-1.5-flash (fast + cheap)
 
 ## OpenAI Setup
 
@@ -266,6 +274,192 @@ See [Gemini Rate Limits](https://ai.google.dev/pricing) for details.
 - All agents: ~6,000 tokens total
 - Cost: ~$0.006 per analysis
 
+## Amazon Nova Setup
+
+### 1. Create AWS Account
+
+1. Visit [https://aws.amazon.com/](https://aws.amazon.com/)
+2. Click "Create an AWS Account"
+3. Enter email, password, and AWS account name
+4. Provide payment information (required even for free tier)
+5. Verify identity via phone
+6. Select support plan (Basic/Free is sufficient)
+
+### 2. Enable Amazon Bedrock
+
+1. Sign in to [AWS Console](https://console.aws.amazon.com/)
+2. Navigate to [Amazon Bedrock](https://console.aws.amazon.com/bedrock/)
+3. Select your preferred region (us-east-1 recommended)
+4. Click "Get Started" if prompted
+5. Request model access:
+   - Go to "Model access" in left sidebar
+   - Click "Manage model access"
+   - Select "Amazon" provider
+   - Check boxes for Nova Micro, Nova Lite, and Nova Pro
+   - Click "Request model access"
+   - Wait for approval (usually instant)
+
+### 3. Create IAM User for API Access
+
+1. Navigate to [IAM Console](https://console.aws.amazon.com/iam/)
+2. Click "Users" → "Create user"
+3. Enter username (e.g., "tradewizard-bedrock")
+4. Click "Next"
+5. Select "Attach policies directly"
+6. Search for and attach `AmazonBedrockFullAccess` policy
+   - **For production, use least-privilege policy:**
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Action": [
+           "bedrock:InvokeModel",
+           "bedrock:InvokeModelWithResponseStream"
+         ],
+         "Resource": "arn:aws:bedrock:*::foundation-model/amazon.nova-*"
+       }
+     ]
+   }
+   ```
+7. Click "Next" → "Create user"
+
+### 4. Generate Access Keys
+
+1. Click on the newly created user
+2. Go to "Security credentials" tab
+3. Scroll to "Access keys" section
+4. Click "Create access key"
+5. Select "Application running outside AWS"
+6. Click "Next" → "Create access key"
+7. **Copy both Access Key ID and Secret Access Key immediately**
+8. Store securely in your `.env` file
+
+### 5. Configure Environment
+
+```bash
+# .env
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+NOVA_MODEL_NAME=amazon.nova-lite-v1:0
+```
+
+**Alternative: Using AWS CLI Credentials**
+
+If you have AWS CLI configured, TradeWizard can use your default credentials:
+
+```bash
+# Configure AWS CLI (one-time setup)
+aws configure
+
+# .env - Only region and model name needed
+AWS_REGION=us-east-1
+NOVA_MODEL_NAME=amazon.nova-lite-v1:0
+```
+
+### Available Models
+
+| Model | Cost (per 1M tokens) | Best For | Max Tokens |
+|-------|---------------------|----------|------------|
+| **amazon.nova-micro-v1:0** | $0.035 input / $0.14 output | Ultra-low cost, simple tasks | 128K |
+| **amazon.nova-lite-v1:0** | $0.06 input / $0.24 output | Balanced performance and cost | 300K |
+| **amazon.nova-pro-v1:0** | $0.80 input / $3.20 output | Complex reasoning, high quality | 300K |
+
+**Recommended for Market Intelligence Engine:**
+- **Production:** `amazon.nova-lite-v1:0` or `amazon.nova-pro-v1:0`
+- **Development:** `amazon.nova-lite-v1:0`
+- **Budget:** `amazon.nova-micro-v1:0` (lowest cost available)
+
+**Pricing Comparison:**
+- Nova Micro is **4-10x cheaper** than other budget models
+- Nova Lite is **2-6x cheaper** than mid-tier models
+- Nova Pro is competitive with premium models but AWS-native
+
+### 6. Test Connection
+
+```bash
+npm run cli -- analyze <condition-id> --single-provider nova --model amazon.nova-lite-v1:0
+```
+
+### Rate Limits
+
+**Default Limits (per region):**
+- Nova Micro: 200 requests per minute (RPM)
+- Nova Lite: 200 RPM
+- Nova Pro: 100 RPM
+
+**Throughput Limits:**
+- Nova Micro: 200,000 tokens per minute (TPM)
+- Nova Lite: 300,000 TPM
+- Nova Pro: 300,000 TPM
+
+**Request Quota Increases:**
+- Available through AWS Service Quotas
+- Can request higher limits for production workloads
+- See [Bedrock Quotas](https://docs.aws.amazon.com/bedrock/latest/userguide/quotas.html)
+
+### Cost Estimation
+
+**Single Analysis (Multi-Provider Mode with Nova):**
+- Market Microstructure Agent (Nova Pro): ~2,000 tokens
+- Cost: ~$0.008 per analysis
+
+**Single Analysis (Single-Provider Mode with Nova Lite):**
+- All agents: ~6,000 tokens total
+- Cost: ~$0.002 per analysis
+
+**Single Analysis (Single-Provider Mode with Nova Micro):**
+- All agents: ~6,000 tokens total
+- Cost: ~$0.001 per analysis (cheapest option)
+
+### Regional Availability
+
+Nova models are available in the following AWS regions:
+- **us-east-1** (US East - N. Virginia) - Recommended
+- **us-west-2** (US West - Oregon)
+- **eu-west-1** (Europe - Ireland)
+- **ap-southeast-1** (Asia Pacific - Singapore)
+
+Check [AWS Bedrock Regions](https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-regions.html) for latest availability.
+
+### IAM Permissions
+
+**Minimum Required Permissions:**
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:InvokeModel"
+      ],
+      "Resource": [
+        "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-micro-v1:0",
+        "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-lite-v1:0",
+        "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-pro-v1:0"
+      ]
+    }
+  ]
+}
+```
+
+**For Development (Full Access):**
+
+Use the managed policy: `AmazonBedrockFullAccess`
+
+### AWS Credentials Best Practices
+
+1. **Never hardcode credentials in code**
+2. **Use IAM roles for EC2/ECS deployments**
+3. **Use AWS Secrets Manager for production**
+4. **Rotate access keys every 90 days**
+5. **Enable MFA for IAM users**
+6. **Use least-privilege IAM policies**
+
 ## Configuration Modes
 
 ### Multi-Provider Mode (Default)
@@ -287,12 +481,23 @@ ANTHROPIC_DEFAULT_MODEL=claude-3-sonnet-20240229
 
 GOOGLE_API_KEY=AIza...
 GOOGLE_DEFAULT_MODEL=gemini-1.5-flash
+
+# Optional: Add Nova for cost-optimized agents
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+NOVA_MODEL_NAME=amazon.nova-lite-v1:0
 ```
 
-**Agent-LLM Mapping:**
+**Agent-LLM Mapping (Premium):**
 - Market Microstructure Agent → OpenAI GPT-4-turbo
 - Probability Baseline Agent → Google Gemini-1.5-flash
 - Risk Assessment Agent → Anthropic Claude-3-sonnet
+
+**Agent-LLM Mapping (Cost-Optimized with Nova):**
+- Market Microstructure Agent → Amazon Nova Pro
+- Probability Baseline Agent → Amazon Nova Lite
+- Risk Assessment Agent → Amazon Nova Lite
 
 **Pros:**
 - ✅ Diverse perspectives reduce model-specific biases
@@ -314,7 +519,7 @@ Uses one LLM for all agents with different system prompts.
 
 ```bash
 # .env
-LLM_SINGLE_PROVIDER=openai  # or anthropic, google
+LLM_SINGLE_PROVIDER=openai  # or anthropic, google, nova
 
 # Configure only the selected provider
 OPENAI_API_KEY=sk-...
@@ -327,6 +532,7 @@ OPENAI_DEFAULT_MODEL=gpt-4o-mini
 npm run cli -- analyze <condition-id> --single-provider openai
 npm run cli -- analyze <condition-id> --single-provider anthropic
 npm run cli -- analyze <condition-id> --single-provider google
+npm run cli -- analyze <condition-id> --single-provider nova
 ```
 
 **Pros:**
@@ -343,6 +549,8 @@ npm run cli -- analyze <condition-id> --single-provider google
 - OpenAI (gpt-4o-mini): ~$1.00
 - Anthropic (claude-3-haiku): ~$1.00
 - Google (gemini-1.5-flash): ~$0.60
+- Amazon Nova (nova-lite): ~$0.20
+- Amazon Nova (nova-micro): ~$0.10
 
 ### Recommended Configurations
 
@@ -374,6 +582,20 @@ GOOGLE_API_KEY=AIza...
 GOOGLE_DEFAULT_MODEL=gemini-1.5-flash
 ```
 
+**For Production (Cost-Optimized with Nova):**
+
+```bash
+# Multi-provider mode with Nova for cost savings
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+NOVA_MODEL_NAME=amazon.nova-lite-v1:0
+
+# Optional: Mix with other providers for specific agents
+OPENAI_API_KEY=sk-...
+OPENAI_DEFAULT_MODEL=gpt-4o
+```
+
 **For Development:**
 
 ```bash
@@ -386,10 +608,12 @@ OPENAI_DEFAULT_MODEL=gpt-4o-mini
 **For Maximum Budget Savings:**
 
 ```bash
-# Single-provider mode with Gemini
-LLM_SINGLE_PROVIDER=google
-GOOGLE_API_KEY=AIza...
-GOOGLE_DEFAULT_MODEL=gemini-1.5-flash
+# Single-provider mode with Nova Micro (cheapest option)
+LLM_SINGLE_PROVIDER=nova
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+NOVA_MODEL_NAME=amazon.nova-micro-v1:0
 ```
 
 ## Cost Optimization
@@ -402,12 +626,17 @@ GOOGLE_DEFAULT_MODEL=gemini-1.5-flash
 
 ### 2. Model Selection
 
+**Ultra-Budget Models (Nova):**
+- Amazon Nova Micro: `amazon.nova-micro-v1:0` ($0.035/$0.14 per 1M tokens)
+- Amazon Nova Lite: `amazon.nova-lite-v1:0` ($0.06/$0.24 per 1M tokens)
+
 **Budget Models:**
 - OpenAI: `gpt-4o-mini` ($0.15/$0.60 per 1M tokens)
 - Anthropic: `claude-3-haiku` ($0.25/$1.25 per 1M tokens)
 - Google: `gemini-1.5-flash` ($0.35/$1.05 per 1M tokens)
 
 **Balanced Models:**
+- Amazon Nova Pro: `amazon.nova-pro-v1:0` ($0.80/$3.20 per 1M tokens)
 - OpenAI: `gpt-4o` ($5/$15 per 1M tokens)
 - Anthropic: `claude-3-sonnet` ($3/$15 per 1M tokens)
 - Google: `gemini-1.5-flash` ($0.35/$1.05 per 1M tokens)
@@ -464,8 +693,11 @@ View cost breakdown in Opik dashboard:
 |---------------|------|---------|-------|
 | Multi-provider (premium) | $10-15 | Excellent | Medium |
 | Multi-provider (balanced) | $5-8 | Very Good | Medium |
+| Multi-provider (Nova-optimized) | $0.80-2 | Good | Fast |
 | Single-provider (OpenAI gpt-4o-mini) | $1-2 | Good | Fast |
 | Single-provider (Gemini flash) | $0.60-1 | Good | Very Fast |
+| Single-provider (Nova Lite) | $0.20-0.40 | Good | Fast |
+| Single-provider (Nova Micro) | $0.10-0.20 | Good | Fast |
 
 ## Troubleshooting
 
@@ -520,6 +752,49 @@ View cost breakdown in Opik dashboard:
 - Check model is available in your region
 - Use `gemini-1.5-flash` or `gemini-1.5-pro`
 
+### Amazon Nova Issues
+
+**"Authentication failed" / "Invalid AWS credentials"**
+- Verify AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are set correctly
+- Check credentials haven't expired or been revoked
+- Ensure no extra spaces in `.env` file
+- Test credentials with: `aws sts get-caller-identity`
+
+**"Access Denied" / "UnauthorizedException"**
+- Verify IAM user has `bedrock:InvokeModel` permission
+- Check IAM policy includes Nova model ARNs
+- Ensure Bedrock service is enabled in your account
+- Review IAM policy in AWS Console
+
+**"Model not found" / "ResourceNotFoundException"**
+- Verify model name is correct (e.g., `amazon.nova-lite-v1:0`)
+- Check you've requested model access in Bedrock console
+- Go to Bedrock → Model access → Request access for Nova models
+- Wait for approval (usually instant)
+
+**"Region not supported"**
+- Verify AWS_REGION is set to a supported region
+- Use `us-east-1`, `us-west-2`, `eu-west-1`, or `ap-southeast-1`
+- Check [Bedrock Regions](https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-regions.html)
+
+**"Throttling" / "Rate limit exceeded"**
+- Wait for rate limit window to reset
+- Implement exponential backoff (handled automatically)
+- Request quota increase via AWS Service Quotas
+- Consider using multiple regions for higher throughput
+
+**"Connection timeout"**
+- Check network connectivity to AWS
+- Verify security groups allow outbound HTTPS (443)
+- Increase timeout in Bedrock client configuration
+- Check AWS service health dashboard
+
+**High latency**
+- Use region closest to your deployment
+- Consider using Nova Lite instead of Nova Pro
+- Check network latency to AWS region
+- Monitor CloudWatch metrics for Bedrock
+
 ### General Issues
 
 **"No API keys configured"**
@@ -533,8 +808,8 @@ View cost breakdown in Opik dashboard:
 - Ensure no typos in environment variables
 
 **High costs**
-- Switch to single-provider mode
-- Use budget models (gpt-4o-mini, gemini-1.5-flash)
+- Switch to single-provider mode with Nova
+- Use ultra-budget models (Nova Micro, Nova Lite)
 - Implement caching
 - Monitor usage in Opik
 
@@ -560,8 +835,9 @@ View cost breakdown in Opik dashboard:
 1. **Start with single-provider mode for testing**
 2. **Monitor costs daily using Opik**
 3. **Set up billing alerts at $10, $50, $100**
-4. **Use budget models for development**
+4. **Use ultra-budget models for development (Nova Micro)**
 5. **Implement request quotas per user/market**
+6. **Consider Nova for high-volume production workloads**
 
 ## Support
 
@@ -569,6 +845,7 @@ For provider-specific issues:
 - **OpenAI:** [https://help.openai.com/](https://help.openai.com/)
 - **Anthropic:** [https://support.anthropic.com/](https://support.anthropic.com/)
 - **Google:** [https://support.google.com/cloud/](https://support.google.com/cloud/)
+- **Amazon (Bedrock):** [https://aws.amazon.com/support/](https://aws.amazon.com/support/)
 
 For application issues:
 - Check [Troubleshooting Guide](../README.md#troubleshooting)

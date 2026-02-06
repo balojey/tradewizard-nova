@@ -438,6 +438,13 @@ LLM_SINGLE_PROVIDER=openai
 OPENAI_API_KEY=sk-your_key_here
 OPENAI_DEFAULT_MODEL=gpt-4o-mini
 
+# Alternative: Amazon Nova (AWS Bedrock) - Ultra-low cost option
+# LLM_SINGLE_PROVIDER=nova
+# AWS_REGION=us-east-1
+# AWS_ACCESS_KEY_ID=AKIA...
+# AWS_SECRET_ACCESS_KEY=...
+# NOVA_MODEL_NAME=amazon.nova-lite-v1:0
+
 # Polymarket (REQUIRED)
 POLYMARKET_GAMMA_API_URL=https://gamma-api.polymarket.com
 POLYMARKET_CLOB_API_URL=https://clob.polymarket.com
