@@ -285,13 +285,58 @@ Calculate price movements across multiple time horizons to detect sentiment shif
    - Example: "Rapid 5% sentiment shift toward YES in past hour with high volume"
    - Example: "Major 12% sentiment shift toward NO over 24h indicates weakening consensus"
 
+## Crowd Wisdom Detection
+
+Evaluate whether the market exhibits characteristics of genuine crowd wisdom or is dominated by noise:
+
+1. **Crowd Wisdom Conditions**:
+   Assess the following market quality indicators:
+   - **High Liquidity**: liquidityScore > 7 (deep market with many participants)
+   - **High Volume**: volume24h above median for the event type (active trading)
+   - **Tight Spread**: bidAskSpread < 2 cents (efficient price discovery)
+   - **Low Volatility**: volatilityRegime === 'low' (stable consensus)
+   - **Consistent Momentum**: Price movement in same direction across multiple time horizons
+
+2. **Crowd Wisdom Score Calculation**:
+   Calculate a crowdWisdomScore (0-1) based on the following criteria:
+   \`\`\`
+   score = 0
+   if liquidityScore > 7: score += 0.3
+   if volume24h > median for event type: score += 0.2
+   if bidAskSpread < 2: score += 0.2
+   if volatilityRegime === 'low': score += 0.15
+   if consistent momentum detected: score += 0.15
+   \`\`\`
+
+3. **Crowd Wisdom Classification**:
+   - **Strong Crowd Wisdom** (score > 0.7): Market shows characteristics of accurate collective intelligence
+   - **Moderate Crowd Wisdom** (score 0.4-0.7): Mixed signals, some wisdom indicators present
+   - **Weak Crowd Wisdom** (score < 0.4): Market may be dominated by noise or thin participation
+
+4. **Confidence Boost for Crowd Wisdom**:
+   When crowd wisdom is detected, adjust confidence:
+   - If crowdWisdomScore > 0.7: Set confidence to at least 0.7 (high confidence in crowd consensus)
+   - If crowdWisdomScore 0.4-0.7: Moderate confidence adjustment
+   - If crowdWisdomScore < 0.3: Reduce confidence (potential noise)
+
+5. **Metadata Requirements**:
+   ALWAYS include in metadata:
+   \`\`\`
+   crowdWisdomScore: <calculated score 0-1>
+   \`\`\`
+
+6. **Key Drivers Integration**:
+   When strong crowd wisdom is detected (score > 0.7), include in keyDrivers:
+   - Example: "Strong crowd wisdom signal: high liquidity (8.5), tight spread (1.2¢), stable consensus"
+   - Example: "Crowd wisdom indicators suggest reliable market consensus"
+
 Provide your analysis as a structured signal with:
-- confidence: Your confidence in this polling analysis (0-1), calibrated based on crowd wisdom signals
+- confidence: Your confidence in this polling analysis (0-1), calibrated based on crowd wisdom signals (>= 0.7 when crowdWisdomScore > 0.7)
 - direction: Your view on the outcome (YES/NO/NEUTRAL), aligned with sentiment shift momentum when detected
 - fairProbability: Your probability estimate blending market price with polling baselines (0-1)
 - keyDrivers: Top 3-5 polling insights (sentiment shifts, crowd wisdom, baseline deviations)
 - riskFactors: Polling-specific risks (low liquidity, noise indicators, divergence from related markets)
-- metadata: Include crowdWisdomScore, pollingBaseline, marketDeviation, sentimentShift (when detected), confidenceFactors, and cross-market analysis when available
+- metadata: Include crowdWisdomScore (REQUIRED), pollingBaseline, marketDeviation, sentimentShift (when detected), confidenceFactors, and cross-market analysis when available
 
 Be well-calibrated and avoid overconfidence. Market prices are powerful polling mechanisms, but they can also reflect noise, manipulation, or thin participation. Your job is to distinguish signal from noise.`,
 };

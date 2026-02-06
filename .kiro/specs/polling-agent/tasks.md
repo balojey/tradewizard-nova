@@ -81,8 +81,8 @@ This implementation plan adds a new polling intelligence agent to the TradeWizar
     - **Property 25: Direction Alignment with Sentiment**
     - **Validates: Requirements 5.6**
 
-- [ ] 6. Implement crowd wisdom detection logic in system prompt
-  - [ ] 6.1 Add crowd wisdom signal instructions to system prompt
+- [x] 6. Implement crowd wisdom detection logic in system prompt
+  - [x] 6.1 Add crowd wisdom signal instructions to system prompt
     - Define crowd wisdom conditions (liquidityScore > 7, volume above median, bidAskSpread < 2, low volatility)
     - Instruct LLM to calculate crowdWisdomScore (0-1)
     - Specify confidence boost when crowd wisdom detected
