@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+// Export LLM configuration types and manager
+export * from './llm-config.js';
+
 /**
  * Configuration schema for the Market Intelligence Engine
  * 

@@ -91,15 +91,15 @@ This implementation plan breaks down the Amazon Nova integration into discrete, 
 - [x] 4. Checkpoint - Verify Bedrock client functionality
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. Implement configuration management
-  - [ ] 5.1 Create LLMConfigManager class
+- [x] 5. Implement configuration management
+  - [x] 5.1 Create LLMConfigManager class
     - Implement loadFromEnvironment() to read all LLM provider configs
     - Implement validate() for complete configuration validation
     - Implement getAgentConfig() for agent-specific config resolution
     - Implement isNovaConfigured() and getMissingVariables() helpers
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
   
-  - [ ] 5.2 Define Zod schemas for Nova configuration
+  - [x] 5.2 Define Zod schemas for Nova configuration
     - Create NovaModelVariantSchema with three model options
     - Create NovaConfigSchema with all Nova-specific fields
     - Extend LLMConfigSchema to include Nova as discriminated union
