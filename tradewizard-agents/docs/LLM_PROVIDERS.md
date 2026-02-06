@@ -366,21 +366,36 @@ NOVA_MODEL_NAME=amazon.nova-lite-v1:0
 | **amazon.nova-micro-v1:0** | $0.035 input / $0.14 output | Ultra-low cost, simple tasks | 128K |
 | **amazon.nova-lite-v1:0** | $0.06 input / $0.24 output | Balanced performance and cost | 300K |
 | **amazon.nova-pro-v1:0** | $0.80 input / $3.20 output | Complex reasoning, high quality | 300K |
+| **global.amazon.nova-2-lite-v1:0** | $0.30 input / $2.50 output | Fast reasoning, 1M context, extended thinking | 1M |
+| **global.amazon.nova-2-pro-v1:0** | $0.80 input / $3.20 output (est.) | Most intelligent, 1M context (Preview) | 1M |
 
 **Recommended for Market Intelligence Engine:**
-- **Production:** `amazon.nova-lite-v1:0` or `amazon.nova-pro-v1:0`
-- **Development:** `amazon.nova-lite-v1:0`
+- **Production:** `global.amazon.nova-2-lite-v1:0` or `amazon.nova-lite-v1:0`
+- **Development:** `amazon.nova-lite-v1:0` or `global.amazon.nova-2-lite-v1:0`
 - **Budget:** `amazon.nova-micro-v1:0` (lowest cost available)
+- **Advanced Reasoning:** `global.amazon.nova-2-lite-v1:0` (extended thinking capabilities)
+
+**Nova 2 vs Nova v1:**
+- Nova 2 models offer **1M token context** (vs 128K-300K for v1)
+- Nova 2 Lite includes **extended reasoning** capabilities with step-by-step thinking
+- Nova 2 models support **multimodal inputs** (text, images, video, documents)
+- Nova 2 Lite is **5-10x more expensive** than Nova Lite v1 but offers superior intelligence
+- Nova 2 Pro is in **preview** and requires Nova Forge access
 
 **Pricing Comparison:**
-- Nova Micro is **4-10x cheaper** than other budget models
-- Nova Lite is **2-6x cheaper** than mid-tier models
-- Nova Pro is competitive with premium models but AWS-native
+- Nova Micro v1 is **4-10x cheaper** than other budget models
+- Nova Lite v1 is **2-6x cheaper** than mid-tier models
+- Nova 2 Lite is **competitive** with Claude Haiku and GPT-4o Mini
+- Nova Pro v1/v2 is competitive with premium models but AWS-native
 
 ### 6. Test Connection
 
 ```bash
+# Test with Nova v1 Lite
 npm run cli -- analyze <condition-id> --single-provider nova --model amazon.nova-lite-v1:0
+
+# Test with Nova 2 Lite (latest)
+npm run cli -- analyze <condition-id> --single-provider nova --model global.amazon.nova-2-lite-v1:0
 ```
 
 ### Rate Limits
@@ -403,24 +418,35 @@ npm run cli -- analyze <condition-id> --single-provider nova --model amazon.nova
 ### Cost Estimation
 
 **Single Analysis (Multi-Provider Mode with Nova):**
-- Market Microstructure Agent (Nova Pro): ~2,000 tokens
+- Market Microstructure Agent (Nova Pro v1): ~2,000 tokens
 - Cost: ~$0.008 per analysis
 
-**Single Analysis (Single-Provider Mode with Nova Lite):**
+**Single Analysis (Single-Provider Mode with Nova Lite v1):**
 - All agents: ~6,000 tokens total
 - Cost: ~$0.002 per analysis
 
-**Single Analysis (Single-Provider Mode with Nova Micro):**
+**Single Analysis (Single-Provider Mode with Nova Micro v1):**
 - All agents: ~6,000 tokens total
 - Cost: ~$0.001 per analysis (cheapest option)
+
+**Single Analysis (Single-Provider Mode with Nova 2 Lite):**
+- All agents: ~6,000 tokens total
+- Cost: ~$0.018 per analysis (with extended reasoning capabilities)
 
 ### Regional Availability
 
 Nova models are available in the following AWS regions:
+
+**Nova v1 Models:**
 - **us-east-1** (US East - N. Virginia) - Recommended
 - **us-west-2** (US West - Oregon)
 - **eu-west-1** (Europe - Ireland)
 - **ap-southeast-1** (Asia Pacific - Singapore)
+
+**Nova 2 Models:**
+- Available via **global cross-region inference** in multiple locations
+- Automatically routes to optimal region for performance
+- Supported regions: US East, US West, Europe, Asia Pacific
 
 Check [AWS Bedrock Regions](https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-regions.html) for latest availability.
 
@@ -440,7 +466,9 @@ Check [AWS Bedrock Regions](https://docs.aws.amazon.com/bedrock/latest/userguide
       "Resource": [
         "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-micro-v1:0",
         "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-lite-v1:0",
-        "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-pro-v1:0"
+        "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-pro-v1:0",
+        "arn:aws:bedrock:*::foundation-model/global.amazon.nova-2-lite-v1:0",
+        "arn:aws:bedrock:*::foundation-model/global.amazon.nova-2-pro-v1:0"
       ]
     }
   ]
@@ -582,10 +610,25 @@ GOOGLE_API_KEY=AIza...
 GOOGLE_DEFAULT_MODEL=gemini-1.5-flash
 ```
 
-**For Production (Cost-Optimized with Nova):**
+**For Production (Cost-Optimized with Nova 2):**
 
 ```bash
-# Multi-provider mode with Nova for cost savings
+# Single-provider mode with Nova 2 Lite for advanced reasoning
+LLM_SINGLE_PROVIDER=nova
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+NOVA_MODEL_NAME=global.amazon.nova-2-lite-v1:0
+
+# Optional: Mix with other providers for specific agents
+OPENAI_API_KEY=sk-...
+OPENAI_DEFAULT_MODEL=gpt-4o
+```
+
+**For Production (Cost-Optimized with Nova v1):**
+
+```bash
+# Multi-provider mode with Nova v1 for maximum cost savings
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=AKIA...
 AWS_SECRET_ACCESS_KEY=...
@@ -608,12 +651,23 @@ OPENAI_DEFAULT_MODEL=gpt-4o-mini
 **For Maximum Budget Savings:**
 
 ```bash
-# Single-provider mode with Nova Micro (cheapest option)
+# Single-provider mode with Nova Micro v1 (cheapest option)
 LLM_SINGLE_PROVIDER=nova
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=AKIA...
 AWS_SECRET_ACCESS_KEY=...
 NOVA_MODEL_NAME=amazon.nova-micro-v1:0
+```
+
+**For Advanced Reasoning:**
+
+```bash
+# Single-provider mode with Nova 2 Lite (extended thinking)
+LLM_SINGLE_PROVIDER=nova
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+NOVA_MODEL_NAME=global.amazon.nova-2-lite-v1:0
 ```
 
 ## Cost Optimization
@@ -626,9 +680,9 @@ NOVA_MODEL_NAME=amazon.nova-micro-v1:0
 
 ### 2. Model Selection
 
-**Ultra-Budget Models (Nova):**
-- Amazon Nova Micro: `amazon.nova-micro-v1:0` ($0.035/$0.14 per 1M tokens)
-- Amazon Nova Lite: `amazon.nova-lite-v1:0` ($0.06/$0.24 per 1M tokens)
+**Ultra-Budget Models (Nova v1):**
+- Amazon Nova Micro v1: `amazon.nova-micro-v1:0` ($0.035/$0.14 per 1M tokens)
+- Amazon Nova Lite v1: `amazon.nova-lite-v1:0` ($0.06/$0.24 per 1M tokens)
 
 **Budget Models:**
 - OpenAI: `gpt-4o-mini` ($0.15/$0.60 per 1M tokens)
@@ -636,7 +690,8 @@ NOVA_MODEL_NAME=amazon.nova-micro-v1:0
 - Google: `gemini-1.5-flash` ($0.35/$1.05 per 1M tokens)
 
 **Balanced Models:**
-- Amazon Nova Pro: `amazon.nova-pro-v1:0` ($0.80/$3.20 per 1M tokens)
+- Amazon Nova 2 Lite: `global.amazon.nova-2-lite-v1:0` ($0.30/$2.50 per 1M tokens, 1M context)
+- Amazon Nova Pro v1: `amazon.nova-pro-v1:0` ($0.80/$3.20 per 1M tokens)
 - OpenAI: `gpt-4o` ($5/$15 per 1M tokens)
 - Anthropic: `claude-3-sonnet` ($3/$15 per 1M tokens)
 - Google: `gemini-1.5-flash` ($0.35/$1.05 per 1M tokens)
@@ -696,8 +751,9 @@ View cost breakdown in Opik dashboard:
 | Multi-provider (Nova-optimized) | $0.80-2 | Good | Fast |
 | Single-provider (OpenAI gpt-4o-mini) | $1-2 | Good | Fast |
 | Single-provider (Gemini flash) | $0.60-1 | Good | Very Fast |
-| Single-provider (Nova Lite) | $0.20-0.40 | Good | Fast |
-| Single-provider (Nova Micro) | $0.10-0.20 | Good | Fast |
+| Single-provider (Nova 2 Lite) | $1.50-2 | Very Good | Fast |
+| Single-provider (Nova Lite v1) | $0.20-0.40 | Good | Fast |
+| Single-provider (Nova Micro v1) | $0.10-0.20 | Good | Fast |
 
 ## Troubleshooting
 

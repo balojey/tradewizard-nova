@@ -147,33 +147,54 @@ export class BedrockClient {
   /**
    * Get available Nova model variants with pricing information
    * 
+   * Includes both Nova v1 and Nova 2 models.
+   * Nova 2 models offer improved reasoning capabilities and larger context windows.
+   * 
    * @returns Array of Nova model variants with metadata
    */
   static getAvailableModels(): NovaModelVariant[] {
     return [
+      // Nova v1 Models (Original)
       {
         id: 'micro',
-        name: 'Nova Micro',
+        name: 'Nova Micro v1',
         modelId: 'amazon.nova-micro-v1:0',
         inputCostPer1kTokens: 0.000035,
         outputCostPer1kTokens: 0.00014,
-        maxTokens: 8192,
+        maxTokens: 128000,
       },
       {
         id: 'lite',
-        name: 'Nova Lite',
+        name: 'Nova Lite v1',
         modelId: 'amazon.nova-lite-v1:0',
         inputCostPer1kTokens: 0.00006,
         outputCostPer1kTokens: 0.00024,
-        maxTokens: 8192,
+        maxTokens: 300000,
       },
       {
         id: 'pro',
-        name: 'Nova Pro',
+        name: 'Nova Pro v1',
         modelId: 'amazon.nova-pro-v1:0',
         inputCostPer1kTokens: 0.0008,
         outputCostPer1kTokens: 0.0032,
-        maxTokens: 8192,
+        maxTokens: 300000,
+      },
+      // Nova 2 Models (Latest - December 2025)
+      {
+        id: 'nova-2-lite',
+        name: 'Nova 2 Lite',
+        modelId: 'global.amazon.nova-2-lite-v1:0',
+        inputCostPer1kTokens: 0.0003,  // $0.30 per 1M tokens (reasoning disabled)
+        outputCostPer1kTokens: 0.0025,  // $2.50 per 1M tokens (reasoning disabled)
+        maxTokens: 1000000,  // 1M token context window
+      },
+      {
+        id: 'nova-2-pro',
+        name: 'Nova 2 Pro (Preview)',
+        modelId: 'global.amazon.nova-2-pro-v1:0',
+        inputCostPer1kTokens: 0.0008,  // Estimated, similar to Nova Pro v1
+        outputCostPer1kTokens: 0.0032,  // Estimated, similar to Nova Pro v1
+        maxTokens: 1000000,  // 1M token context window
       },
     ];
   }

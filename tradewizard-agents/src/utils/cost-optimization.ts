@@ -15,11 +15,21 @@ import type { EngineConfig } from '../config/index.js';
  * Nova model pricing (per 1K tokens)
  * 
  * Official AWS Bedrock pricing for Amazon Nova models:
+ * 
+ * Nova v1 Models (Original):
  * - Nova Micro: $0.000035 per 1K input tokens, $0.00014 per 1K output tokens
  * - Nova Lite: $0.00006 per 1K input tokens, $0.00024 per 1K output tokens
  * - Nova Pro: $0.0008 per 1K input tokens, $0.0032 per 1K output tokens
+ * 
+ * Nova 2 Models (December 2025):
+ * - Nova 2 Lite: $0.30 per 1M tokens input, $2.50 per 1M tokens output (reasoning disabled)
+ * - Nova 2 Pro: Similar to Nova Pro v1 (preview pricing)
+ * 
+ * Note: Nova 2 models support extended reasoning which may increase costs.
+ * Pricing shown is for reasoning disabled mode.
  */
 export const NOVA_PRICING = {
+  // Nova v1 Models
   'amazon.nova-micro-v1:0': {
     inputCostPer1kTokens: 0.000035,
     outputCostPer1kTokens: 0.00014,
@@ -31,6 +41,15 @@ export const NOVA_PRICING = {
   'amazon.nova-pro-v1:0': {
     inputCostPer1kTokens: 0.0008,
     outputCostPer1kTokens: 0.0032,
+  },
+  // Nova 2 Models
+  'global.amazon.nova-2-lite-v1:0': {
+    inputCostPer1kTokens: 0.0003,  // $0.30 per 1M tokens
+    outputCostPer1kTokens: 0.0025,  // $2.50 per 1M tokens
+  },
+  'global.amazon.nova-2-pro-v1:0': {
+    inputCostPer1kTokens: 0.0008,  // Estimated, similar to Nova Pro v1
+    outputCostPer1kTokens: 0.0032,  // Estimated, similar to Nova Pro v1
   },
 } as const;
 

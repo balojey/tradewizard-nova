@@ -32,10 +32,13 @@ describe('Bedrock Client - Module Verification', () => {
     it('should provide available models metadata', () => {
       const models = BedrockClient.getAvailableModels();
       
-      expect(models).toHaveLength(3);
+      // Should include both Nova v1 (3 models) and Nova 2 (2 models)
+      expect(models).toHaveLength(5);
       expect(models[0].id).toBe('micro');
       expect(models[1].id).toBe('lite');
       expect(models[2].id).toBe('pro');
+      expect(models[3].id).toBe('nova-2-lite');
+      expect(models[4].id).toBe('nova-2-pro');
       
       // Verify pricing information is present
       models.forEach(model => {
@@ -46,9 +49,14 @@ describe('Bedrock Client - Module Verification', () => {
     });
 
     it('should validate model IDs correctly', () => {
+      // Nova v1 models
       expect(BedrockClient.validateModelId('amazon.nova-micro-v1:0')).toBe(true);
       expect(BedrockClient.validateModelId('amazon.nova-lite-v1:0')).toBe(true);
       expect(BedrockClient.validateModelId('amazon.nova-pro-v1:0')).toBe(true);
+      // Nova 2 models
+      expect(BedrockClient.validateModelId('global.amazon.nova-2-lite-v1:0')).toBe(true);
+      expect(BedrockClient.validateModelId('global.amazon.nova-2-pro-v1:0')).toBe(true);
+      // Invalid model
       expect(BedrockClient.validateModelId('invalid-model')).toBe(false);
     });
 

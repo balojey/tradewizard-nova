@@ -13,12 +13,17 @@ import { z } from 'zod';
 
 /**
  * Nova model variant schema
- * Defines the three available Amazon Nova models through AWS Bedrock
+ * Defines all available Amazon Nova models through AWS Bedrock
+ * Includes both Nova v1 (original) and Nova 2 (latest) models
  */
 export const NovaModelVariantSchema = z.enum([
+  // Nova v1 Models
   'amazon.nova-micro-v1:0',
   'amazon.nova-lite-v1:0',
   'amazon.nova-pro-v1:0',
+  // Nova 2 Models (December 2025)
+  'global.amazon.nova-2-lite-v1:0',
+  'global.amazon.nova-2-pro-v1:0',
 ]);
 
 export type NovaModelVariant = z.infer<typeof NovaModelVariantSchema>;
