@@ -13,6 +13,7 @@ export {
   createAgentNode,
   createLLMInstances,
   createAgentNodes,
+  createPollingIntelligenceAgentNode,
 } from './agents.js';
 export {
   createThesisConstructionNode,
@@ -48,7 +49,7 @@ export {
   EventImpactSignalSchema,
 } from './event-intelligence.js';
 export {
-  createPollingIntelligenceAgentNode,
+  createPollingIntelligenceAgentNode as createAdvancedPollingAgentNode,
   createHistoricalPatternAgentNode,
   PollingIntelligenceSignalSchema,
   HistoricalPatternSignalSchema,

@@ -44,12 +44,12 @@ This implementation plan adds a new polling intelligence agent to the TradeWizar
     - **Property 3: Audit Trail Completeness**
     - **Validates: Requirements 1.6, 10.3, 10.5**
 
-- [ ] 3. Integrate polling agent into workflow
-  - [ ] 3.1 Export polling agent node from `src/nodes/index.ts`
+- [x] 3. Integrate polling agent into workflow
+  - [x] 3.1 Export polling agent node from `src/nodes/index.ts`
     - Add export for `createPollingIntelligenceAgentNode`
     - _Requirements: 1.2_
   
-  - [ ] 3.2 Update workflow in `src/workflow.ts`
+  - [x] 3.2 Update workflow in `src/workflow.ts`
     - Import `createPollingIntelligenceAgentNode` from nodes
     - Create polling agent node instance
     - Add node to StateGraph: `.addNode('polling_intelligence_agent', pollingIntelligenceAgent)`

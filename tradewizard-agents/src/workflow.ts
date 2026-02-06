@@ -20,6 +20,7 @@ import {
   createMarketIngestionNode,
   createKeywordExtractionNode,
   createAgentNodes,
+  createPollingIntelligenceAgentNode,
   createThesisConstructionNode,
   createCrossExaminationNode,
   createConsensusEngineNode,
@@ -27,7 +28,6 @@ import {
   createDynamicAgentSelectionNode,
   createBreakingNewsAgentNode,
   createEventImpactAgentNode,
-  createPollingIntelligenceAgentNode,
   createHistoricalPatternAgentNode,
   createMediaSentimentAgentNode,
   createSocialSentimentAgentNode,
@@ -327,7 +327,8 @@ async function createCheckpointer(
       try {
         return await createPostgresCheckpointer(supabaseManager);
       } catch (error) {
-        console.warn('[Workflow] PostgreSQL checkpointer failed, falling back to memory:', error.message);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.warn('[Workflow] PostgreSQL checkpointer failed, falling back to memory:', errorMessage);
         return new MemorySaver();
       }
     default:
