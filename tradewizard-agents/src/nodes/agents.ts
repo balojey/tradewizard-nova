@@ -576,13 +576,157 @@ Compute your own probability estimate (fairProbability) by blending market price
 8. **Metadata Documentation**:
    While not required to include adjustment details in metadata, consider documenting significant adjustments in confidenceFactors if they materially impact your estimate.
 
+## Confidence Calibration
+
+Calibrate your confidence score (0-1) to reflect the reliability of your polling analysis. Start with a base confidence and apply systematic adjustments based on market quality indicators:
+
+1. **Base Confidence**:
+   Start with a base confidence of 0.5 (neutral confidence level).
+   This will be adjusted up or down based on the following factors.
+
+2. **Crowd Wisdom Boost**:
+   When crowd wisdom signals are strong, increase confidence:
+   
+   **Rules**:
+   \`\`\`
+   if crowdWisdomScore > 0.7:
+     confidence += 0.2
+     // Strong crowd wisdom: high liquidity, tight spread, stable consensus
+     // Market is functioning as an effective polling mechanism
+   
+   if crowdWisdomScore >= 0.4 and crowdWisdomScore <= 0.7:
+     confidence += 0.1
+     // Moderate crowd wisdom: some quality indicators present
+   
+   if crowdWisdomScore < 0.3:
+     confidence -= 0.2
+     // Weak crowd wisdom: thin participation, unreliable signal
+   \`\`\`
+   
+   **Minimum Threshold**: When crowd wisdom conditions are met (liquidityScore > 7, tight spread, high volume), confidence MUST be at least 0.7.
+   
+   **Rationale**: Strong crowd wisdom indicates the market is aggregating diverse opinions effectively, making the polling signal more reliable.
+
+3. **Noise Penalty**:
+   When noise indicators are present, significantly reduce confidence:
+   
+   **Noise Detection**:
+   - volatilityRegime === 'high' AND volume24h < average for event type
+   
+   **Rules**:
+   \`\`\`
+   if noise indicators present (high volatility + low volume):
+     confidence = Math.min(confidence, 0.4)
+     // Cap confidence at 0.4 maximum
+     // Noise indicates unreliable price discovery
+   \`\`\`
+   
+   **Maximum Cap**: When noise indicators are present, confidence MUST NOT exceed 0.4.
+   
+   **Rationale**: Noise indicates the market is not functioning as a reliable polling mechanism. Price movements may be random rather than information-driven.
+
+4. **Ambiguity Penalty**:
+   Reduce confidence for each ambiguity flag in the Market Briefing Document metadata:
+   
+   **Rules**:
+   \`\`\`
+   ambiguityCount = mbd.metadata.ambiguityFlags.length
+   confidence -= (ambiguityCount * 0.1)
+   // Reduce by 0.1 for each ambiguity flag
+   \`\`\`
+   
+   **Examples**:
+   - 1 ambiguity flag: confidence -= 0.1
+   - 2 ambiguity flags: confidence -= 0.2
+   - 3 ambiguity flags: confidence -= 0.3
+   
+   **Rationale**: Ambiguity in resolution criteria or market structure increases uncertainty in the polling signal. Each ambiguity flag represents a source of potential confusion or misinterpretation.
+
+5. **Liquidity Cap**:
+   When liquidity is insufficient, cap confidence at a maximum level:
+   
+   **Rules**:
+   \`\`\`
+   if liquidityScore < 5:
+     confidence = Math.min(confidence, 0.5)
+     // Cap confidence at 0.5 maximum when liquidity is low
+   \`\`\`
+   
+   **Maximum Cap**: When liquidityScore < 5, confidence MUST NOT exceed 0.5.
+   
+   **Rationale**: Low liquidity indicates a thin polling sample with limited participation. The market may not represent a broad consensus, reducing the reliability of the polling signal.
+
+6. **Cross-Market Alignment Adjustment** (when eventContext available):
+   Adjust confidence based on alignment with related markets:
+   
+   **Rules**:
+   \`\`\`
+   if crossMarketAlignment > 0.7:
+     confidence += 0.1
+     // Strong alignment with related markets increases confidence
+   
+   if crossMarketAlignment < 0.3:
+     confidence -= 0.1
+     // Divergence from related markets reduces confidence
+   \`\`\`
+   
+   **Rationale**: When this market aligns with related markets, it suggests a broader consensus. Divergence suggests this market may be an outlier or affected by local noise.
+
+7. **Adjustment Order and Bounds**:
+   Apply adjustments in this sequence:
+   1. Start with base confidence (0.5)
+   2. Apply crowd wisdom adjustment (boost or penalty)
+   3. Apply noise penalty (cap at 0.4 if noise present)
+   4. Apply ambiguity penalty (subtract 0.1 per flag)
+   5. Apply liquidity cap (cap at 0.5 if liquidityScore < 5)
+   6. Apply cross-market adjustment (if available)
+   7. Enforce final bounds [0, 1]
+   
+   **Final Bounds Enforcement**:
+   \`\`\`
+   confidence = Math.max(0, Math.min(1, confidence))
+   \`\`\`
+   
+   **Critical**: Confidence MUST be between 0 and 1 inclusive. Values outside this range are invalid.
+
+8. **Confidence Factors Documentation**:
+   ALWAYS include confidenceFactors in metadata to explain your confidence calibration:
+   
+   **Required Field**:
+   \`\`\`
+   confidenceFactors: string[]
+   \`\`\`
+   
+   **Examples**:
+   - "Strong crowd wisdom (score: 0.85) boosts confidence"
+   - "Noise indicators (high volatility + low volume) cap confidence at 0.4"
+   - "2 ambiguity flags reduce confidence by 0.2"
+   - "Low liquidity (score: 4.2) caps confidence at 0.5"
+   - "Cross-market alignment (0.82) increases confidence"
+   - "Tight spread (1.5¢) and high volume support high confidence"
+   
+   **Purpose**: Transparency in confidence calibration helps downstream consensus mechanisms understand the reliability of your signal.
+
+9. **Calibration Principles**:
+   - **Be conservative**: When in doubt, reduce confidence rather than inflate it
+   - **Be consistent**: Apply the same calibration rules across all markets
+   - **Be transparent**: Document all major confidence adjustments in confidenceFactors
+   - **Be honest**: Acknowledge uncertainty and limitations in the polling signal
+   - **Avoid overconfidence**: Even strong crowd wisdom signals have inherent uncertainty
+
+10. **Special Cases**:
+    - **Perfect conditions** (crowdWisdomScore > 0.9, no noise, no ambiguity, high liquidity): Confidence can approach 0.9-1.0
+    - **Poor conditions** (noise + low liquidity + ambiguity): Confidence should be 0.2-0.4
+    - **Mixed conditions**: Most markets will have confidence in the 0.4-0.7 range
+    - **Conflicting adjustments**: When noise penalty conflicts with crowd wisdom boost, noise penalty takes precedence (cap at 0.4)
+
 Provide your analysis as a structured signal with:
-- confidence: Your confidence in this polling analysis (0-1), calibrated based on crowd wisdom signals (>= 0.7 when crowdWisdomScore > 0.7)
+- confidence: Your confidence in this polling analysis (0-1), calibrated using the rules above (>= 0.7 when crowdWisdomScore > 0.7, <= 0.4 when noise present, <= 0.5 when liquidityScore < 5)
 - direction: Your view on the outcome (YES/NO/NEUTRAL), aligned with sentiment shift momentum when detected
 - fairProbability: Your probability estimate blending market price with polling baselines (0-1)
 - keyDrivers: Top 3-5 polling insights (sentiment shifts, crowd wisdom, baseline deviations when marketDeviation > 0.10)
 - riskFactors: Polling-specific risks (low liquidity, noise indicators, divergence from related markets)
-- metadata: Include crowdWisdomScore (REQUIRED), pollingBaseline (REQUIRED), marketDeviation (REQUIRED), sentimentShift (when detected), confidenceFactors, and cross-market analysis when available
+- metadata: Include crowdWisdomScore (REQUIRED), pollingBaseline (REQUIRED), marketDeviation (REQUIRED), sentimentShift (when detected), confidenceFactors (REQUIRED), and cross-market analysis when available
 
 Be well-calibrated and avoid overconfidence. Market prices are powerful polling mechanisms, but they can also reflect noise, manipulation, or thin participation. Your job is to distinguish signal from noise.`,
 };

@@ -170,8 +170,8 @@ This implementation plan adds a new polling intelligence agent to the TradeWizar
     - **Property 14: Noise Regression**
     - **Validates: Requirements 7.5**
 
-- [ ] 10. Implement confidence calibration logic in system prompt
-  - [ ] 10.1 Add confidence calibration instructions to system prompt
+- [x] 10. Implement confidence calibration logic in system prompt
+  - [x] 10.1 Add confidence calibration instructions to system prompt
     - Define base confidence and adjustment rules
     - Specify crowd wisdom boost (confidence > 0.7)
     - Specify noise penalty (confidence < 0.4)
