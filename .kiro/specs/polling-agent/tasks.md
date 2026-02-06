@@ -146,8 +146,8 @@ This implementation plan adds a new polling intelligence agent to the TradeWizar
     - Verify uses neutral baseline (0.5)
     - _Requirements: 4.6_
 
-- [ ] 9. Implement fair probability estimation logic in system prompt
-  - [ ] 9.1 Add fair probability calculation instructions to system prompt
+- [x] 9. Implement fair probability estimation logic in system prompt
+  - [x] 9.1 Add fair probability calculation instructions to system prompt
     - Instruct LLM to blend market price with polling baseline based on crowdWisdomScore
     - Define momentum adjustment rules
     - Define noise regression rules

@@ -474,6 +474,108 @@ Compare market-implied probabilities with historical polling accuracy to assess 
    - **Geopolitical markets**: Low baseline reliability (0.55) - use as weak anchor
    - **Other/Unknown markets**: Neutral baseline (0.50) - minimal anchoring effect
 
+## Fair Probability Estimation
+
+Compute your own probability estimate (fairProbability) by blending market price with polling baseline, adjusting for momentum and noise:
+
+1. **Base Calculation - Crowd Wisdom Weighting**:
+   Start by blending the current market price with the polling baseline, weighted by crowd wisdom:
+   \`\`\`
+   marketWeight = crowdWisdomScore
+   baselineWeight = 1 - crowdWisdomScore
+   
+   fairProbability = (currentProbability * marketWeight) + (pollingBaseline * baselineWeight)
+   \`\`\`
+   
+   **Rationale**:
+   - When crowdWisdomScore is high (e.g., 0.8): Trust market price more (80% market, 20% baseline)
+   - When crowdWisdomScore is low (e.g., 0.3): Trust baseline more (30% market, 70% baseline)
+   - This ensures fair probability reflects market quality and reliability
+
+2. **Momentum Adjustment**:
+   When market momentum is detected (consistent price direction across time horizons), adjust fairProbability in the direction of momentum:
+   
+   **Momentum Detection**:
+   - Strong momentum: All time horizons show same direction (all positive or all negative)
+   - Moderate momentum: 2 out of 3 time horizons show same direction
+   
+   **Adjustment Rules**:
+   \`\`\`
+   if strong momentum detected:
+     momentumAdjustment = priceMovement24h * 0.15
+     fairProbability += momentumAdjustment (in direction of momentum)
+   
+   if moderate momentum detected:
+     momentumAdjustment = priceMovement24h * 0.08
+     fairProbability += momentumAdjustment (in direction of momentum)
+   \`\`\`
+   
+   **Direction**:
+   - Bullish momentum (prices rising): Add positive adjustment (increase fairProbability)
+   - Bearish momentum (prices falling): Add negative adjustment (decrease fairProbability)
+   
+   **Rationale**: Momentum indicates information flow and strengthening consensus, suggesting the market is discovering new information
+
+3. **Noise Regression**:
+   When noise indicators are present (high volatility + low volume), regress fairProbability toward the polling baseline:
+   
+   **Noise Detection**:
+   - volatilityRegime === 'high' AND volume24h < average for event type
+   
+   **Regression Rules**:
+   \`\`\`
+   if noise indicators present:
+     // Reduce market weight, increase baseline weight
+     noisyMarketWeight = 0.3
+     noisyBaselineWeight = 0.7
+     
+     fairProbability = (currentProbability * noisyMarketWeight) + (pollingBaseline * noisyBaselineWeight)
+   \`\`\`
+   
+   **Rationale**: Noise indicates unreliable price discovery, so we should trust the stable historical baseline more than the volatile market price
+
+4. **Cross-Market Adjustment** (when eventContext available):
+   When cross-market sentiment is available and shows divergence from this market:
+   
+   **Divergence Detection**:
+   - crossMarketAlignment < 0.5 (this market diverges from related markets)
+   
+   **Adjustment Rules**:
+   \`\`\`
+   if crossMarketAlignment < 0.5 and crossMarketSentiment available:
+     // Regress toward cross-market consensus
+     fairProbability = (fairProbability * 0.7) + (crossMarketSentiment * 0.3)
+   \`\`\`
+   
+   **Rationale**: When this market diverges from related markets, the broader cross-market consensus may be more reliable
+
+5. **Bounds Enforcement**:
+   ALWAYS ensure fairProbability remains within valid probability bounds:
+   \`\`\`
+   fairProbability = Math.max(0, Math.min(1, fairProbability))
+   \`\`\`
+   
+   After all adjustments (momentum, noise, cross-market), clamp the value to [0, 1] inclusive.
+   
+   **Critical**: fairProbability MUST be between 0 and 1. Values outside this range are invalid probabilities.
+
+6. **Adjustment Order**:
+   Apply adjustments in this sequence:
+   1. Start with crowd wisdom weighted blend (market + baseline)
+   2. Apply momentum adjustment (if momentum detected)
+   3. Apply noise regression (if noise detected) - this may override the crowd wisdom blend
+   4. Apply cross-market adjustment (if divergence detected)
+   5. Enforce bounds [0, 1]
+
+7. **Special Cases**:
+   - **Perfect crowd wisdom** (crowdWisdomScore = 1.0): fairProbability can equal currentProbability (100% market weight)
+   - **No crowd wisdom** (crowdWisdomScore = 0.0): fairProbability should equal pollingBaseline (100% baseline weight)
+   - **Strong noise + weak crowd wisdom**: Noise regression takes precedence, heavily weight baseline
+   - **Strong momentum + strong crowd wisdom**: Momentum adjustment amplifies the market signal
+
+8. **Metadata Documentation**:
+   While not required to include adjustment details in metadata, consider documenting significant adjustments in confidenceFactors if they materially impact your estimate.
+
 Provide your analysis as a structured signal with:
 - confidence: Your confidence in this polling analysis (0-1), calibrated based on crowd wisdom signals (>= 0.7 when crowdWisdomScore > 0.7)
 - direction: Your view on the outcome (YES/NO/NEUTRAL), aligned with sentiment shift momentum when detected
