@@ -26,11 +26,17 @@ const MonitorEnvSchema = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   GOOGLE_API_KEY: z.string().optional(),
   
+  // AWS Credentials (for Nova)
+  AWS_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().optional(),
+  AWS_REGION: z.string().optional(),
+  
   // LLM Configuration
-  LLM_SINGLE_PROVIDER: z.enum(['openai', 'anthropic', 'google']).optional(),
+  LLM_SINGLE_PROVIDER: z.enum(['openai', 'anthropic', 'google', 'nova']).optional(),
   OPENAI_DEFAULT_MODEL: z.string().optional(),
   ANTHROPIC_DEFAULT_MODEL: z.string().optional(),
   GOOGLE_DEFAULT_MODEL: z.string().optional(),
+  NOVA_MODEL_NAME: z.string().optional(),
   
   // News API Configuration
   NEWS_API_PROVIDER: z.enum(['newsapi', 'newsdata']).optional(),
@@ -61,10 +67,11 @@ const MonitorEnvSchema = z.object({
 }).refine(
   (data) => {
     // At least one LLM provider must be configured
-    return !!(data.OPENAI_API_KEY || data.ANTHROPIC_API_KEY || data.GOOGLE_API_KEY);
+    return !!(data.OPENAI_API_KEY || data.ANTHROPIC_API_KEY || data.GOOGLE_API_KEY || 
+              (data.AWS_ACCESS_KEY_ID && data.AWS_SECRET_ACCESS_KEY && data.AWS_REGION));
   },
   {
-    message: 'At least one LLM provider API key is required (OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_API_KEY)',
+    message: 'At least one LLM provider API key is required (OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY, or AWS credentials for Nova)',
   }
 ).refine(
   (data) => {
@@ -78,10 +85,14 @@ const MonitorEnvSchema = z.object({
     if (data.LLM_SINGLE_PROVIDER === 'google' && !data.GOOGLE_API_KEY) {
       return false;
     }
+    if (data.LLM_SINGLE_PROVIDER === 'nova' && 
+        !(data.AWS_ACCESS_KEY_ID && data.AWS_SECRET_ACCESS_KEY && data.AWS_REGION)) {
+      return false;
+    }
     return true;
   },
   {
-    message: 'When LLM_SINGLE_PROVIDER is set, the corresponding API key must be configured',
+    message: 'When LLM_SINGLE_PROVIDER is set, the corresponding API key/credentials must be configured',
   }
 ).refine(
   (data) => {
@@ -188,6 +199,7 @@ export function validateMonitorEnv(): ValidationResult {
       env.OPENAI_API_KEY ? 'OpenAI' : null,
       env.ANTHROPIC_API_KEY ? 'Anthropic' : null,
       env.GOOGLE_API_KEY ? 'Google' : null,
+      (env.AWS_ACCESS_KEY_ID && env.AWS_SECRET_ACCESS_KEY) ? 'Nova' : null,
     ].filter(Boolean);
     
     if (llmProviders.length === 1 && !env.LLM_SINGLE_PROVIDER) {

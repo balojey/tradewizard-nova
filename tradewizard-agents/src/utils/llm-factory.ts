@@ -29,10 +29,49 @@ export function supportsStructuredOutput(llm: LLMInstance): llm is ChatOpenAI | 
 /**
  * Wrapper to safely call withStructuredOutput on any LLM instance
  * Handles type differences between BedrockChat and other providers
+ * For Nova models (which don't support tool calling), uses JSON mode instead
  */
 export function withStructuredOutput(llm: LLMInstance, schema: any): any {
+  // Check if this is a BedrockChat instance (Nova model)
+  if (llm.constructor.name === 'BedrockChat') {
+    // Nova models don't support withStructuredOutput/tool calling
+    // Return a wrapper that uses JSON mode instead
+    return {
+      invoke: async (messages: any[]) => {
+        // Add JSON formatting instruction to the system message
+        const enhancedMessages = messages.map((msg, idx) => {
+          if (idx === 0 && msg.role === 'system') {
+            return {
+              ...msg,
+              content: `${msg.content}\n\nIMPORTANT: You must respond with valid JSON only, following this exact schema:\n${JSON.stringify(schema.shape || schema, null, 2)}\n\nDo not include any text before or after the JSON object.`
+            };
+          }
+          return msg;
+        });
+
+        // Call the LLM
+        const response = await llm.invoke(enhancedMessages);
+        
+        // Parse the JSON response
+        try {
+          const content = typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
+          // Try to extract JSON from the response (in case there's extra text)
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+          }
+          return JSON.parse(content);
+        } catch (error) {
+          console.error('Failed to parse JSON response from Nova model:', error);
+          console.error('Response content:', response.content);
+          throw new Error(`Failed to parse structured output from Nova model: ${error}`);
+        }
+      }
+    };
+  }
+  
+  // For other providers, use native withStructuredOutput
   // Cast to any to bypass TypeScript's union type checking
-  // All LLM instances support withStructuredOutput, but with slightly different signatures
   return (llm as any).withStructuredOutput(schema);
 }
 

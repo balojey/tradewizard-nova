@@ -18,6 +18,7 @@
 import { ChatOpenAI } from '@langchain/openai';
 import { ChatAnthropic } from '@langchain/anthropic';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { BedrockClient } from './bedrock-client.js';
 import { config } from '../config/index.js';
 import { z } from 'zod';
 import type {
@@ -163,10 +164,27 @@ export class EventMultiMarketKeywordExtractor {
    * Creates a base LLM instance based on the current configuration
    * Respects the LLM_SINGLE_PROVIDER setting
    */
-  private createBaseLLMInstance(config: any, temperature: number): ChatOpenAI | ChatAnthropic | ChatGoogleGenerativeAI {
+  private createBaseLLMInstance(config: any, temperature: number): ChatOpenAI | ChatAnthropic | ChatGoogleGenerativeAI | any {
     const singleProvider = config.llm.singleProvider;
     
     // If single provider is set, use only that provider
+    if (singleProvider === 'nova' && config.llm.nova) {
+      const bedrockClient = new BedrockClient({
+        modelId: config.llm.nova.modelName,
+        region: config.llm.nova.awsRegion,
+        temperature,
+        maxTokens: config.llm.nova.maxTokens,
+        topP: config.llm.nova.topP,
+        credentials: config.llm.nova.awsAccessKeyId && config.llm.nova.awsSecretAccessKey
+          ? {
+              accessKeyId: config.llm.nova.awsAccessKeyId,
+              secretAccessKey: config.llm.nova.awsSecretAccessKey,
+            }
+          : undefined,
+      });
+      return bedrockClient.createChatModel();
+    }
+    
     if (singleProvider === 'google' && config.llm.google) {
       return new ChatGoogleGenerativeAI({
         apiKey: config.llm.google.apiKey,
@@ -216,7 +234,7 @@ export class EventMultiMarketKeywordExtractor {
       });
     }
     
-    throw new Error('No LLM provider configured. Please set up at least one LLM provider (OpenAI, Anthropic, or Google).');
+    throw new Error('No LLM provider configured. Please set up at least one LLM provider (OpenAI, Anthropic, Google, or Nova).');
   }
 
   /**
@@ -312,9 +330,11 @@ Please provide a thorough keyword analysis focusing on:
 
 Be precise and focus on terms that would be valuable for market intelligence and trading decisions.`;
 
-    // Use the base LLM instance with structured output
-    // DO NOT add .withConfig() here - let the workflow-level Opik handler manage tracing
-    const structuredAgent = this.keywordAnalysisAgentBase.withStructuredOutput(AIKeywordAnalysisSchema);
+    // Import the wrapper function for Nova compatibility
+    const { withStructuredOutput } = await import('./llm-factory.js');
+    
+    // Use the wrapper that handles Nova models with JSON mode
+    const structuredAgent = withStructuredOutput(this.keywordAnalysisAgentBase, AIKeywordAnalysisSchema);
     
     const response = await structuredAgent.invoke([
       {
@@ -348,9 +368,11 @@ Identify:
 
 Focus on concepts that could influence the market resolution or trading decisions.`;
 
-    // Use the base LLM instance with structured output
-    // DO NOT add .withConfig() here - let the workflow-level Opik handler manage tracing
-    const structuredAgent = this.conceptExtractionAgentBase.withStructuredOutput(AIConceptExtractionSchema);
+    // Import the wrapper function for Nova compatibility
+    const { withStructuredOutput } = await import('./llm-factory.js');
+    
+    // Use the wrapper that handles Nova models with JSON mode
+    const structuredAgent = withStructuredOutput(this.conceptExtractionAgentBase, AIConceptExtractionSchema);
     
     const response = await structuredAgent.invoke([
       {

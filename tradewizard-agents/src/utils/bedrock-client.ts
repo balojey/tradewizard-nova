@@ -70,8 +70,15 @@ export class BedrockClient {
    * @returns BedrockChat instance configured for the specified Nova model
    */
   createChatModel(): BedrockChat {
+    // Handle Nova 2 models with 'global.' prefix
+    // BedrockChat expects format like 'amazon.nova-2-lite-v1:0' not 'global.amazon.nova-2-lite-v1:0'
+    let modelId = this.config.modelId;
+    if (modelId.startsWith('global.')) {
+      modelId = modelId.replace('global.', '');
+    }
+
     const modelConfig: any = {
-      model: this.config.modelId,
+      model: modelId,
       region: this.config.region,
       temperature: this.config.temperature ?? 0.7,
     };
