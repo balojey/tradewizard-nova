@@ -5,10 +5,7 @@
  * Integrates with LangChain's BedrockChat wrapper for seamless multi-provider support.
  */
 
-import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
-import { fromEnv } from '@aws-sdk/credential-providers';
 import { BedrockChat } from '@langchain/community/chat_models/bedrock';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
 /**
  * Configuration for Nova model instantiation
@@ -53,7 +50,6 @@ export interface NovaModelVariant {
  * AWS Bedrock client for Nova model management
  */
 export class BedrockClient {
-  private client: BedrockRuntimeClient;
   private config: NovaModelConfig;
 
   /**
@@ -64,32 +60,16 @@ export class BedrockClient {
   constructor(config: NovaModelConfig) {
     this.config = config;
 
-    // Initialize Bedrock Runtime client with region and credentials
-    const clientConfig: any = {
-      region: config.region,
-    };
-
-    // Use explicit credentials if provided, otherwise use AWS default credential chain
-    if (config.credentials) {
-      clientConfig.credentials = {
-        accessKeyId: config.credentials.accessKeyId,
-        secretAccessKey: config.credentials.secretAccessKey,
-      };
-    } else {
-      // Use AWS SDK default credential provider chain
-      // This will check: environment variables, shared credentials file, IAM role, etc.
-      clientConfig.credentials = fromEnv();
-    }
-
-    this.client = new BedrockRuntimeClient(clientConfig);
+    // Note: BedrockRuntimeClient initialization is handled by LangChain's BedrockChat
+    // We store the config for use in createChatModel()
   }
 
   /**
    * Create a LangChain-compatible chat model instance for Nova
    * 
-   * @returns BaseChatModel instance configured for the specified Nova model
+   * @returns BedrockChat instance configured for the specified Nova model
    */
-  createChatModel(): BaseChatModel {
+  createChatModel(): BedrockChat {
     const modelConfig: any = {
       model: this.config.modelId,
       region: this.config.region,
@@ -131,7 +111,7 @@ export class BedrockClient {
     try {
       // Attempt to create a model instance and validate it can be initialized
       // This will fail fast if credentials are invalid or region is unsupported
-      const model = this.createChatModel();
+      this.createChatModel();
       
       // The model creation itself validates the configuration
       // If we get here without errors, the connection is valid
