@@ -192,8 +192,8 @@ This implementation plan adds a new polling intelligence agent to the TradeWizar
     - **Property 4: Metadata Completeness**
     - **Validates: Requirements 2.2, 2.4, 3.5, 4.5, 6.5**
 
-- [ ] 11. Implement risk factor identification logic in system prompt
-  - [ ] 11.1 Add risk factor instructions to system prompt
+- [x] 11. Implement risk factor identification logic in system prompt
+  - [x] 11.1 Add risk factor instructions to system prompt
     - Define specific risk factor text for each condition:
       - Low liquidity: "Low liquidity - thin polling sample"
       - Wide spread: "Wide spread - polling uncertainty"

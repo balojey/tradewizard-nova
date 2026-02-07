@@ -720,12 +720,110 @@ Calibrate your confidence score (0-1) to reflect the reliability of your polling
     - **Mixed conditions**: Most markets will have confidence in the 0.4-0.7 range
     - **Conflicting adjustments**: When noise penalty conflicts with crowd wisdom boost, noise penalty takes precedence (cap at 0.4)
 
+## Risk Factor Identification
+
+Identify polling-specific risks that could undermine the reliability of the market as a polling mechanism. Focus on the top 5 most significant risks:
+
+1. **Risk Factor Conditions and Text**:
+   Evaluate the following conditions and include the corresponding risk factor text when conditions are met:
+   
+   **Low Liquidity Risk**:
+   - **Condition**: liquidityScore < 5
+   - **Risk Factor Text**: "Low liquidity - thin polling sample"
+   - **Rationale**: Thin liquidity means few participants, reducing the wisdom of crowds effect
+   
+   **Wide Spread Risk**:
+   - **Condition**: bidAskSpread > 5 cents
+   - **Risk Factor Text**: "Wide spread - polling uncertainty"
+   - **Rationale**: Wide spreads indicate disagreement or uncertainty among market participants
+   
+   **Low Volume Risk**:
+   - **Condition**: volume24h is in the bottom quartile for the event type OR volume24h < $1000
+   - **Risk Factor Text**: "Low volume - limited participation"
+   - **Rationale**: Low trading volume suggests limited participation and potentially unreliable consensus
+   
+   **High Volatility Risk**:
+   - **Condition**: volatilityRegime === 'high'
+   - **Risk Factor Text**: "High volatility - unstable sentiment"
+   - **Rationale**: High volatility indicates unstable sentiment and unreliable price discovery
+   
+   **Non-Election Baseline Risk**:
+   - **Condition**: eventType !== 'election'
+   - **Risk Factor Text**: "Limited polling baseline for this event type"
+   - **Rationale**: Non-election events have less reliable historical polling baselines for comparison
+   
+   **Cross-Market Divergence Risk** (when eventContext available):
+   - **Condition**: crossMarketAlignment < 0.3
+   - **Risk Factor Text**: "Diverges from related market sentiment"
+   - **Rationale**: Divergence from related markets suggests this market may be an outlier or affected by local factors
+
+2. **Risk Factor Priority**:
+   When multiple risk conditions are met, prioritize the most significant risks:
+   1. Noise indicators (high volatility + low volume) - highest priority
+   2. Low liquidity (liquidityScore < 5) - critical for polling reliability
+   3. Wide spread (> 5 cents) - indicates uncertainty
+   4. Cross-market divergence (when available) - suggests outlier behavior
+   5. Non-election baseline - informational limitation
+   
+   **5-Item Limit**: Include at most 5 risk factors in the riskFactors array. If more than 5 conditions are met, select the 5 most significant based on the priority order above.
+
+3. **Risk Factor Array Format**:
+   \`\`\`
+   riskFactors: [
+     "Low liquidity - thin polling sample",
+     "High volatility - unstable sentiment",
+     "Wide spread - polling uncertainty",
+     // ... up to 5 total items
+   ]
+   \`\`\`
+   
+   **Critical**: The riskFactors array length MUST NOT exceed 5 items. Use the exact text specified above for each risk condition.
+
+4. **Risk Assessment Integration**:
+   - Risk factors should inform your confidence calibration (more risks = lower confidence)
+   - Risk factors should be considered when computing fairProbability (high risk = regress toward baseline)
+   - Risk factors provide transparency about limitations of the polling signal
+   - Risk factors help downstream consensus mechanisms weight your signal appropriately
+
+5. **Examples**:
+   
+   **High-Risk Market**:
+   \`\`\`
+   riskFactors: [
+     "Low liquidity - thin polling sample",
+     "High volatility - unstable sentiment",
+     "Low volume - limited participation",
+     "Wide spread - polling uncertainty",
+     "Limited polling baseline for this event type"
+   ]
+   \`\`\`
+   
+   **Moderate-Risk Market**:
+   \`\`\`
+   riskFactors: [
+     "Limited polling baseline for this event type",
+     "Wide spread - polling uncertainty"
+   ]
+   \`\`\`
+   
+   **Low-Risk Market**:
+   \`\`\`
+   riskFactors: []
+   // No significant risks detected - high-quality polling signal
+   \`\`\`
+
+6. **Special Considerations**:
+   - **Empty array is valid**: If no risk conditions are met, riskFactors can be an empty array
+   - **Exact text matching**: Use the exact risk factor text specified above for consistency
+   - **No custom text**: Do not create custom risk factor descriptions; use only the predefined text
+   - **Order matters**: List risks in priority order (most significant first)
+
 Provide your analysis as a structured signal with:
 - confidence: Your confidence in this polling analysis (0-1), calibrated using the rules above (>= 0.7 when crowdWisdomScore > 0.7, <= 0.4 when noise present, <= 0.5 when liquidityScore < 5)
 - direction: Your view on the outcome (YES/NO/NEUTRAL), aligned with sentiment shift momentum when detected
 - fairProbability: Your probability estimate blending market price with polling baselines (0-1)
 - keyDrivers: Top 3-5 polling insights (sentiment shifts, crowd wisdom, baseline deviations when marketDeviation > 0.10)
-- riskFactors: Polling-specific risks (low liquidity, noise indicators, divergence from related markets)
+- riskFactors: Polling-specific risks using exact text from Risk Factor Identification section (maximum 5 items)
 - metadata: Include crowdWisdomScore (REQUIRED), pollingBaseline (REQUIRED), marketDeviation (REQUIRED), sentimentShift (when detected), confidenceFactors (REQUIRED), and cross-market analysis when available
 
 Be well-calibrated and avoid overconfidence. Market prices are powerful polling mechanisms, but they can also reflect noise, manipulation, or thin participation. Your job is to distinguish signal from noise.`,
