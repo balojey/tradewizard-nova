@@ -38,6 +38,7 @@ import {
   createTailRiskAgentNode,
   createAgentSignalFusionNode,
   createRiskPhilosophyAgentNodes,
+  createAutonomousPollingAgentNode,
 } from './nodes/index.js';
 
 /**
@@ -129,7 +130,13 @@ export async function createWorkflow(
   // Create advanced agent nodes
   const dynamicAgentSelection = createDynamicAgentSelectionNode(config, dataLayer);
   const eventImpactAgent = createEventImpactAgentNode(config);
-  const pollingIntelligenceAgent = createPollingIntelligenceAgentNode(config);
+  
+  // Create polling agent based on configuration (Requirements 15.3, 15.4, 15.6)
+  // Use autonomous agent when enabled, basic agent when disabled
+  const pollingIntelligenceAgent = config.pollingAgent.autonomous
+    ? createAutonomousPollingAgentNode(config)
+    : createPollingIntelligenceAgentNode(config);
+  
   const historicalPatternAgent = createHistoricalPatternAgentNode(config);
   const socialSentimentAgent = createSocialSentimentAgentNode(config);
   const narrativeVelocityAgent = createNarrativeVelocityAgentNode(config);

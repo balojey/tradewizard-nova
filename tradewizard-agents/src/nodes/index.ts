@@ -87,3 +87,4 @@ export {
   ConservativeSignalSchema,
   NeutralSignalSchema,
 } from './risk-philosophy.js';
+export { createAutonomousPollingAgentNode } from './autonomous-polling-agent.js';

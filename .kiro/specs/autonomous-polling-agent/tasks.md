@@ -277,12 +277,12 @@ This implementation plan adds autonomous data fetching capabilities to TradeWiza
     - Export PollingAgentConfig type
     - _Requirements: 15.3_
 
-- [ ] 14. Integrate autonomous agent into workflow
-  - [ ] 14.1 Export autonomous polling agent from `src/nodes/index.ts`
+- [x] 14. Integrate autonomous agent into workflow
+  - [x] 14.1 Export autonomous polling agent from `src/nodes/index.ts`
     - Export createAutonomousPollingAgentNode
     - _Requirements: 15.6_
   
-  - [ ] 14.2 Add conditional agent selection in `src/workflow.ts`
+  - [x] 14.2 Add conditional agent selection in `src/workflow.ts`
     - Check config.pollingAgent.autonomous flag
     - Use autonomous agent when enabled, basic agent when disabled
     - Add autonomous_polling_agent node to StateGraph
