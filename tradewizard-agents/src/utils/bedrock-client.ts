@@ -2,10 +2,13 @@
  * AWS Bedrock Client for Amazon Nova Models
  * 
  * Manages AWS Bedrock authentication and model instantiation for Nova models.
- * Integrates with LangChain's BedrockChat wrapper for seamless multi-provider support.
+ * Integrates with LangChain's ChatBedrockConverse for full tool calling support.
+ * 
+ * Note: Uses ChatBedrockConverse (Converse API) instead of BedrockChat (InvokeModel API)
+ * because Nova models only support tool calling through the Converse API.
  */
 
-import { BedrockChat } from '@langchain/community/chat_models/bedrock';
+import { ChatBedrockConverse } from '@langchain/aws';
 
 /**
  * Configuration for Nova model instantiation
@@ -67,11 +70,14 @@ export class BedrockClient {
   /**
    * Create a LangChain-compatible chat model instance for Nova
    * 
-   * @returns BedrockChat instance configured for the specified Nova model
+   * Uses ChatBedrockConverse which supports tool calling for Nova models
+   * via the Bedrock Converse API.
+   * 
+   * @returns ChatBedrockConverse instance configured for the specified Nova model
    */
-  createChatModel(): BedrockChat {
+  createChatModel(): ChatBedrockConverse {
     // Handle Nova 2 models with 'global.' prefix
-    // BedrockChat expects format like 'amazon.nova-2-lite-v1:0' not 'global.amazon.nova-2-lite-v1:0'
+    // ChatBedrockConverse expects format like 'amazon.nova-2-lite-v1:0' not 'global.amazon.nova-2-lite-v1:0'
     let modelId = this.config.modelId;
     if (modelId.startsWith('global.')) {
       modelId = modelId.replace('global.', '');
@@ -100,7 +106,7 @@ export class BedrockClient {
       };
     }
 
-    return new BedrockChat(modelConfig);
+    return new ChatBedrockConverse(modelConfig);
   }
 
   /**

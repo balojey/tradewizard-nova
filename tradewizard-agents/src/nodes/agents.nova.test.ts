@@ -10,9 +10,9 @@ import type { GraphStateType } from '../models/state.js';
 import type { MarketBriefingDocument } from '../models/types.js';
 import type { EngineConfig } from '../config/index.js';
 
-// Mock BedrockChat for Nova
-vi.mock('@langchain/community/chat_models/bedrock', () => ({
-  BedrockChat: class MockBedrockChat {
+// Mock ChatBedrockConverse for Nova
+vi.mock('@langchain/aws', () => ({
+  ChatBedrockConverse: class MockChatBedrockConverse {
     constructor(config?: any) {
       // Accept config but don't require it for mocking
     }
@@ -38,7 +38,7 @@ vi.mock('../utils/bedrock-client.js', () => ({
       // Accept config but don't require it for mocking
     }
     createChatModel() {
-      // Return a mock BedrockChat instance
+      // Return a mock ChatBedrockConverse instance
       return {
         withStructuredOutput: () => ({
           invoke: vi.fn().mockResolvedValue({
