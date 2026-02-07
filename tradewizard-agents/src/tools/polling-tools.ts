@@ -444,3 +444,135 @@ export function getToolUsageSummary(auditLog: ToolAuditEntry[]): {
     toolBreakdown,
   };
 }
+
+// ============================================================================
+// Tool Implementations
+// ============================================================================
+
+/**
+ * Fetch related markets within the same Polymarket event
+ *
+ * This tool fetches all markets within the same event as the input market,
+ * enabling cross-market sentiment analysis. It filters out the input market
+ * and applies a minimum volume threshold to reduce noise.
+ *
+ * Implements Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 2.6
+ *
+ * @param input - Tool input parameters
+ * @param context - Tool execution context
+ * @returns Related markets data or error
+ */
+export async function fetchRelatedMarkets(
+  input: FetchRelatedMarketsInput,
+  context: ToolContext
+): Promise<FetchRelatedMarketsOutput | ToolError> {
+  return executeToolWithWrapper(
+    'fetchRelatedMarkets',
+    input,
+    context,
+    async (params, ctx) => {
+      // Validate input (Requirement 2.1)
+      const validation = validateToolInput(FetchRelatedMarketsInputSchema, params);
+      if (!validation.success) {
+        throw new Error(validation.error);
+      }
+
+      const { conditionId, minVolume } = validation.data;
+
+      try {
+        // Step 1: Find the event containing this market (Requirement 2.2)
+        // We need to search through events to find which one contains this market
+        const events = await ctx.polymarketClient.discoverPoliticalEvents({
+          limit: 100,
+          active: true,
+        });
+
+        let parentEvent = null;
+        for (const event of events) {
+          const matchingMarket = event.markets.find(m => m.conditionId === conditionId);
+          if (matchingMarket) {
+            parentEvent = event;
+            break;
+          }
+        }
+
+        // If event not found, return empty result with warning (Requirement 2.5)
+        if (!parentEvent) {
+          console.warn(`[fetchRelatedMarkets] No parent event found for market ${conditionId}`);
+          return {
+            eventId: 'unknown',
+            eventTitle: 'Event not found',
+            markets: [],
+            totalMarkets: 0,
+          };
+        }
+
+        // Step 2: Fetch all markets in the event (Requirement 2.2)
+        const eventWithMarkets = await ctx.polymarketClient.fetchEventWithAllMarkets(parentEvent.id);
+
+        if (!eventWithMarkets) {
+          console.warn(`[fetchRelatedMarkets] Failed to fetch markets for event ${parentEvent.id}`);
+          return {
+            eventId: parentEvent.id,
+            eventTitle: parentEvent.title,
+            markets: [],
+            totalMarkets: 0,
+          };
+        }
+
+        // Step 3: Filter out the input market (Requirement 2.3)
+        let relatedMarkets = eventWithMarkets.markets.filter(
+          market => market.conditionId !== conditionId
+        );
+
+        // Step 4: Filter by minimum volume threshold (Requirement 2.6)
+        // Use volume24hr if available, otherwise fall back to volumeNum
+        relatedMarkets = relatedMarkets.filter(market => {
+          const volume = market.volume24hr ?? market.volumeNum ?? 0;
+          return volume >= minVolume;
+        });
+
+        // Step 5: Transform to output format (Requirement 2.4)
+        const markets = relatedMarkets.map(market => {
+          // Calculate current probability from outcome prices
+          const outcomePrices = JSON.parse(market.outcomePrices) as string[];
+          const currentProbability = outcomePrices.length > 0 ? parseFloat(outcomePrices[0]) : 0.5;
+          
+          // Get volume (prefer 24hr, fall back to total)
+          const volume24h = market.volume24hr ?? market.volumeNum ?? 0;
+          
+          // Calculate liquidity score (0-10 scale based on liquidity)
+          const liquidityNum = market.liquidityNum ?? market.liquidityClob ?? 0;
+          const liquidityScore = Math.min(10, Math.log10(liquidityNum + 1) * 2);
+
+          return {
+            conditionId: market.conditionId,
+            question: market.question,
+            currentProbability,
+            volume24h,
+            liquidityScore,
+          };
+        });
+
+        return {
+          eventId: eventWithMarkets.event.id,
+          eventTitle: eventWithMarkets.event.title,
+          markets,
+          totalMarkets: markets.length,
+        };
+      } catch (error) {
+        // Handle errors gracefully
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`[fetchRelatedMarkets] Error fetching related markets:`, errorMessage);
+
+        // Return empty result on error to maintain graceful degradation
+        return {
+          eventId: 'error',
+          eventTitle: 'Error fetching event',
+          markets: [],
+          totalMarkets: 0,
+        };
+      }
+    }
+  );
+}

@@ -45,8 +45,8 @@ This implementation plan adds autonomous data fetching capabilities to TradeWiza
     - **Property 3: Tool Error Handling**
     - **Validates: Requirements 1.4, 12.1, 12.6**
 
-- [ ] 3. Implement fetchRelatedMarkets tool
-  - [ ] 3.1 Create fetchRelatedMarkets tool function
+- [x] 3. Implement fetchRelatedMarkets tool
+  - [x] 3.1 Create fetchRelatedMarkets tool function
     - Define input schema (conditionId, minVolume)
     - Use PolymarketClient to fetch parent event
     - Use PolymarketClient to fetch all markets in event
