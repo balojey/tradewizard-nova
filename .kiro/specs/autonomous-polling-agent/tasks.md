@@ -74,8 +74,8 @@ This implementation plan adds autonomous data fetching capabilities to TradeWiza
     - **Property 7: Related Markets Volume Filter**
     - **Validates: Requirements 2.6**
 
-- [ ] 4. Implement fetchHistoricalPrices tool
-  - [ ] 4.1 Create fetchHistoricalPrices tool function
+- [x] 4. Implement fetchHistoricalPrices tool
+  - [x] 4.1 Create fetchHistoricalPrices tool function
     - Define input schema (conditionId, timeHorizon)
     - Validate timeHorizon is one of '1h', '24h', '7d', '30d'
     - Fetch or simulate historical price data
