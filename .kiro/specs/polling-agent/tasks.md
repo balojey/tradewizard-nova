@@ -214,8 +214,8 @@ This implementation plan adds a new polling intelligence agent to the TradeWizar
 - [x] 12. Checkpoint - Ensure core polling logic works
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 13. Implement cross-market sentiment analysis in system prompt
-  - [ ] 13.1 Add cross-market analysis instructions to system prompt
+- [x] 13. Implement cross-market sentiment analysis in system prompt
+  - [x] 13.1 Add cross-market analysis instructions to system prompt
     - Instruct LLM to check for eventContext in MBD
     - Define cross-market sentiment calculation (when eventContext available)
     - Define series pattern detection (3+ markets with consistent direction)

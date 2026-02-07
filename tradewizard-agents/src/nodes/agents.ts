@@ -720,6 +720,206 @@ Calibrate your confidence score (0-1) to reflect the reliability of your polling
     - **Mixed conditions**: Most markets will have confidence in the 0.4-0.7 range
     - **Conflicting adjustments**: When noise penalty conflicts with crowd wisdom boost, noise penalty takes precedence (cap at 0.4)
 
+## Cross-Market Sentiment Analysis
+
+When multiple related markets exist within the same event or series, analyze cross-market sentiment patterns to validate individual market signals and identify broader polling trends:
+
+1. **Event Context Detection**:
+   Check if the Market Briefing Document contains eventContext information:
+   
+   **EventContext Structure**:
+   \`\`\`
+   eventContext: {
+     eventId: string,
+     eventTitle: string,
+     eventDescription: string,
+     totalMarkets: number,
+     totalVolume: number,
+     totalLiquidity: number,
+     marketRank: number,
+     relatedMarketCount: number
+   }
+   \`\`\`
+   
+   **Rules**:
+   - If eventContext is present: Perform cross-market sentiment analysis (sections 2-7 below)
+   - If eventContext is absent: Skip cross-market analysis, perform single-market analysis only
+   - Do NOT include cross-market metadata fields (relatedMarketCount, crossMarketAlignment) when eventContext is absent
+
+2. **Related Market Filtering**:
+   When eventContext is available, identify related markets suitable for cross-market analysis:
+   
+   **Filtering Criteria**:
+   - Markets must be in the same event (same eventId)
+   - Markets must have volume24h > $1000 (filter out noise from thin markets)
+   - Include the current market being analyzed in the comparison
+   
+   **Related Market Count**:
+   - Use eventContext.relatedMarketCount as the number of related markets
+   - If relatedMarketCount < 2, cross-market analysis may be limited (only 1 related market)
+   - If relatedMarketCount >= 3, series pattern detection becomes meaningful
+
+3. **Cross-Market Sentiment Calculation**:
+   Calculate the average sentiment across related markets:
+   
+   **Sentiment Metrics**:
+   - **Price Movement Direction**: For each related market, determine if recent price movement is positive (toward YES) or negative (toward NO)
+   - **Average Cross-Market Sentiment**: Calculate the average price movement direction across all related markets
+   - **Consensus Strength**: Measure how many markets show the same directional movement
+   
+   **Example Calculation**:
+   \`\`\`
+   Market A: +5% (toward YES)
+   Market B: +3% (toward YES)
+   Market C: -2% (toward NO)
+   Market D: +4% (toward YES)
+   
+   Cross-market sentiment: Predominantly toward YES (3 out of 4 markets)
+   Average movement: +2.5%
+   \`\`\`
+
+4. **Series Pattern Detection**:
+   Identify when multiple markets in a series show consistent directional movement:
+   
+   **Series Pattern Criteria**:
+   - **Strong Series Pattern**: 3 or more related markets show price movement in the same direction (all toward YES or all toward NO)
+   - **Weak Series Pattern**: Less than 3 markets show consistent direction, or directions are mixed
+   
+   **Significance**:
+   - Strong series patterns indicate a broader event-level sentiment shift
+   - When a series pattern is detected, individual market signals are more reliable
+   - Series patterns can identify leading indicators (markets that move first) and lagging markets (markets that follow)
+   
+   **Confidence Boost**:
+   When a strong series pattern is detected (3+ markets with consistent direction):
+   - Increase confidence by 0.1 if this market aligns with the series pattern
+   - This market's signal is validated by the broader event-level consensus
+
+5. **Cross-Market Alignment Calculation**:
+   Measure how well this market's sentiment aligns with the cross-market consensus:
+   
+   **Alignment Metric** (crossMarketAlignment):
+   - **High Alignment** (0.7-1.0): This market's price movement direction and magnitude closely match the cross-market average
+   - **Moderate Alignment** (0.4-0.7): This market shows some alignment but with differences in magnitude or timing
+   - **Low Alignment** (0.0-0.4): This market diverges from the cross-market consensus (different direction or significantly different magnitude)
+   
+   **Calculation Approach**:
+   \`\`\`
+   // Simplified correlation-based approach
+   crossMarketAlignment = correlation(thisMarketMovement, avgRelatedMarketMovement)
+   
+   // Or direction-based approach
+   if thisMarketDirection === crossMarketDirection:
+     crossMarketAlignment = 0.5 + (0.5 * magnitudeSimilarity)
+   else:
+     crossMarketAlignment = 0.5 * (1 - magnitudeDifference)
+   \`\`\`
+   
+   **Value Range**: crossMarketAlignment MUST be between 0 and 1 inclusive.
+
+6. **Divergence Detection and Flagging**:
+   When this market diverges significantly from related markets, flag it as a risk:
+   
+   **Divergence Threshold**:
+   - **Significant Divergence**: crossMarketAlignment < 0.3
+   - This indicates the market is an outlier compared to related markets in the same event
+   
+   **Risk Factor Integration**:
+   When crossMarketAlignment < 0.3, ALWAYS include in riskFactors:
+   - **Risk Factor Text**: "Diverges from related market sentiment"
+   - **Rationale**: Divergence suggests this market may be affected by local factors, noise, or mispricing
+   - **Impact**: Reduces confidence in this market's polling signal
+   
+   **Confidence Adjustment**:
+   When divergence is detected (crossMarketAlignment < 0.3):
+   - Reduce confidence by 0.1
+   - Document in confidenceFactors: "Cross-market divergence reduces confidence"
+
+7. **Metadata Requirements for Cross-Market Analysis**:
+   When eventContext is present, ALWAYS include these fields in metadata:
+   
+   **Required Fields**:
+   \`\`\`
+   relatedMarketCount: number        // Number of related markets in the event
+   crossMarketAlignment: number      // Alignment score 0-1
+   \`\`\`
+   
+   **Optional Fields** (include when relevant):
+   \`\`\`
+   seriesPattern: boolean            // True if strong series pattern detected (3+ markets consistent)
+   marketRole: "leader" | "lagger" | "aligned"  // This market's role in the event
+   \`\`\`
+   
+   **Examples**:
+   
+   **With Cross-Market Analysis**:
+   \`\`\`
+   metadata: {
+     crowdWisdomScore: 0.75,
+     pollingBaseline: 0.70,
+     marketDeviation: 0.05,
+     confidenceFactors: ["Strong crowd wisdom", "Cross-market alignment (0.82) validates signal"],
+     relatedMarketCount: 5,
+     crossMarketAlignment: 0.82,
+     seriesPattern: true
+   }
+   \`\`\`
+   
+   **Without Cross-Market Analysis** (no eventContext):
+   \`\`\`
+   metadata: {
+     crowdWisdomScore: 0.65,
+     pollingBaseline: 0.70,
+     marketDeviation: 0.08,
+     confidenceFactors: ["Moderate crowd wisdom", "Low liquidity caps confidence"]
+     // No relatedMarketCount or crossMarketAlignment fields
+   }
+   \`\`\`
+
+8. **Key Drivers Integration**:
+   When cross-market patterns are significant, include event-level insights in keyDrivers:
+   
+   **Examples**:
+   - "Strong series pattern: 4 out of 5 related markets show bullish sentiment, validating this market's signal"
+   - "Cross-market alignment (0.85) confirms this market is in sync with broader event sentiment"
+   - "Market diverges from related markets (alignment: 0.25) - may be mispriced or affected by local factors"
+   - "This market is a sentiment leader: moved 6 hours before related markets showed similar pattern"
+   - "Lagging market: related markets already show +8% movement, this market may catch up"
+
+9. **Fair Probability Adjustment with Cross-Market Data**:
+   When cross-market sentiment is available and shows divergence:
+   
+   **Adjustment Rules**:
+   \`\`\`
+   if crossMarketAlignment < 0.5 and crossMarketSentiment available:
+     // Regress toward cross-market consensus
+     fairProbability = (fairProbability * 0.7) + (crossMarketSentiment * 0.3)
+   \`\`\`
+   
+   **Rationale**: When this market diverges from related markets, the broader cross-market consensus may be more reliable than this individual market's price.
+
+10. **Single-Market Analysis (No EventContext)**:
+    When eventContext is NOT available in the Market Briefing Document:
+    
+    **Rules**:
+    - Perform all other polling analysis sections normally (sentiment shifts, crowd wisdom, polling baseline, etc.)
+    - Do NOT include relatedMarketCount in metadata
+    - Do NOT include crossMarketAlignment in metadata
+    - Do NOT include cross-market related fields in metadata
+    - Do NOT mention cross-market patterns in keyDrivers
+    - Focus analysis solely on this individual market's polling characteristics
+    
+    **Metadata Example** (no eventContext):
+    \`\`\`
+    metadata: {
+      crowdWisdomScore: 0.68,
+      pollingBaseline: 0.75,
+      marketDeviation: 0.12,
+      confidenceFactors: ["Moderate crowd wisdom", "Significant deviation from polling baseline"]
+      // No cross-market fields
+    }
+    \`\`\`
+
 ## Risk Factor Identification
 
 Identify polling-specific risks that could undermine the reliability of the market as a polling mechanism. Focus on the top 5 most significant risks:
