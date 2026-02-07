@@ -1302,3 +1302,174 @@ export async function detectSentimentShifts(
     }
   );
 }
+
+// ============================================================================
+// Tool Registry
+// ============================================================================
+
+import { DynamicStructuredTool } from '@langchain/core/tools';
+
+/**
+ * Create polling tools for the autonomous polling agent
+ *
+ * This function converts all tool functions to LangChain StructuredTool format
+ * and registers them in an array for use by the agent. Each tool is configured
+ * with its input schema, description, and execution function.
+ *
+ * Implements Requirements 1.1, 7.1
+ *
+ * @param context - Tool execution context
+ * @returns Array of LangChain StructuredTools
+ */
+export function createPollingTools(context: ToolContext): DynamicStructuredTool[] {
+  return [
+    // Tool 1: fetchRelatedMarkets
+    new DynamicStructuredTool({
+      name: 'fetchRelatedMarkets',
+      description: `Fetch all markets within the same Polymarket event as the input market.
+      
+Use this tool to:
+- Find related markets for cross-market sentiment analysis
+- Compare sentiment across multiple markets in the same event
+- Identify whether the analyzed market aligns with or diverges from related markets
+
+Input:
+- conditionId: The condition ID of the market to find related markets for
+- minVolume: (optional) Minimum 24h volume in USD to include (default: 100)
+
+Output:
+- eventId: The parent event ID
+- eventTitle: The event title
+- markets: Array of related markets with conditionId, question, currentProbability, volume24h, liquidityScore
+- totalMarkets: Total number of related markets found
+
+Example usage: When analyzing an election market, use this to fetch all other candidate markets in the same election.`,
+      schema: FetchRelatedMarketsInputSchema,
+      func: async (input: FetchRelatedMarketsInput) => {
+        const result = await fetchRelatedMarkets(input, context);
+        return JSON.stringify(result);
+      },
+    }),
+
+    // Tool 2: fetchHistoricalPrices
+    new DynamicStructuredTool({
+      name: 'fetchHistoricalPrices',
+      description: `Fetch historical price data for a market to analyze sentiment trends over time.
+
+Use this tool to:
+- Analyze how market sentiment has evolved over different time horizons
+- Identify price trends (uptrend, downtrend, sideways)
+- Calculate price change percentages
+- Understand momentum and volatility patterns
+
+Input:
+- conditionId: The condition ID of the market
+- timeHorizon: Time horizon for historical data ('1h', '24h', '7d', or '30d')
+
+Output:
+- conditionId: The market condition ID
+- timeHorizon: The requested time horizon
+- dataPoints: Array of historical price points with timestamp and probability
+- priceChange: Percentage change from first to last data point
+- trend: Trend classification ('uptrend', 'downtrend', or 'sideways')
+
+Example usage: Fetch 24h historical prices to see if sentiment has shifted recently, or 7d prices to identify longer-term trends.`,
+      schema: FetchHistoricalPricesInputSchema,
+      func: async (input: FetchHistoricalPricesInput) => {
+        const result = await fetchHistoricalPrices(input, context);
+        return JSON.stringify(result);
+      },
+    }),
+
+    // Tool 3: fetchCrossMarketData
+    new DynamicStructuredTool({
+      name: 'fetchCrossMarketData',
+      description: `Fetch comprehensive event-level data for all markets in a Polymarket event.
+
+Use this tool to:
+- Get event-level context and metadata
+- Analyze aggregate sentiment across all markets in an event
+- Compare market volumes and rankings within an event
+- Calculate weighted average probabilities across markets
+
+Input:
+- eventId: The event ID to fetch cross-market data for
+- maxMarkets: (optional) Maximum number of markets to return (default: 20)
+
+Output:
+- eventId: The event ID
+- eventTitle: The event title
+- eventDescription: The event description
+- totalVolume: Total 24h volume across all markets
+- totalLiquidity: Total liquidity across all markets
+- markets: Array of markets sorted by volume with full market data
+- aggregateSentiment: Aggregate sentiment metrics (average, weighted average, direction)
+
+Example usage: When analyzing a market in a multi-market event, use this to understand the broader event context and cross-market sentiment patterns.`,
+      schema: FetchCrossMarketDataInputSchema,
+      func: async (input: FetchCrossMarketDataInput) => {
+        const result = await fetchCrossMarketData(input, context);
+        return JSON.stringify(result);
+      },
+    }),
+
+    // Tool 4: analyzeMarketMomentum
+    new DynamicStructuredTool({
+      name: 'analyzeMarketMomentum',
+      description: `Analyze market momentum from historical price movements across multiple time horizons.
+
+Use this tool to:
+- Calculate momentum score (-1 to +1) based on price velocity and acceleration
+- Classify momentum direction (bullish, bearish, neutral)
+- Assess momentum strength (strong, moderate, weak)
+- Determine confidence in momentum assessment
+
+Input:
+- conditionId: The condition ID of the market to analyze
+
+Output:
+- conditionId: The market condition ID
+- momentum: Object with score, direction, strength, and confidence
+- timeHorizons: Price change and velocity for 1h, 24h, and 7d horizons
+
+The momentum score combines:
+- Velocity: Rate of price change over time
+- Acceleration: Change in velocity (increasing or decreasing momentum)
+
+Example usage: Use this to identify markets with strong bullish or bearish momentum that may continue in the same direction.`,
+      schema: AnalyzeMarketMomentumInputSchema,
+      func: async (input: AnalyzeMarketMomentumInput) => {
+        const result = await analyzeMarketMomentum(input, context);
+        return JSON.stringify(result);
+      },
+    }),
+
+    // Tool 5: detectSentimentShifts
+    new DynamicStructuredTool({
+      name: 'detectSentimentShifts',
+      description: `Detect significant sentiment shifts across multiple time horizons.
+
+Use this tool to:
+- Identify when market sentiment has changed significantly
+- Classify shift magnitude (minor: 5-10%, moderate: 10-20%, major: >20%)
+- Determine shift direction (toward_yes or toward_no)
+- Identify which time horizon shows the shift
+
+Input:
+- conditionId: The condition ID of the market to analyze
+- threshold: (optional) Minimum price change to flag as shift (default: 0.05 = 5%)
+
+Output:
+- conditionId: The market condition ID
+- shifts: Array of detected shifts with timeHorizon, magnitude, direction, classification, timestamp
+- hasSignificantShift: Boolean indicating if any significant shifts were detected
+
+Example usage: Use this to identify markets where sentiment has shifted dramatically in the past hour, day, or week, which may indicate important news or events.`,
+      schema: DetectSentimentShiftsInputSchema,
+      func: async (input: DetectSentimentShiftsInput) => {
+        const result = await detectSentimentShifts(input, context);
+        return JSON.stringify(result);
+      },
+    }),
+  ];
+}

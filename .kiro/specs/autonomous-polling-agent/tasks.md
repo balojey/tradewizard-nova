@@ -192,15 +192,15 @@ This implementation plan adds autonomous data fetching capabilities to TradeWiza
     - **Property 17: Sentiment Shift Output Schema**
     - **Validates: Requirements 6.5, 6.6**
 
-- [ ] 9. Create tool registry and exports
-  - [ ] 9.1 Create createPollingTools function in `src/tools/polling-tools.ts`
+- [x] 9. Create tool registry and exports
+  - [x] 9.1 Create createPollingTools function in `src/tools/polling-tools.ts`
     - Convert all tool functions to LangChain StructuredTool format
     - Add tool descriptions for LLM
     - Register all tools in array
     - Export createPollingTools function
     - _Requirements: 1.1, 7.1_
   
-  - [ ] 9.2 Create barrel export in `src/tools/index.ts`
+  - [x] 9.2 Create barrel export in `src/tools/index.ts`
     - Export createPollingTools
     - Export tool types and interfaces
     - _Requirements: 1.1_
