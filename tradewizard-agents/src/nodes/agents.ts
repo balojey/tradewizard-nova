@@ -8,7 +8,7 @@
 import { createLLMInstance, type LLMInstance, withStructuredOutput } from '../utils/llm-factory.js';
 import type { GraphStateType } from '../models/state.js';
 import type { AgentSignal } from '../models/types.js';
-import { AgentSignalSchema } from '../models/schemas.js';
+import { AgentSignalSchema, AgentSignalLLMOutputSchema } from '../models/schemas.js';
 import type { EngineConfig } from '../config/index.js';
 
 /**
@@ -36,12 +36,13 @@ export function createAgentNode(
 
     // Check if MBD is available
     if (!state.mbd) {
+      const errorMessage = 'No Market Briefing Document available';
       return {
         agentErrors: [
           {
             type: 'EXECUTION_FAILED',
             agentName,
-            error: new Error('No Market Briefing Document available'),
+            error: new Error(errorMessage),
           },
         ],
         auditLog: [
@@ -51,7 +52,8 @@ export function createAgentNode(
             data: {
               agentName,
               success: false,
-              error: 'No MBD available',
+              error: errorMessage,
+              errorContext: 'Missing MBD',
               duration: Date.now() - startTime,
             },
           },
@@ -59,72 +61,171 @@ export function createAgentNode(
       };
     }
 
-    try {
-      // Use structured output with Zod schema
-      const structuredLLM = withStructuredOutput(llm, AgentSignalSchema);
+    // Prepare the market context for the agent
+    const marketContext = JSON.stringify(state.mbd, null, 2);
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      {
+        role: 'user',
+        content: `Analyze the following prediction market and provide your signal:\n\n${marketContext}`,
+      },
+    ];
 
-      // Prepare the market context for the agent
-      const marketContext = JSON.stringify(state.mbd, null, 2);
+    // Attempt LLM invocation with retry logic for invalid structured output
+    let lastError: Error | null = null;
+    const maxAttempts = 2; // Initial attempt + 1 retry
 
-      // Invoke the LLM with system prompt and market data
-      const response = await structuredLLM.invoke([
-        { role: 'system', content: systemPrompt },
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        // Use structured output with Zod schema (without agentName/timestamp)
+        const structuredLLM = withStructuredOutput(llm, AgentSignalLLMOutputSchema);
+
+        // Invoke the LLM with system prompt and market data
+        const response = await structuredLLM.invoke(messages);
+
+        // Add agent name and timestamp to create complete signal
+        const signalWithMetadata = {
+          ...response,
+          agentName,
+          timestamp: Date.now(),
+          metadata: response.metadata ?? {},
+        };
+
+        // Validate the complete signal against the full schema
+        const validationResult = AgentSignalSchema.safeParse(signalWithMetadata);
+
+        if (!validationResult.success) {
+          // Schema validation failed
+          const validationError = new Error(
+            `Schema validation failed: ${validationResult.error.message}`
+          );
+          lastError = validationError;
+
+          // Log validation failure
+          console.warn(
+            `[${agentName}] Schema validation failed on attempt ${attempt}/${maxAttempts}:`,
+            validationError.message
+          );
+
+          // If this is not the last attempt, retry
+          if (attempt < maxAttempts) {
+            continue;
+          }
+
+          // Last attempt failed - return error
+          return {
+            agentErrors: [
+              {
+                type: 'EXECUTION_FAILED',
+                agentName,
+                error: validationError,
+              },
+            ],
+            auditLog: [
+              {
+                stage: `agent_${agentName}`,
+                timestamp: Date.now(),
+                data: {
+                  agentName,
+                  success: false,
+                  error: validationError.message,
+                  errorContext: 'Schema validation failed after retry',
+                  attempts: attempt,
+                  duration: Date.now() - startTime,
+                },
+              },
+            ],
+          };
+        }
+
+        // Validation successful - use the validated signal
+        const signal: AgentSignal = validationResult.data;
+
+        // Return successful signal
+        return {
+          agentSignals: [signal],
+          auditLog: [
+            {
+              stage: `agent_${agentName}`,
+              timestamp: Date.now(),
+              data: {
+                agentName,
+                success: true,
+                direction: signal.direction,
+                confidence: signal.confidence,
+                fairProbability: signal.fairProbability,
+                attempts: attempt,
+                duration: Date.now() - startTime,
+              },
+            },
+          ],
+        };
+      } catch (error) {
+        // LLM invocation failed
+        lastError = error instanceof Error ? error : new Error('Unknown error during LLM invocation');
+
+        // Log LLM invocation failure
+        console.error(
+          `[${agentName}] LLM invocation failed on attempt ${attempt}/${maxAttempts}:`,
+          lastError.message
+        );
+
+        // If this is not the last attempt, retry
+        if (attempt < maxAttempts) {
+          continue;
+        }
+
+        // Last attempt failed - return error
+        return {
+          agentErrors: [
+            {
+              type: 'EXECUTION_FAILED',
+              agentName,
+              error: lastError,
+            },
+          ],
+          auditLog: [
+            {
+              stage: `agent_${agentName}`,
+              timestamp: Date.now(),
+              data: {
+                agentName,
+                success: false,
+                error: lastError.message,
+                errorContext: 'LLM invocation failed after retry',
+                attempts: attempt,
+                duration: Date.now() - startTime,
+              },
+            },
+          ],
+        };
+      }
+    }
+
+    // This should never be reached, but handle it just in case
+    const fallbackError = lastError || new Error('Unknown error - max attempts reached');
+    return {
+      agentErrors: [
         {
-          role: 'user',
-          content: `Analyze the following prediction market and provide your signal:\n\n${marketContext}`,
+          type: 'EXECUTION_FAILED',
+          agentName,
+          error: fallbackError,
         },
-      ]);
-
-      // Add agent name and timestamp to the signal
-      const signal: AgentSignal = {
-        ...response,
-        agentName,
-        timestamp: Date.now(),
-        metadata: response.metadata ?? {},
-      };
-
-      // Return successful signal
-      return {
-        agentSignals: [signal],
-        auditLog: [
-          {
-            stage: `agent_${agentName}`,
-            timestamp: Date.now(),
-            data: {
-              agentName,
-              success: true,
-              direction: signal.direction,
-              confidence: signal.confidence,
-              fairProbability: signal.fairProbability,
-              duration: Date.now() - startTime,
-            },
-          },
-        ],
-      };
-    } catch (error) {
-      // Handle agent execution failure
-      return {
-        agentErrors: [
-          {
-            type: 'EXECUTION_FAILED',
+      ],
+      auditLog: [
+        {
+          stage: `agent_${agentName}`,
+          timestamp: Date.now(),
+          data: {
             agentName,
-            error: error instanceof Error ? error : new Error('Unknown error'),
+            success: false,
+            error: fallbackError.message,
+            errorContext: 'Fallback error handler',
+            duration: Date.now() - startTime,
           },
-        ],
-        auditLog: [
-          {
-            stage: `agent_${agentName}`,
-            timestamp: Date.now(),
-            data: {
-              agentName,
-              success: false,
-              error: error instanceof Error ? error.message : 'Unknown error',
-              duration: Date.now() - startTime,
-            },
-          },
-        ],
-      };
-    }
+        },
+      ],
+    };
   };
 }
 

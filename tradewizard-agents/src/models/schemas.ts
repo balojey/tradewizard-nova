@@ -12,6 +12,19 @@ import { z } from 'zod';
 // ============================================================================
 
 /**
+ * Zod schema for LLM output (without agentName and timestamp which are added by the node)
+ * Used by intelligence agents to validate LLM structured output
+ */
+export const AgentSignalLLMOutputSchema = z.object({
+  confidence: z.number().min(0).max(1),
+  direction: z.enum(['YES', 'NO', 'NEUTRAL']),
+  fairProbability: z.number().min(0).max(1),
+  keyDrivers: z.array(z.string()).min(1).max(5),
+  riskFactors: z.array(z.string()),
+  metadata: z.record(z.string(), z.any()).optional().default({}),
+});
+
+/**
  * Zod schema for AgentSignal
  * Used by intelligence agents to structure their analysis output
  */
@@ -23,7 +36,7 @@ export const AgentSignalSchema = z.object({
   fairProbability: z.number().min(0).max(1),
   keyDrivers: z.array(z.string()).min(1).max(5),
   riskFactors: z.array(z.string()),
-  metadata: z.object({}).optional().default({}),
+  metadata: z.record(z.string(), z.any()).optional().default({}),
 });
 
 // ============================================================================

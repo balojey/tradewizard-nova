@@ -691,6 +691,7 @@ describe('Agent Nodes', () => {
   describe('Agent Signal Structure', () => {
     it('should produce valid agent signal structure', async () => {
       const mockLLM = {
+        constructor: { name: 'MockLLM' }, // Add constructor to avoid BedrockChat path
         withStructuredOutput: vi.fn().mockReturnValue({
           invoke: vi.fn().mockResolvedValue({
             confidence: 0.75,
