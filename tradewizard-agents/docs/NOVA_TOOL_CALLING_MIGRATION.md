@@ -101,4 +101,25 @@ Nova supports these tool choice modes via Converse API:
 February 7, 2026
 
 ## Status
-✅ **COMPLETE** - Nova models now have full tool calling support via ChatBedrockConverse
+✅ **CODE MIGRATION COMPLETE** - Nova models now have full tool calling support via ChatBedrockConverse
+
+⚠️ **PERMISSIONS REQUIRED** - You need to enable Bedrock model access in AWS Console
+
+## Current Issue: AWS Permissions
+
+The error "Operation not allowed" indicates your AWS account needs Bedrock permissions configured.
+
+### Quick Fix
+
+1. **Enable Model Access**: Go to [AWS Bedrock Console](https://console.aws.amazon.com/bedrock/) → Model access → Enable Amazon Nova models
+2. **Add IAM Permissions**: Attach `AmazonBedrockFullAccess` policy to your IAM user
+3. **Verify Region**: Ensure `AWS_REGION=us-east-1` in your `.env`
+
+See [BEDROCK_PERMISSIONS_TROUBLESHOOTING.md](./BEDROCK_PERMISSIONS_TROUBLESHOOTING.md) for detailed instructions.
+
+## Next Steps
+
+1. Fix AWS Bedrock permissions (see troubleshooting doc)
+2. Run test: `npx tsx test-bedrock-structured.ts`
+3. Once test passes, tool calling will work automatically
+4. Monitor Opik logs to verify no more errors

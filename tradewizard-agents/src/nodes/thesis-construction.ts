@@ -5,7 +5,7 @@
  * It generates bull and bear theses from agent signals using LLM analysis.
  */
 
-import { createLLMInstance, type LLMInstance, withStructuredOutput } from '../utils/llm-factory.js';
+import { createLLMInstance, type LLMInstance } from '../utils/llm-factory.js';
 import type { GraphStateType } from '../models/state.js';
 import type { Thesis } from '../models/types.js';
 import { ThesisSchema } from '../models/schemas.js';
@@ -304,7 +304,7 @@ export function createThesisConstructionNode(
       const contextString = JSON.stringify(context, null, 2);
 
       // Use structured output for thesis generation
-      const structuredLLM = withStructuredOutput(llm, ThesisSchema);
+      const structuredLLM = llm.withStructuredOutput(ThesisSchema);
 
       // Generate bull thesis
       const bullThesisResponse = await structuredLLM.invoke([

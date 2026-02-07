@@ -5,7 +5,7 @@
  * from different perspectives using LangChain LLM integration.
  */
 
-import { createLLMInstance, type LLMInstance, withStructuredOutput } from '../utils/llm-factory.js';
+import { createLLMInstance, type LLMInstance } from '../utils/llm-factory.js';
 import type { GraphStateType } from '../models/state.js';
 import type { AgentSignal } from '../models/types.js';
 import { AgentSignalSchema, AgentSignalLLMOutputSchema } from '../models/schemas.js';
@@ -78,7 +78,7 @@ export function createAgentNode(
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         // Use structured output with Zod schema (without agentName/timestamp)
-        const structuredLLM = withStructuredOutput(llm, AgentSignalLLMOutputSchema);
+        const structuredLLM = llm.withStructuredOutput(AgentSignalLLMOutputSchema);
 
         // Invoke the LLM with system prompt and market data
         const response = await structuredLLM.invoke(messages);

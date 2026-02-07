@@ -9,7 +9,7 @@ import { z } from 'zod';
 import type { GraphStateType } from '../models/state.js';
 import type { AgentSignal } from '../models/types.js';
 import type { EngineConfig } from '../config/index.js';
-import { createLLMInstance, withStructuredOutput } from '../utils/llm-factory.js';
+import { createLLMInstance } from '../utils/llm-factory.js';
 
 // ============================================================================
 // Breaking News Agent Signal Schema
@@ -239,7 +239,7 @@ export function createBreakingNewsAgentNode(
       } : null;
 
       // Use structured output with custom schema
-      const structuredLLM = withStructuredOutput(llm, BreakingNewsSignalSchema);
+      const structuredLLM = llm.withStructuredOutput(BreakingNewsSignalSchema);
 
       // Prepare enhanced market context with news data and event-based keywords
       const marketContext = JSON.stringify(state.mbd, null, 2);
@@ -379,7 +379,7 @@ export function createEventImpactAgentNode(
       } : null;
 
       // Use structured output with custom schema
-      const structuredLLM = withStructuredOutput(llm, EventImpactSignalSchema);
+      const structuredLLM = llm.withStructuredOutput(EventImpactSignalSchema);
 
       // Prepare market context with catalysts and event-based keywords
       const marketContext = JSON.stringify(state.mbd, null, 2);

@@ -9,7 +9,7 @@
 import { z } from 'zod';
 import type { GraphStateType } from '../models/state.js';
 import type { EngineConfig } from '../config/index.js';
-import { createLLMInstance, type LLMInstance, withStructuredOutput } from '../utils/llm-factory.js';
+import { createLLMInstance, type LLMInstance } from '../utils/llm-factory.js';
 
 /**
  * Type for supported LLM instances
@@ -218,7 +218,7 @@ function createRiskPhilosophyAgentNode<T extends z.ZodType>(
 
     try {
       // Use structured output with Zod schema
-      const structuredLLM = withStructuredOutput(llm, schema);
+      const structuredLLM = llm.withStructuredOutput(schema);
 
       // Prepare context for the agent
       const context = {

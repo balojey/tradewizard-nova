@@ -9,7 +9,7 @@ import { z } from 'zod';
 import type { GraphStateType } from '../models/state.js';
 import type { AgentSignal } from '../models/types.js';
 import type { EngineConfig } from '../config/index.js';
-import { createLLMInstance, withStructuredOutput } from '../utils/llm-factory.js';
+import { createLLMInstance } from '../utils/llm-factory.js';
 
 // ============================================================================
 // Catalyst Agent Signal Schema
@@ -214,7 +214,7 @@ export function createCatalystAgentNode(
       } : null;
 
       // Use structured output with custom schema
-      const structuredLLM = withStructuredOutput(llm, CatalystSignalSchema);
+      const structuredLLM = llm.withStructuredOutput(CatalystSignalSchema);
 
       // Prepare market context with catalysts from MBD and external data
       const marketContext = JSON.stringify(state.mbd, null, 2);
@@ -350,7 +350,7 @@ export function createTailRiskAgentNode(
       } : null;
 
       // Use structured output with custom schema
-      const structuredLLM = withStructuredOutput(llm, TailRiskSignalSchema);
+      const structuredLLM = llm.withStructuredOutput(TailRiskSignalSchema);
 
       // Prepare market context with event-based keywords
       const marketContext = JSON.stringify(state.mbd, null, 2);

@@ -10,7 +10,7 @@ import { z } from 'zod';
 import type { GraphStateType } from '../models/state.js';
 import type { AgentSignal } from '../models/types.js';
 import type { EngineConfig } from '../config/index.js';
-import { createLLMInstance, withStructuredOutput } from '../utils/llm-factory.js';
+import { createLLMInstance } from '../utils/llm-factory.js';
 
 // ============================================================================
 // Media Sentiment Agent Signal Schema
@@ -304,7 +304,7 @@ export function createMediaSentimentAgentNode(
       } : null;
 
       // Use structured output with custom schema
-      const structuredLLM = withStructuredOutput(llm, MediaSentimentSignalSchema);
+      const structuredLLM = llm.withStructuredOutput(MediaSentimentSignalSchema);
 
       // Prepare enhanced market context with news data and event-based keywords
       const marketContext = JSON.stringify(state.mbd, null, 2);
@@ -453,7 +453,7 @@ export function createSocialSentimentAgentNode(
       } : null;
 
       // Use structured output with custom schema
-      const structuredLLM = withStructuredOutput(llm, SocialSentimentSignalSchema);
+      const structuredLLM = llm.withStructuredOutput(SocialSentimentSignalSchema);
 
       // Prepare enhanced market context with social data and event-based keywords
       const marketContext = JSON.stringify(state.mbd, null, 2);
@@ -612,7 +612,7 @@ export function createNarrativeVelocityAgentNode(
       } : null;
 
       // Use structured output with custom schema
-      const structuredLLM = withStructuredOutput(llm, NarrativeVelocitySignalSchema);
+      const structuredLLM = llm.withStructuredOutput(NarrativeVelocitySignalSchema);
 
       // Prepare enhanced market context with media and social data and event-based keywords
       const marketContext = JSON.stringify(state.mbd, null, 2);

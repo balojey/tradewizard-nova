@@ -22,18 +22,8 @@ export type LLMInstance = ChatOpenAI | ChatAnthropic | ChatGoogleGenerativeAI | 
 /**
  * Type guard to check if an LLM instance supports structured output
  */
-export function supportsStructuredOutput(llm: LLMInstance): llm is ChatOpenAI | ChatAnthropic | ChatGoogleGenerativeAI {
+export function supportsStructuredOutput(llm: LLMInstance): llm is ChatOpenAI | ChatAnthropic | ChatGoogleGenerativeAI | ChatBedrockConverse {
   return 'withStructuredOutput' in llm && typeof (llm as any).withStructuredOutput === 'function';
-}
-
-/**
- * Wrapper to safely call withStructuredOutput on any LLM instance
- * All supported providers (including Nova via ChatBedrockConverse) support tool calling
- */
-export function withStructuredOutput(llm: LLMInstance, schema: any): any {
-  // All providers now support native withStructuredOutput
-  // ChatBedrockConverse (Nova) supports tool calling via the Converse API
-  return (llm as any).withStructuredOutput(schema);
 }
 
 /**

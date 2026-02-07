@@ -5,7 +5,7 @@
  * momentum patterns, and mean reversion opportunities.
  */
 
-import { createLLMInstance, withStructuredOutput } from '../utils/llm-factory.js';
+import { createLLMInstance } from '../utils/llm-factory.js';
 import { z } from 'zod';
 import type { GraphStateType } from '../models/state.js';
 import type { AgentSignal } from '../models/types.js';
@@ -249,7 +249,7 @@ export function createMomentumAgentNode(
       const indicators = calculateMomentumIndicators(state.mbd);
 
       // Use structured output with Zod schema
-      const structuredLLM = withStructuredOutput(llm, MomentumSignalSchema);
+      const structuredLLM = llm.withStructuredOutput(MomentumSignalSchema);
 
       // Prepare the market context with momentum indicators
       const marketContext = JSON.stringify({
@@ -392,7 +392,7 @@ export function createMeanReversionAgentNode(
       const indicators = calculateReversionIndicators(state.mbd);
 
       // Use structured output with Zod schema
-      const structuredLLM = withStructuredOutput(llm, MeanReversionSignalSchema);
+      const structuredLLM = llm.withStructuredOutput(MeanReversionSignalSchema);
 
       // Prepare the market context with reversion indicators
       const marketContext = JSON.stringify({

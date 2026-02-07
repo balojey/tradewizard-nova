@@ -9,7 +9,7 @@ import { z } from 'zod';
 import type { GraphStateType } from '../models/state.js';
 import type { AgentSignal } from '../models/types.js';
 import type { EngineConfig } from '../config/index.js';
-import { createLLMInstance, withStructuredOutput } from '../utils/llm-factory.js';
+import { createLLMInstance } from '../utils/llm-factory.js';
 
 // ============================================================================
 // Polling Intelligence Agent Signal Schema
@@ -232,7 +232,7 @@ export function createPollingIntelligenceAgentNode(
       } : null;
 
       // Use structured output with custom schema
-      const structuredLLM = withStructuredOutput(llm, PollingIntelligenceSignalSchema);
+      const structuredLLM = llm.withStructuredOutput(PollingIntelligenceSignalSchema);
 
       // Prepare enhanced market context with polling data and event-based keywords
       const marketContext = JSON.stringify(state.mbd, null, 2);
@@ -350,7 +350,7 @@ export function createHistoricalPatternAgentNode(
 
     try {
       // Use structured output with custom schema
-      const structuredLLM = withStructuredOutput(llm, HistoricalPatternSignalSchema);
+      const structuredLLM = llm.withStructuredOutput(HistoricalPatternSignalSchema);
 
       // Prepare market context
       const marketContext = JSON.stringify(state.mbd, null, 2);

@@ -330,11 +330,8 @@ Please provide a thorough keyword analysis focusing on:
 
 Be precise and focus on terms that would be valuable for market intelligence and trading decisions.`;
 
-    // Import the wrapper function for Nova compatibility
-    const { withStructuredOutput } = await import('./llm-factory.js');
-    
-    // Use the wrapper that handles Nova models with JSON mode
-    const structuredAgent = withStructuredOutput(this.keywordAnalysisAgentBase, AIKeywordAnalysisSchema);
+    // Use structured output directly on the LLM instance
+    const structuredAgent = this.keywordAnalysisAgentBase.withStructuredOutput(AIKeywordAnalysisSchema);
     
     const response = await structuredAgent.invoke([
       {
@@ -368,11 +365,8 @@ Identify:
 
 Focus on concepts that could influence the market resolution or trading decisions.`;
 
-    // Import the wrapper function for Nova compatibility
-    const { withStructuredOutput } = await import('./llm-factory.js');
-    
-    // Use the wrapper that handles Nova models with JSON mode
-    const structuredAgent = withStructuredOutput(this.conceptExtractionAgentBase, AIConceptExtractionSchema);
+    // Use structured output directly on the LLM instance
+    const structuredAgent = this.conceptExtractionAgentBase.withStructuredOutput(AIConceptExtractionSchema);
     
     const response = await structuredAgent.invoke([
       {
