@@ -4,12 +4,36 @@
  * This configuration controls the behavior of the autonomous polling agent,
  * which uses LangChain's tool-calling capabilities to fetch and analyze
  * Polymarket data autonomously.
+ * 
+ * **Configuration Philosophy**:
+ * The autonomous polling agent is designed with conservative defaults that
+ * prioritize reliability over advanced features. Autonomous mode is disabled
+ * by default for backward compatibility, allowing gradual rollout.
+ * 
+ * **Usage Example**:
+ * ```typescript
+ * import { loadPollingAgentConfig } from './config/polling-agent-config';
+ * 
+ * const config = loadPollingAgentConfig();
+ * 
+ * if (config.autonomous) {
+ *   console.log('Autonomous mode enabled');
+ *   console.log(`Max tool calls: ${config.maxToolCalls}`);
+ *   console.log(`Timeout: ${config.timeout}ms`);
+ * }
+ * ```
  */
 
 /**
  * Polling Agent Configuration Interface
  * 
  * Controls autonomous mode, tool usage limits, timeouts, and fallback behavior.
+ * 
+ * **Configuration Strategy**:
+ * - Start with autonomous=false for backward compatibility
+ * - Enable for specific market types first (e.g., high-volume markets)
+ * - Gradually increase maxToolCalls as confidence grows
+ * - Always keep fallbackToBasic=true in production for reliability
  */
 export interface PollingAgentConfig {
   /**
