@@ -262,8 +262,8 @@ This implementation plan adds autonomous data fetching capabilities to TradeWiza
     - Specify output format requirements
     - _Requirements: 7.2, 8.1, 8.2, 8.3, 8.4, 8.5, 8.6_
 
-- [ ] 13. Add configuration for autonomous polling agent
-  - [ ] 13.1 Create polling agent config in `src/config/polling-agent-config.ts`
+- [x] 13. Add configuration for autonomous polling agent
+  - [x] 13.1 Create polling agent config in `src/config/polling-agent-config.ts`
     - Define PollingAgentConfig interface
     - Add autonomous mode flag (default: false)
     - Add maxToolCalls setting (default: 5)
@@ -272,7 +272,7 @@ This implementation plan adds autonomous data fetching capabilities to TradeWiza
     - Add fallbackToBasic flag (default: true)
     - _Requirements: 15.3, 15.4_
   
-  - [ ] 13.2 Update main config in `src/config/index.ts`
+  - [x] 13.2 Update main config in `src/config/index.ts`
     - Add pollingAgent config to EngineConfig
     - Export PollingAgentConfig type
     - _Requirements: 15.3_

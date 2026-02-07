@@ -3,6 +3,10 @@ import { z } from 'zod';
 // Export LLM configuration types and manager
 export * from './llm-config.js';
 
+// Export polling agent configuration types
+export * from './polling-agent-config.js';
+import { loadPollingAgentConfig } from './polling-agent-config.js';
+
 /**
  * Configuration schema for the Market Intelligence Engine
  * 
@@ -263,6 +267,13 @@ const EngineConfigSchema = z
       enabled: z.boolean().default(false),
       evaluateOnResolution: z.boolean().default(true),
       minSampleSize: z.number().positive().default(10),
+    }),
+    pollingAgent: z.object({
+      autonomous: z.boolean().default(false),
+      maxToolCalls: z.number().positive().default(5),
+      timeout: z.number().positive().default(45000),
+      cacheEnabled: z.boolean().default(true),
+      fallbackToBasic: z.boolean().default(true),
     }),
   })
   .refine(
@@ -626,6 +637,7 @@ export function loadConfig(): EngineConfig {
       evaluateOnResolution: process.env.PERFORMANCE_TRACKING_EVALUATE_ON_RESOLUTION !== 'false',
       minSampleSize: parseInt(process.env.PERFORMANCE_TRACKING_MIN_SAMPLE_SIZE || '10', 10),
     },
+    pollingAgent: loadPollingAgentConfig(),
   };
 
   // Validate configuration
@@ -859,6 +871,10 @@ export function createConfig(overrides: Partial<EngineConfig>): EngineConfig {
       ...baseConfig.performanceTracking,
       ...(overrides.performanceTracking || {}),
     },
+    pollingAgent: {
+      ...baseConfig.pollingAgent,
+      ...(overrides.pollingAgent || {}),
+    },
   };
 
   // Validate merged configuration
@@ -1067,6 +1083,13 @@ export function getDefaultConfig(): Partial<EngineConfig> {
       enabled: false,
       evaluateOnResolution: true,
       minSampleSize: 10,
+    },
+    pollingAgent: {
+      autonomous: false,
+      maxToolCalls: 5,
+      timeout: 45000,
+      cacheEnabled: true,
+      fallbackToBasic: true,
     },
   };
 }
