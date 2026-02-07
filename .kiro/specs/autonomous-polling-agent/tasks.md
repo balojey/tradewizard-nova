@@ -137,8 +137,8 @@ This implementation plan adds autonomous data fetching capabilities to TradeWiza
     - **Property 20: Cross-Market Sentiment Weighting**
     - **Validates: Requirements 9.4**
 
-- [ ] 7. Implement analyzeMarketMomentum tool
-  - [ ] 7.1 Create analyzeMarketMomentum tool function
+- [x] 7. Implement analyzeMarketMomentum tool
+  - [x] 7.1 Create analyzeMarketMomentum tool function
     - Define input schema (conditionId)
     - Fetch historical prices for multiple time horizons
     - Calculate price velocity (rate of change)

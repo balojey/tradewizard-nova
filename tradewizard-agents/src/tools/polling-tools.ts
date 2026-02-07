@@ -953,3 +953,240 @@ function calculateAggregateSentiment(
     sentimentDirection,
   };
 }
+
+/**
+ * Analyze market momentum from historical price movements
+ *
+ * This tool calculates momentum indicators by analyzing price velocity and
+ * acceleration across multiple time horizons. It provides a momentum score,
+ * direction classification, and strength assessment.
+ *
+ * Implements Requirements 5.1, 5.2, 5.3, 5.4, 5.5, 5.6
+ *
+ * @param input - Tool input parameters
+ * @param context - Tool execution context
+ * @returns Momentum analysis or error
+ */
+export async function analyzeMarketMomentum(
+  input: AnalyzeMarketMomentumInput,
+  context: ToolContext
+): Promise<AnalyzeMarketMomentumOutput | ToolError> {
+  return executeToolWithWrapper(
+    'analyzeMarketMomentum',
+    input,
+    context,
+    async (params, ctx) => {
+      // Validate input (Requirement 5.1)
+      const validation = validateToolInput(AnalyzeMarketMomentumInputSchema, params);
+      if (!validation.success) {
+        throw new Error(validation.error);
+      }
+
+      const { conditionId } = validation.data;
+
+      try {
+        // Step 1: Fetch historical prices for multiple time horizons (Requirement 5.2)
+        const timeHorizons: Array<'1h' | '24h' | '7d'> = ['1h', '24h', '7d'];
+        const historicalData: Record<string, FetchHistoricalPricesOutput | ToolError> = {};
+
+        for (const horizon of timeHorizons) {
+          const result = await fetchHistoricalPrices(
+            { conditionId, timeHorizon: horizon },
+            ctx
+          );
+          historicalData[horizon] = result;
+        }
+
+        // Check if any critical data fetch failed
+        const hasError = Object.values(historicalData).some(data => isToolError(data));
+        if (hasError) {
+          throw new Error('Failed to fetch historical data for momentum analysis');
+        }
+
+        // Step 2: Calculate price velocity and acceleration for each time horizon
+        const timeHorizonMetrics: AnalyzeMarketMomentumOutput['timeHorizons'] = {
+          '1h': { priceChange: 0, velocity: 0 },
+          '24h': { priceChange: 0, velocity: 0 },
+          '7d': { priceChange: 0, velocity: 0 },
+        };
+
+        for (const horizon of timeHorizons) {
+          const data = historicalData[horizon] as FetchHistoricalPricesOutput;
+          
+          // Calculate price change percentage
+          const priceChange = data.priceChange;
+          
+          // Calculate velocity (rate of change per hour)
+          const timeHorizonHours = getTimeHorizonHours(horizon);
+          const velocity = priceChange / timeHorizonHours;
+
+          timeHorizonMetrics[horizon] = {
+            priceChange: Math.round(priceChange * 100) / 100,
+            velocity: Math.round(velocity * 1000) / 1000,
+          };
+        }
+
+        // Step 3: Calculate price acceleration (change in velocity)
+        // Acceleration = (short-term velocity - long-term velocity)
+        const acceleration = 
+          (timeHorizonMetrics['1h'].velocity - timeHorizonMetrics['7d'].velocity);
+
+        // Step 4: Compute momentum score (-1 to +1) (Requirement 5.3)
+        // Momentum score combines velocity and acceleration
+        // Positive momentum = prices rising with increasing velocity
+        // Negative momentum = prices falling with decreasing velocity
+        const velocityComponent = normalizeToRange(
+          timeHorizonMetrics['24h'].velocity,
+          -10, // Max expected velocity (10% per hour)
+          10
+        );
+        
+        const accelerationComponent = normalizeToRange(
+          acceleration,
+          -5, // Max expected acceleration
+          5
+        );
+
+        // Weight velocity more heavily than acceleration (70/30 split)
+        const momentumScore = Math.max(
+          -1,
+          Math.min(1, velocityComponent * 0.7 + accelerationComponent * 0.3)
+        );
+
+        // Step 5: Classify momentum direction (Requirement 5.4)
+        let direction: 'bullish' | 'bearish' | 'neutral';
+        if (momentumScore > 0.15) {
+          direction = 'bullish';
+        } else if (momentumScore < -0.15) {
+          direction = 'bearish';
+        } else {
+          direction = 'neutral';
+        }
+
+        // Step 6: Classify momentum strength (Requirement 5.5)
+        const absScore = Math.abs(momentumScore);
+        let strength: 'strong' | 'moderate' | 'weak';
+        if (absScore > 0.6) {
+          strength = 'strong';
+        } else if (absScore > 0.3) {
+          strength = 'moderate';
+        } else {
+          strength = 'weak';
+        }
+
+        // Step 7: Calculate confidence based on data quality (Requirement 5.6)
+        // Confidence is higher when:
+        // - All time horizons show consistent direction
+        // - Price changes are significant (not noise)
+        // - Data quality is good (no errors)
+        
+        const directionConsistency = calculateDirectionConsistency(timeHorizonMetrics);
+        const significanceScore = calculateSignificanceScore(timeHorizonMetrics);
+        
+        // Confidence is average of consistency and significance
+        const confidence = Math.round((directionConsistency + significanceScore) / 2 * 100) / 100;
+
+        return {
+          conditionId,
+          momentum: {
+            score: Math.round(momentumScore * 1000) / 1000,
+            direction,
+            strength,
+            confidence: Math.max(0, Math.min(1, confidence)),
+          },
+          timeHorizons: timeHorizonMetrics,
+        };
+      } catch (error) {
+        // Handle errors gracefully
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`[analyzeMarketMomentum] Error analyzing momentum:`, errorMessage);
+        throw error;
+      }
+    }
+  );
+}
+
+/**
+ * Convert time horizon string to hours
+ *
+ * @param timeHorizon - Time horizon string
+ * @returns Time in hours
+ */
+function getTimeHorizonHours(timeHorizon: '1h' | '24h' | '7d'): number {
+  const timeMap = {
+    '1h': 1,
+    '24h': 24,
+    '7d': 7 * 24,
+  };
+  return timeMap[timeHorizon];
+}
+
+/**
+ * Normalize a value to the range [-1, 1]
+ *
+ * @param value - Value to normalize
+ * @param min - Minimum expected value
+ * @param max - Maximum expected value
+ * @returns Normalized value in range [-1, 1]
+ */
+function normalizeToRange(value: number, min: number, max: number): number {
+  // Clamp value to expected range
+  const clamped = Math.max(min, Math.min(max, value));
+  
+  // Normalize to [-1, 1]
+  const range = max - min;
+  return (clamped - min) / range * 2 - 1;
+}
+
+/**
+ * Calculate direction consistency across time horizons
+ *
+ * Returns a score from 0 to 1 indicating how consistent the price
+ * movement direction is across different time horizons.
+ *
+ * @param metrics - Time horizon metrics
+ * @returns Consistency score (0-1)
+ */
+function calculateDirectionConsistency(
+  metrics: AnalyzeMarketMomentumOutput['timeHorizons']
+): number {
+  const changes = [
+    metrics['1h'].priceChange,
+    metrics['24h'].priceChange,
+    metrics['7d'].priceChange,
+  ];
+
+  // Count how many have the same sign
+  const positive = changes.filter(c => c > 0).length;
+  const negative = changes.filter(c => c < 0).length;
+  const neutral = changes.filter(c => c === 0).length;
+
+  // Perfect consistency = all same direction
+  const maxSameDirection = Math.max(positive, negative, neutral);
+  return maxSameDirection / changes.length;
+}
+
+/**
+ * Calculate significance score based on price change magnitudes
+ *
+ * Returns a score from 0 to 1 indicating how significant the price
+ * changes are (vs. noise).
+ *
+ * @param metrics - Time horizon metrics
+ * @returns Significance score (0-1)
+ */
+function calculateSignificanceScore(
+  metrics: AnalyzeMarketMomentumOutput['timeHorizons']
+): number {
+  const changes = [
+    Math.abs(metrics['1h'].priceChange),
+    Math.abs(metrics['24h'].priceChange),
+    Math.abs(metrics['7d'].priceChange),
+  ];
+
+  // Average absolute change
+  const avgChange = changes.reduce((sum, c) => sum + c, 0) / changes.length;
+
+  // Normalize to 0-1 scale (5% change = 0.5, 10% change = 1.0)
+  return Math.min(1, avgChange / 10);
+}
