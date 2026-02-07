@@ -1190,3 +1190,115 @@ function calculateSignificanceScore(
   // Normalize to 0-1 scale (5% change = 0.5, 10% change = 1.0)
   return Math.min(1, avgChange / 10);
 }
+
+/**
+ * Detect significant sentiment shifts across time horizons
+ *
+ * This tool analyzes price movements across multiple time horizons to identify
+ * significant sentiment shifts. It flags movements that exceed a threshold and
+ * classifies their magnitude as minor, moderate, or major.
+ *
+ * Implements Requirements 6.1, 6.2, 6.3, 6.4, 6.5, 6.6
+ *
+ * @param input - Tool input parameters
+ * @param context - Tool execution context
+ * @returns Detected sentiment shifts or error
+ */
+export async function detectSentimentShifts(
+  input: DetectSentimentShiftsInput,
+  context: ToolContext
+): Promise<DetectSentimentShiftsOutput | ToolError> {
+  return executeToolWithWrapper(
+    'detectSentimentShifts',
+    input,
+    context,
+    async (params, ctx) => {
+      // Validate input (Requirement 6.1)
+      const validation = validateToolInput(DetectSentimentShiftsInputSchema, params);
+      if (!validation.success) {
+        throw new Error(validation.error);
+      }
+
+      const { conditionId, threshold } = validation.data;
+
+      try {
+        // Step 1: Fetch historical prices for all time horizons (Requirement 6.2)
+        const timeHorizons: Array<'1h' | '24h' | '7d'> = ['1h', '24h', '7d'];
+        const historicalData: Record<string, FetchHistoricalPricesOutput | ToolError> = {};
+
+        for (const horizon of timeHorizons) {
+          const result = await fetchHistoricalPrices(
+            { conditionId, timeHorizon: horizon },
+            ctx
+          );
+          historicalData[horizon] = result;
+        }
+
+        // Check if any critical data fetch failed
+        const hasError = Object.values(historicalData).some(data => isToolError(data));
+        if (hasError) {
+          throw new Error('Failed to fetch historical data for sentiment shift detection');
+        }
+
+        // Step 2: Calculate price changes for each horizon and detect shifts
+        const shifts: DetectSentimentShiftsOutput['shifts'] = [];
+
+        for (const horizon of timeHorizons) {
+          const data = historicalData[horizon] as FetchHistoricalPricesOutput;
+          
+          // Get price change as a decimal (e.g., 0.05 = 5%)
+          const priceChangePercent = data.priceChange / 100;
+          const magnitude = Math.abs(priceChangePercent);
+
+          // Step 3: Compare changes against threshold (Requirement 6.3)
+          if (magnitude >= threshold) {
+            // Determine direction
+            const direction: 'toward_yes' | 'toward_no' = 
+              priceChangePercent > 0 ? 'toward_yes' : 'toward_no';
+
+            // Step 4: Classify magnitude (Requirement 6.4)
+            // minor: 5-10%, moderate: 10-20%, major: >20%
+            let classification: 'minor' | 'moderate' | 'major';
+            if (magnitude >= 0.20) {
+              classification = 'major';
+            } else if (magnitude >= 0.10) {
+              classification = 'moderate';
+            } else {
+              classification = 'minor';
+            }
+
+            // Step 5: Identify the time horizon where the shift occurred (Requirement 6.5)
+            // Use the most recent data point timestamp
+            const dataPoints = data.dataPoints;
+            const timestamp = dataPoints.length > 0 
+              ? dataPoints[dataPoints.length - 1].timestamp 
+              : Date.now();
+
+            // Add shift to results (Requirement 6.6)
+            shifts.push({
+              timeHorizon: horizon,
+              magnitude: Math.round(magnitude * 1000) / 1000, // Round to 3 decimals
+              direction,
+              classification,
+              timestamp,
+            });
+          }
+        }
+
+        // Determine if there's a significant shift
+        const hasSignificantShift = shifts.length > 0;
+
+        return {
+          conditionId,
+          shifts,
+          hasSignificantShift,
+        };
+      } catch (error) {
+        // Handle errors gracefully
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`[detectSentimentShifts] Error detecting sentiment shifts:`, errorMessage);
+        throw error;
+      }
+    }
+  );
+}

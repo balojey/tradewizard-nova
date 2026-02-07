@@ -163,8 +163,8 @@ This implementation plan adds autonomous data fetching capabilities to TradeWiza
     - **Property 14: Momentum Output Schema**
     - **Validates: Requirements 5.4, 5.5, 5.6**
 
-- [ ] 8. Implement detectSentimentShifts tool
-  - [ ] 8.1 Create detectSentimentShifts tool function
+- [x] 8. Implement detectSentimentShifts tool
+  - [x] 8.1 Create detectSentimentShifts tool function
     - Define input schema (conditionId, threshold)
     - Fetch historical prices for all time horizons
     - Calculate price changes for each horizon
