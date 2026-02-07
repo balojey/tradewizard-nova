@@ -253,8 +253,8 @@ This implementation plan adds autonomous data fetching capabilities to TradeWiza
     - **Property 25: Agent Signal Schema Compatibility**
     - **Validates: Requirements 15.2**
 
-- [ ] 12. Create autonomous polling agent system prompt
-  - [ ] 12.1 Define AUTONOMOUS_POLLING_SYSTEM_PROMPT constant
+- [x] 12. Create autonomous polling agent system prompt
+  - [x] 12.1 Define AUTONOMOUS_POLLING_SYSTEM_PROMPT constant
     - Define agent role as autonomous polling analyst
     - List available tools with descriptions
     - Provide analysis strategy guidelines
