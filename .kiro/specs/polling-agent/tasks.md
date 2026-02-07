@@ -211,7 +211,7 @@ This implementation plan adds a new polling intelligence agent to the TradeWizar
     - **Property 20: Risk Factor Limit**
     - **Validates: Requirements 8.6**
 
-- [ ] 12. Checkpoint - Ensure core polling logic works
+- [x] 12. Checkpoint - Ensure core polling logic works
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 13. Implement cross-market sentiment analysis in system prompt
