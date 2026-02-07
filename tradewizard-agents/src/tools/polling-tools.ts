@@ -789,3 +789,167 @@ function determineTrend(
     return 'downtrend';
   }
 }
+
+/**
+ * Fetch comprehensive cross-market data for event-level analysis
+ *
+ * This tool fetches all markets within a Polymarket event and calculates
+ * aggregate sentiment metrics across all markets. It enables event-level
+ * intelligence gathering and cross-market sentiment analysis.
+ *
+ * Implements Requirements 4.1, 4.2, 4.3, 4.4, 4.5, 4.6
+ *
+ * @param input - Tool input parameters
+ * @param context - Tool execution context
+ * @returns Cross-market data or error
+ */
+export async function fetchCrossMarketData(
+  input: FetchCrossMarketDataInput,
+  context: ToolContext
+): Promise<FetchCrossMarketDataOutput | ToolError> {
+  return executeToolWithWrapper(
+    'fetchCrossMarketData',
+    input,
+    context,
+    async (params, ctx) => {
+      // Validate input (Requirement 4.1)
+      const validation = validateToolInput(FetchCrossMarketDataInputSchema, params);
+      if (!validation.success) {
+        throw new Error(validation.error);
+      }
+
+      const { eventId, maxMarkets } = validation.data;
+
+      try {
+        // Step 1: Fetch event with all markets (Requirement 4.2)
+        const eventWithMarkets = await ctx.polymarketClient.fetchEventWithAllMarkets(eventId);
+
+        if (!eventWithMarkets) {
+          throw new Error(`Failed to fetch event with ID: ${eventId}`);
+        }
+
+        // Step 2: Sort markets by volume24h descending (Requirement 4.6)
+        const sortedMarkets = [...eventWithMarkets.markets].sort((a, b) => {
+          const volumeA = a.volume24hr ?? a.volumeNum ?? 0;
+          const volumeB = b.volume24hr ?? b.volumeNum ?? 0;
+          return volumeB - volumeA;
+        });
+
+        // Step 3: Limit to maxMarkets (Requirement 4.6)
+        const limitedMarkets = sortedMarkets.slice(0, maxMarkets);
+
+        // Step 4: Transform markets to output format (Requirement 4.4)
+        const markets = limitedMarkets.map((market, index) => {
+          // Calculate current probability from outcome prices
+          const outcomePrices = JSON.parse(market.outcomePrices) as string[];
+          const currentProbability = outcomePrices.length > 0 ? parseFloat(outcomePrices[0]) : 0.5;
+
+          // Get volume (prefer 24hr, fall back to total)
+          const volume24h = market.volume24hr ?? market.volumeNum ?? 0;
+
+          // Calculate liquidity score (0-10 scale based on liquidity)
+          const liquidityNum = market.liquidityNum ?? 0;
+          const liquidityScore = Math.min(10, Math.log10(liquidityNum + 1) * 2);
+
+          return {
+            conditionId: market.conditionId,
+            question: market.question,
+            currentProbability,
+            volume24h,
+            liquidityScore,
+            volumeRank: index + 1, // Rank based on sorted position
+          };
+        });
+
+        // Step 5: Calculate aggregate sentiment metrics (Requirement 4.5)
+        const aggregateSentiment = calculateAggregateSentiment(markets);
+
+        // Step 6: Calculate event-level totals (Requirement 4.3)
+        const totalVolume = sortedMarkets.reduce((sum, market) => {
+          return sum + (market.volume24hr ?? market.volumeNum ?? 0);
+        }, 0);
+
+        const totalLiquidity = sortedMarkets.reduce((sum, market) => {
+          return sum + (market.liquidityNum ?? 0);
+        }, 0);
+
+        return {
+          eventId: eventWithMarkets.event.id,
+          eventTitle: eventWithMarkets.event.title,
+          eventDescription: eventWithMarkets.event.description || '',
+          totalVolume,
+          totalLiquidity,
+          markets,
+          aggregateSentiment,
+        };
+      } catch (error) {
+        // Handle errors gracefully
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`[fetchCrossMarketData] Error fetching cross-market data:`, errorMessage);
+        throw error;
+      }
+    }
+  );
+}
+
+/**
+ * Calculate aggregate sentiment metrics across markets
+ *
+ * This function calculates sentiment metrics weighted by market volume,
+ * implementing Requirement 9.4 (volume-weighted sentiment).
+ *
+ * @param markets - Array of markets with probabilities and volumes
+ * @returns Aggregate sentiment metrics
+ */
+function calculateAggregateSentiment(
+  markets: Array<{
+    currentProbability: number;
+    volume24h: number;
+  }>
+): {
+  averageProbability: number;
+  weightedAverageProbability: number;
+  sentimentDirection: 'bullish' | 'bearish' | 'neutral';
+} {
+  if (markets.length === 0) {
+    return {
+      averageProbability: 0.5,
+      weightedAverageProbability: 0.5,
+      sentimentDirection: 'neutral',
+    };
+  }
+
+  // Calculate simple average probability
+  const averageProbability =
+    markets.reduce((sum, market) => sum + market.currentProbability, 0) / markets.length;
+
+  // Calculate volume-weighted average probability (Requirement 9.4)
+  const totalVolume = markets.reduce((sum, market) => sum + market.volume24h, 0);
+
+  let weightedAverageProbability: number;
+  if (totalVolume > 0) {
+    weightedAverageProbability = markets.reduce((sum, market) => {
+      const weight = market.volume24h / totalVolume;
+      return sum + market.currentProbability * weight;
+    }, 0);
+  } else {
+    // Fall back to simple average if no volume data
+    weightedAverageProbability = averageProbability;
+  }
+
+  // Determine sentiment direction based on weighted average
+  let sentimentDirection: 'bullish' | 'bearish' | 'neutral';
+  if (weightedAverageProbability > 0.55) {
+    sentimentDirection = 'bullish';
+  } else if (weightedAverageProbability < 0.45) {
+    sentimentDirection = 'bearish';
+  } else {
+    sentimentDirection = 'neutral';
+  }
+
+  return {
+    averageProbability: Math.round(averageProbability * 1000) / 1000,
+    weightedAverageProbability: Math.round(weightedAverageProbability * 1000) / 1000,
+    sentimentDirection,
+  };
+}

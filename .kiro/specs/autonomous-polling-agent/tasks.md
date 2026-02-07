@@ -107,8 +107,8 @@ This implementation plan adds autonomous data fetching capabilities to TradeWiza
 - [x] 5. Checkpoint - Ensure basic tools work
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Implement fetchCrossMarketData tool
-  - [ ] 6.1 Create fetchCrossMarketData tool function
+- [x] 6. Implement fetchCrossMarketData tool
+  - [x] 6.1 Create fetchCrossMarketData tool function
     - Define input schema (eventId, maxMarkets)
     - Use PolymarketClient.fetchEventWithAllMarkets()
     - Sort markets by volume24h descending
