@@ -104,7 +104,7 @@ This implementation plan adds autonomous data fetching capabilities to TradeWiza
     - **Property 10: Historical Prices Minimum Data Points**
     - **Validates: Requirements 3.6**
 
-- [ ] 5. Checkpoint - Ensure basic tools work
+- [x] 5. Checkpoint - Ensure basic tools work
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 6. Implement fetchCrossMarketData tool

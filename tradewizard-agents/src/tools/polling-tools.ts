@@ -324,7 +324,7 @@ export async function executeToolWithWrapper<TInput, TOutput>(
  * @returns True if result is a ToolError
  */
 export function isToolError(result: any): result is ToolError {
-  return result && typeof result === 'object' && result.error === true;
+  return !!(result && typeof result === 'object' && result.error === true);
 }
 
 /**
