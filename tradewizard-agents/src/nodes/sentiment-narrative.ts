@@ -124,7 +124,9 @@ export const NarrativeVelocitySignalSchema = z.object({
 // System Prompts
 // ============================================================================
 
-const MEDIA_SENTIMENT_PROMPT = `You are a media sentiment analyst specializing in news coverage analysis.
+const MEDIA_SENTIMENT_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are a media sentiment analyst specializing in news coverage analysis.
 
 Your role is to measure sentiment, framing, and narrative dominance in media.
 
@@ -158,7 +160,9 @@ Provide your analysis as a structured signal with:
 
 Be precise and distinguish between sentiment and factual reporting.`;
 
-const SOCIAL_SENTIMENT_PROMPT = `You are a social sentiment analyst specializing in online discourse and crowd psychology.
+const SOCIAL_SENTIMENT_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are a social sentiment analyst specializing in online discourse and crowd psychology.
 
 Your role is to measure sentiment, detect viral narratives, and assess crowd positioning.
 
@@ -194,7 +198,9 @@ Provide your analysis as a structured signal with:
 
 Focus on actionable signals and ensure platformSentiment includes 'overall' aggregated score.`;
 
-const NARRATIVE_VELOCITY_PROMPT = `You are a narrative velocity analyst specializing in information diffusion.
+const NARRATIVE_VELOCITY_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are a narrative velocity analyst specializing in information diffusion.
 
 Your role is to measure narrative spread rates and predict which stories will dominate.
 

@@ -88,7 +88,9 @@ export const NeutralSignalSchema = z.object({
 // System Prompts
 // ============================================================================
 
-const AGGRESSIVE_AGENT_PROMPT = `You are an aggressive trader specializing in high-conviction, high-variance strategies.
+const AGGRESSIVE_AGENT_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are an aggressive trader specializing in high-conviction, high-variance strategies.
 Your role is to identify maximum EV opportunities and advocate for concentrated positions.
 
 Given a consensus probability and market context, analyze:
@@ -112,7 +114,9 @@ Provide your analysis as a structured signal with:
 
 Focus on maximizing long-term returns, accepting high variance.`;
 
-const CONSERVATIVE_AGENT_PROMPT = `You are a conservative trader specializing in capital preservation and risk management.
+const CONSERVATIVE_AGENT_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are a conservative trader specializing in capital preservation and risk management.
 Your role is to identify downside risks and advocate for hedged, low-drawdown strategies.
 
 Given a consensus probability and market context, analyze:
@@ -136,7 +140,9 @@ Provide your analysis as a structured signal with:
 
 Focus on minimizing drawdowns and preserving capital.`;
 
-const NEUTRAL_AGENT_PROMPT = `You are a market-neutral trader specializing in arbitrage and spread strategies.
+const NEUTRAL_AGENT_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are a market-neutral trader specializing in arbitrage and spread strategies.
 Your role is to identify market-neutral opportunities that profit regardless of outcome.
 
 Given a consensus probability and market context, analyze:

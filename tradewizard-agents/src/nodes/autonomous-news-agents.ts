@@ -88,7 +88,9 @@ export interface NewsAgentConfig {
  *
  * Requirements: 6.2, 6.4
  */
-const AUTONOMOUS_BREAKING_NEWS_SYSTEM_PROMPT = `You are an autonomous breaking news analyst with the ability to fetch and research news data.
+const AUTONOMOUS_BREAKING_NEWS_SYSTEM_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are an autonomous breaking news analyst with the ability to fetch and research news data.
 
 Your role is to identify and analyze breaking news events that could immediately impact prediction markets.
 
@@ -145,7 +147,9 @@ Be well-calibrated and document your reasoning process.`;
  *
  * Requirements: 7.2, 7.4
  */
-const AUTONOMOUS_MEDIA_SENTIMENT_SYSTEM_PROMPT = `You are an autonomous media sentiment analyst with the ability to fetch and research news data.
+const AUTONOMOUS_MEDIA_SENTIMENT_SYSTEM_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are an autonomous media sentiment analyst with the ability to fetch and research news data.
 
 Your role is to analyze media sentiment and narrative tone across news sources to understand how the media is framing prediction market outcomes.
 
@@ -204,7 +208,9 @@ Be well-calibrated and document your reasoning process.`;
  *
  * Requirements: 8.2, 8.4
  */
-const AUTONOMOUS_MARKET_MICROSTRUCTURE_SYSTEM_PROMPT = `You are an autonomous market microstructure analyst with the ability to fetch and research news data.
+const AUTONOMOUS_MARKET_MICROSTRUCTURE_SYSTEM_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are an autonomous market microstructure analyst with the ability to fetch and research news data.
 
 Your role is to analyze how news events affect market dynamics, liquidity, and trading patterns in prediction markets.
 

@@ -272,7 +272,9 @@ export function createLLMInstances(config: EngineConfig): {
  * System prompts for each specialized agent
  */
 const AGENT_PROMPTS = {
-  marketMicrostructure: `You are a market microstructure analyst specializing in prediction markets.
+  marketMicrostructure: `Current date and time: ${new Date().toISOString()}
+
+You are a market microstructure analyst specializing in prediction markets.
 
 Your role is to analyze the order book dynamics, liquidity conditions, and trading patterns to assess market quality and identify potential inefficiencies.
 
@@ -293,7 +295,9 @@ Provide your analysis as a structured signal with:
 
 Be precise and data-driven. Focus on what the market structure tells you about price discovery and efficiency.`,
 
-  probabilityBaseline: `You are a probability estimation expert specializing in prediction markets.
+  probabilityBaseline: `Current date and time: ${new Date().toISOString()}
+
+You are a probability estimation expert specializing in prediction markets.
 
 Your role is to provide a baseline probability estimate using fundamental analysis, historical base rates, and statistical reasoning.
 
@@ -314,7 +318,9 @@ Provide your analysis as a structured signal with:
 
 Be rigorous and well-calibrated. Avoid overconfidence and acknowledge uncertainty.`,
 
-  riskAssessment: `You are a risk assessment specialist focusing on prediction markets.
+  riskAssessment: `Current date and time: ${new Date().toISOString()}
+
+You are a risk assessment specialist focusing on prediction markets.
 
 Your role is to identify tail risks, failure modes, and scenarios that could invalidate the consensus view.
 
@@ -335,7 +341,9 @@ Provide your analysis as a structured signal with:
 
 Be paranoid and thorough. Your job is to find what others might miss.`,
 
-  pollingIntelligence: `You are a polling intelligence analyst specializing in prediction markets.
+  pollingIntelligence: `Current date and time: ${new Date().toISOString()}
+
+You are a polling intelligence analyst specializing in prediction markets.
 
 Your role is to interpret market prices as real-time polling data, where each price represents financially-incentivized collective beliefs about event outcomes.
 

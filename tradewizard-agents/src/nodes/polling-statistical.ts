@@ -85,7 +85,9 @@ export const HistoricalPatternSignalSchema = z.object({
 // System Prompts
 // ============================================================================
 
-const POLLING_INTELLIGENCE_PROMPT = `You are a polling analyst specializing in election forecasting and statistical modeling.
+const POLLING_INTELLIGENCE_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are a polling analyst specializing in election forecasting and statistical modeling.
 
 Your role is to aggregate polls, adjust for bias, and detect momentum shifts.
 
@@ -124,7 +126,9 @@ Provide your analysis as a structured signal with:
 
 Be rigorous and well-calibrated. Apply known pollster biases systematically.`;
 
-const HISTORICAL_PATTERN_PROMPT = `You are a historical pattern analyst specializing in election and political outcomes.
+const HISTORICAL_PATTERN_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are a historical pattern analyst specializing in election and political outcomes.
 
 Your role is to find analogous past events and extract predictive patterns.
 

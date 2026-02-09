@@ -97,7 +97,9 @@ function createThesisLLM(config: EngineConfig): LLMInstance {
 /**
  * System prompt for bull thesis generation
  */
-const BULL_THESIS_PROMPT = `You are a bull thesis constructor for prediction markets.
+const BULL_THESIS_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are a bull thesis constructor for prediction markets.
 
 Your role is to synthesize agent signals into a compelling argument for the YES outcome.
 
@@ -123,7 +125,9 @@ Respond with a structured thesis including:
 /**
  * System prompt for bear thesis generation
  */
-const BEAR_THESIS_PROMPT = `You are a bear thesis constructor for prediction markets.
+const BEAR_THESIS_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are a bear thesis constructor for prediction markets.
 
 Your role is to synthesize agent signals into a compelling argument for the NO outcome.
 

@@ -63,7 +63,9 @@ export const MeanReversionSignalSchema = AgentSignalSchema.extend({
 // System Prompts
 // ============================================================================
 
-const MOMENTUM_AGENT_PROMPT = `You are a momentum trader specializing in price action and order flow.
+const MOMENTUM_AGENT_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are a momentum trader specializing in price action and order flow.
 Your role is to identify breakout patterns and momentum-driven opportunities.
 
 Given market price history and order book data, analyze:
@@ -89,7 +91,9 @@ Provide your analysis as a structured signal with:
 
 Be precise and focus on near-term price action signals.`;
 
-const MEAN_REVERSION_AGENT_PROMPT = `You are a mean reversion trader specializing in overextension and crowd psychology.
+const MEAN_REVERSION_AGENT_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are a mean reversion trader specializing in overextension and crowd psychology.
 Your role is to identify when markets have moved too far and are due for reversion.
 
 Given market price history and sentiment data, analyze:

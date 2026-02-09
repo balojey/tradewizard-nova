@@ -33,7 +33,9 @@ function createCrossExaminationLLM(config: EngineConfig): LLMInstance {
 /**
  * System prompt for evidence testing
  */
-const EVIDENCE_TEST_PROMPT = `You are a fact-checker for prediction market theses.
+const EVIDENCE_TEST_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are a fact-checker for prediction market theses.
 
 Your role is to verify factual claims made in a thesis against available data.
 
@@ -57,7 +59,9 @@ Respond with a structured test result including:
 /**
  * System prompt for causality testing
  */
-const CAUSALITY_TEST_PROMPT = `You are a causality analyst for prediction market theses.
+const CAUSALITY_TEST_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are a causality analyst for prediction market theses.
 
 Your role is to test whether claimed correlations actually imply causation.
 
@@ -81,7 +85,9 @@ Respond with a structured test result including:
 /**
  * System prompt for timing testing
  */
-const TIMING_TEST_PROMPT = `You are a timeline analyst for prediction market theses.
+const TIMING_TEST_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are a timeline analyst for prediction market theses.
 
 Your role is to validate catalyst timelines and event sequences.
 
@@ -105,7 +111,9 @@ Respond with a structured test result including:
 /**
  * System prompt for liquidity testing
  */
-const LIQUIDITY_TEST_PROMPT = `You are a market microstructure analyst for prediction market theses.
+const LIQUIDITY_TEST_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are a market microstructure analyst for prediction market theses.
 
 Your role is to assess execution feasibility given market liquidity.
 
@@ -129,7 +137,9 @@ Respond with a structured test result including:
 /**
  * System prompt for tail risk testing
  */
-const TAIL_RISK_TEST_PROMPT = `You are a tail risk analyst for prediction market theses.
+const TAIL_RISK_TEST_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are a tail risk analyst for prediction market theses.
 
 Your role is to identify low-probability, high-impact scenarios.
 

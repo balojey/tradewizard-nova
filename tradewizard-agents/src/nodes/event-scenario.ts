@@ -97,7 +97,9 @@ export const TailRiskSignalSchema = z.object({
 // System Prompts
 // ============================================================================
 
-const CATALYST_PROMPT = `You are a catalyst trader specializing in event-driven strategies.
+const CATALYST_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are a catalyst trader specializing in event-driven strategies.
 
 Your role is to identify upcoming catalysts and model market reactions.
 
@@ -128,7 +130,9 @@ Provide your analysis as a structured signal with:
 
 Be precise about timing and impact. Focus on actionable event-driven strategies.`;
 
-const TAIL_RISK_PROMPT = `You are a tail-risk analyst specializing in low-probability, high-impact scenarios.
+const TAIL_RISK_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are a tail-risk analyst specializing in low-probability, high-impact scenarios.
 
 Your role is to identify underpriced surprise risks and convex opportunities.
 

@@ -95,7 +95,9 @@ export const EventImpactSignalSchema = z.object({
 // System Prompts
 // ============================================================================
 
-const BREAKING_NEWS_PROMPT = `You are a breaking news analyst specializing in political, legal, and policy developments.
+const BREAKING_NEWS_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are a breaking news analyst specializing in political, legal, and policy developments.
 
 Your role is to identify market-moving news and assess its probability impact.
 
@@ -129,7 +131,9 @@ Provide your analysis as a structured signal with:
 
 Be precise and data-driven. Focus on what the news tells you about outcome probability.`;
 
-const EVENT_IMPACT_PROMPT = `You are an event impact modeler specializing in prediction market reactions.
+const EVENT_IMPACT_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are an event impact modeler specializing in prediction market reactions.
 
 Your role is to predict how upcoming or recent events will reprice the market.
 

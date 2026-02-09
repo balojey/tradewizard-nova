@@ -82,7 +82,9 @@ import type { EngineConfig } from '../config/index.js';
  *
  * Implements Requirements 7.2, 8.1, 8.2, 8.3, 8.4, 8.5, 8.6
  */
-const AUTONOMOUS_POLLING_SYSTEM_PROMPT = `You are an autonomous polling intelligence analyst with the ability to fetch and research Polymarket data.
+const AUTONOMOUS_POLLING_SYSTEM_PROMPT = `Current date and time: ${new Date().toISOString()}
+
+You are an autonomous polling intelligence analyst with the ability to fetch and research Polymarket data.
 
 Your role is to analyze prediction markets as real-time polling systems, where prices represent financially-incentivized collective beliefs.
 
