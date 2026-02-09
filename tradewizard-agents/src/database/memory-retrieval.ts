@@ -6,6 +6,7 @@
  */
 
 import type { SupabaseClientManager } from './supabase-client.js';
+import { validateSignal } from './signal-validation.js';
 
 /**
  * Historical agent signal retrieved from database
@@ -160,40 +161,16 @@ export class MemoryRetrievalServiceImpl implements MemoryRetrievalService {
    * Implements validation logic (Requirements 10.1-10.5)
    */
   private transformToHistoricalSignal(row: any): HistoricalSignal | null {
-    // Requirement 10.1: Validate required fields
-    if (!row.agent_name || !row.market_id || !row.direction) {
-      console.warn('[MemoryRetrieval] Signal missing required fields:', {
+    // Validate signal using centralized validation module
+    // Requirements 10.1, 10.2, 10.3, 10.4, 10.5
+    const validation = validateSignal(row);
+    
+    if (!validation.valid) {
+      console.warn('[MemoryRetrieval] Invalid signal filtered out:', {
         agent_name: row.agent_name,
         market_id: row.market_id,
-        direction: row.direction,
+        errors: validation.errors,
       });
-      return null;
-    }
-
-    // Requirement 10.3: Validate probability range
-    if (
-      row.fair_probability !== null &&
-      row.fair_probability !== undefined &&
-      (row.fair_probability < 0 || row.fair_probability > 1)
-    ) {
-      console.warn('[MemoryRetrieval] Invalid fair_probability:', row.fair_probability);
-      return null;
-    }
-
-    // Requirement 10.4: Validate confidence range
-    if (
-      row.confidence !== null &&
-      row.confidence !== undefined &&
-      (row.confidence < 0 || row.confidence > 1)
-    ) {
-      console.warn('[MemoryRetrieval] Invalid confidence:', row.confidence);
-      return null;
-    }
-
-    // Requirement 10.5: Validate direction enum
-    const validDirections = ['YES', 'NO', 'NEUTRAL', 'LONG_YES', 'LONG_NO', 'NO_TRADE'];
-    if (!validDirections.includes(row.direction)) {
-      console.warn('[MemoryRetrieval] Invalid direction:', row.direction);
       return null;
     }
 
@@ -242,8 +219,8 @@ export class MemoryRetrievalServiceImpl implements MemoryRetrievalService {
       marketId: row.market_id,
       timestamp: new Date(row.created_at),
       direction: normalizedDirection,
-      fairProbability: row.fair_probability ?? 0,
-      confidence: row.confidence ?? 0,
+      fairProbability: row.fair_probability,
+      confidence: row.confidence,
       keyDrivers,
       metadata,
     };

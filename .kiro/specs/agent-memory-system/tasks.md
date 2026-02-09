@@ -97,7 +97,7 @@ This implementation plan transforms TradeWizard's multi-agent system from an ope
   - **Property 12: Comparison Execution**
   - **Validates: Requirements 8.1**
 
-- [ ] 8. Implement Signal Validation
+- [x] 8. Implement Signal Validation
   - Add validation logic for required fields
   - Add range validation for probabilities and confidence
   - Add enum validation for direction
