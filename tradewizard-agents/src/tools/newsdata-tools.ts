@@ -219,7 +219,15 @@ export type FetchMarketNewsInput = z.infer<typeof FetchMarketNewsInputSchema>;
  * Execute a tool with error handling, caching, and audit logging
  *
  * This wrapper provides consistent error handling, caching, and audit logging
- * for all tool executions. It implements Requirements 1.3, 1.4, 1.6.
+ * for all tool executions. It implements Requirements 1.3, 1.4, 1.6, 15.3, 16.6, 19.1, 19.2, 19.3, 19.4.
+ *
+ * **Comprehensive Audit Logging**:
+ * - Logs all tool invocations with parameters (Requirement 19.1)
+ * - Logs tool execution time for each invocation (Requirement 19.2)
+ * - Logs tool results or error messages (Requirement 19.3)
+ * - Logs cache hits and misses (Requirement 19.4, 16.6)
+ * - Logs article count for successful news fetches
+ * - Logs agent name for attribution
  *
  * @param toolName - Name of the tool being executed
  * @param params - Tool input parameters
@@ -241,20 +249,30 @@ export async function executeToolWithWrapper<TInput, TOutput>(
     const cached = context.cache.get(toolName, params);
     if (cached !== null) {
       cacheHit = true;
+      const duration = Date.now() - startTime;
 
-      // Log cache hit to audit trail (Requirement 1.3)
-      context.auditLog.push({
+      // Log cache hit to audit trail (Requirements 1.3, 16.6, 19.1, 19.2, 19.3, 19.4)
+      const auditEntry: ToolAuditEntry = {
         toolName,
         timestamp: Date.now(),
         params,
         result: cached,
-        duration: Date.now() - startTime,
+        duration,
         cacheHit: true,
         articleCount: Array.isArray(cached) ? cached.length : undefined,
-      });
+      };
+      context.auditLog.push(auditEntry);
+
+      // Log cache hit to console for monitoring (Requirement 16.6)
+      console.debug(
+        `[${context.agentName}] Tool cache HIT: ${toolName} (${duration}ms, ${Array.isArray(cached) ? cached.length : 0} articles)`
+      );
 
       return cached as TOutput;
     }
+
+    // Log cache miss to console for monitoring (Requirement 16.6)
+    console.debug(`[${context.agentName}] Tool cache MISS: ${toolName}`);
 
     // Execute tool function
     const result = await executor(params, context);
@@ -262,9 +280,9 @@ export async function executeToolWithWrapper<TInput, TOutput>(
     // Cache result (Requirement 1.6)
     context.cache.set(toolName, params, result);
 
-    // Log successful execution to audit trail (Requirement 1.3)
+    // Log successful execution to audit trail (Requirements 1.3, 15.3, 19.1, 19.2, 19.3)
     const duration = Date.now() - startTime;
-    context.auditLog.push({
+    const auditEntry: ToolAuditEntry = {
       toolName,
       timestamp: Date.now(),
       params,
@@ -272,7 +290,13 @@ export async function executeToolWithWrapper<TInput, TOutput>(
       duration,
       cacheHit: false,
       articleCount: Array.isArray(result) ? result.length : undefined,
-    });
+    };
+    context.auditLog.push(auditEntry);
+
+    // Log successful execution to console for monitoring
+    console.info(
+      `[${context.agentName}] Tool executed: ${toolName} (${duration}ms, ${Array.isArray(result) ? result.length : 0} articles)`
+    );
 
     return result;
   } catch (error) {
@@ -287,15 +311,22 @@ export async function executeToolWithWrapper<TInput, TOutput>(
       code: error instanceof Error && 'code' in error ? (error as any).code : undefined,
     };
 
-    // Log error to audit trail (Requirement 1.3)
-    context.auditLog.push({
+    // Log error to audit trail (Requirements 1.3, 15.3, 19.1, 19.2, 19.3)
+    const auditEntry: ToolAuditEntry = {
       toolName,
       timestamp: Date.now(),
       params,
       error: toolError.message,
       duration,
       cacheHit,
-    });
+    };
+    context.auditLog.push(auditEntry);
+
+    // Log error to console for monitoring (Requirement 15.3)
+    console.error(
+      `[${context.agentName}] Tool error: ${toolName} (${duration}ms) - ${toolError.message}`,
+      { code: toolError.code, params }
+    );
 
     // Return structured error instead of throwing (Requirement 1.4)
     return toolError;

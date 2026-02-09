@@ -521,6 +521,8 @@ Use the available tools to gather additional news data as needed, then provide y
           // Return partial results with timeout indication (Requirement 17.2)
           const toolUsageSummary = getNewsToolUsageSummary(toolAuditLog);
           const cacheStats = cache.getStats();
+          const totalDuration = Date.now() - startTime;
+          const llmTime = totalDuration - toolUsageSummary.totalToolTime;
 
           // Create a partial signal with reduced confidence
           const partialSignal: AgentSignal = {
@@ -566,11 +568,26 @@ Use the available tools to gather additional news data as needed, then provide y
                   direction: partialSignal.direction,
                   confidence: partialSignal.confidence,
                   fairProbability: partialSignal.fairProbability,
+                  
+                  // Tool usage summary (Requirements 19.5, 19.6)
                   toolsCalled: toolUsageSummary.toolsCalled,
                   totalToolTime: toolUsageSummary.totalToolTime,
+                  llmTime, // Separate LLM time from tool time (Requirement 17.6)
+                  totalDuration,
+                  
+                  // Cache statistics (Requirements 16.6, 19.4)
                   cacheHits: cacheStats.hits,
                   cacheMisses: cacheStats.misses,
-                  duration: Date.now() - startTime,
+                  cacheHitRate: cacheStats.hits + cacheStats.misses > 0 
+                    ? (cacheStats.hits / (cacheStats.hits + cacheStats.misses)).toFixed(2)
+                    : '0.00',
+                  
+                  // Tool breakdown (Requirement 19.5)
+                  toolBreakdown: toolUsageSummary.toolBreakdown,
+                  totalArticles: toolUsageSummary.totalArticles,
+                  errors: toolUsageSummary.errors,
+                  
+                  // Detailed tool audit trail (Requirements 19.1, 19.2, 19.3, 19.4)
                   toolAudit: toolAuditLog,
                   warning: 'Agent execution timeout - returned partial results',
                 },
@@ -678,7 +695,11 @@ Use the available tools to gather additional news data as needed, then provide y
         };
       }
 
-      // Step 11: Return agent signal and audit log
+      // Step 11: Return agent signal and comprehensive audit log
+      // Requirements: 19.5, 19.6 - Include tool usage summary in audit log
+      const totalDuration = Date.now() - startTime;
+      const llmTime = totalDuration - toolUsageSummary.totalToolTime;
+
       return {
         agentSignals: [signal],
         auditLog: [
@@ -691,11 +712,26 @@ Use the available tools to gather additional news data as needed, then provide y
               direction: signal.direction,
               confidence: signal.confidence,
               fairProbability: signal.fairProbability,
+              
+              // Tool usage summary (Requirements 19.5, 19.6)
               toolsCalled: toolUsageSummary.toolsCalled,
               totalToolTime: toolUsageSummary.totalToolTime,
+              llmTime, // Separate LLM time from tool time
+              totalDuration,
+              
+              // Cache statistics (Requirements 16.6, 19.4)
               cacheHits: cacheStats.hits,
               cacheMisses: cacheStats.misses,
-              duration: Date.now() - startTime,
+              cacheHitRate: cacheStats.hits + cacheStats.misses > 0 
+                ? (cacheStats.hits / (cacheStats.hits + cacheStats.misses)).toFixed(2)
+                : '0.00',
+              
+              // Tool breakdown (Requirement 19.5)
+              toolBreakdown: toolUsageSummary.toolBreakdown,
+              totalArticles: toolUsageSummary.totalArticles,
+              errors: toolUsageSummary.errors,
+              
+              // Detailed tool audit trail (Requirements 19.1, 19.2, 19.3, 19.4)
               toolAudit: toolAuditLog,
             },
           },
@@ -712,6 +748,8 @@ Use the available tools to gather additional news data as needed, then provide y
       // Get tool usage summary for error reporting
       const toolUsageSummary = getNewsToolUsageSummary(toolAuditLog);
       const cacheStats = cache ? cache.getStats() : { hits: 0, misses: 0 };
+      const totalDuration = Date.now() - startTime;
+      const llmTime = totalDuration - toolUsageSummary.totalToolTime;
 
       // Check if we should fall back to basic mode (Requirement 15.2)
       const shouldFallback = isCriticalFailure && config.newsAgents?.[`${agentType}Agent` as keyof typeof config.newsAgents]?.fallbackToBasic;
@@ -743,11 +781,26 @@ Use the available tools to gather additional news data as needed, then provide y
                 error: errorMessage,
                 errorContext: isCriticalFailure ? 'Critical agent execution failure' : 'Agent execution timeout',
                 fallbackRecommended: true,
+                
+                // Tool usage summary (Requirements 19.5, 19.6)
                 toolsCalled: toolUsageSummary.toolsCalled,
                 totalToolTime: toolUsageSummary.totalToolTime,
+                llmTime, // Separate LLM time from tool time (Requirement 17.6)
+                totalDuration,
+                
+                // Cache statistics (Requirements 16.6, 19.4)
                 cacheHits: cacheStats.hits,
                 cacheMisses: cacheStats.misses,
-                duration: Date.now() - startTime,
+                cacheHitRate: cacheStats.hits + cacheStats.misses > 0 
+                  ? (cacheStats.hits / (cacheStats.hits + cacheStats.misses)).toFixed(2)
+                  : '0.00',
+                
+                // Tool breakdown (Requirement 19.5)
+                toolBreakdown: toolUsageSummary.toolBreakdown,
+                totalArticles: toolUsageSummary.totalArticles,
+                errors: toolUsageSummary.errors,
+                
+                // Detailed tool audit trail (Requirements 19.1, 19.2, 19.3, 19.4)
                 toolAudit: toolAuditLog,
               },
             },
@@ -773,11 +826,26 @@ Use the available tools to gather additional news data as needed, then provide y
               success: false,
               error: errorMessage,
               errorContext: isTimeout ? 'Agent execution timeout' : 'Agent execution failed',
+              
+              // Tool usage summary (Requirements 19.5, 19.6)
               toolsCalled: toolUsageSummary.toolsCalled,
               totalToolTime: toolUsageSummary.totalToolTime,
+              llmTime, // Separate LLM time from tool time (Requirement 17.6)
+              totalDuration,
+              
+              // Cache statistics (Requirements 16.6, 19.4)
               cacheHits: cacheStats.hits,
               cacheMisses: cacheStats.misses,
-              duration: Date.now() - startTime,
+              cacheHitRate: cacheStats.hits + cacheStats.misses > 0 
+                ? (cacheStats.hits / (cacheStats.hits + cacheStats.misses)).toFixed(2)
+                : '0.00',
+              
+              // Tool breakdown (Requirement 19.5)
+              toolBreakdown: toolUsageSummary.toolBreakdown,
+              totalArticles: toolUsageSummary.totalArticles,
+              errors: toolUsageSummary.errors,
+              
+              // Detailed tool audit trail (Requirements 19.1, 19.2, 19.3, 19.4)
               toolAudit: toolAuditLog,
             },
           },
