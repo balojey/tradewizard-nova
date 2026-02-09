@@ -15,10 +15,12 @@ import type { TradeRecommendation, AgentSignal } from './models/types.js';
 import { GraphExecutionLogger } from './utils/audit-logger.js';
 import { createDataIntegrationLayer } from './utils/data-integration.js';
 import { createPostgresCheckpointer } from './database/postgres-checkpointer.js';
+import { createMemoryRetrievalService } from './database/memory-retrieval.js';
 import type { SupabaseClientManager } from './database/supabase-client.js';
 import {
   createMarketIngestionNode,
   createKeywordExtractionNode,
+  createMemoryRetrievalNode,
   createAgentNodes,
   createPollingIntelligenceAgentNode,
   createThesisConstructionNode,
@@ -91,6 +93,47 @@ export async function createWorkflow(
   // Create all node functions
   const marketIngestion = createMarketIngestionNode(polymarketClient);
   const keywordExtraction = createKeywordExtractionNode(config, existingOpikHandler);
+  
+  // Create memory retrieval service and node (Requirements 2.1, 5.2)
+  // Define all agent names that need memory context
+  const allAgentNames = [
+    'market_microstructure',
+    'probability_baseline',
+    'risk_assessment',
+    'breaking_news',
+    'event_impact',
+    'polling_intelligence',
+    'historical_pattern',
+    'media_sentiment',
+    'social_sentiment',
+    'narrative_velocity',
+    'momentum',
+    'mean_reversion',
+    'catalyst',
+    'tail_risk',
+  ];
+  
+  let memoryRetrieval;
+  if (supabaseManager) {
+    const memoryService = createMemoryRetrievalService(supabaseManager);
+    memoryRetrieval = createMemoryRetrievalNode(memoryService, allAgentNames);
+  } else {
+    // Fallback: create a no-op memory retrieval node if no Supabase manager
+    memoryRetrieval = async (state: GraphStateType) => ({
+      memoryContext: new Map(),
+      auditLog: [
+        {
+          stage: 'memory_retrieval',
+          timestamp: Date.now(),
+          data: {
+            success: false,
+            reason: 'No Supabase manager available',
+            duration: 0,
+          },
+        },
+      ],
+    });
+  }
   
   // Create agents (enhanced or standard based on configuration)
   let agents;
@@ -168,6 +211,7 @@ export async function createWorkflow(
   const workflow = new StateGraph(GraphState)
     // Add all nodes to the graph
     .addNode('market_ingestion', marketIngestion)
+    .addNode('memory_retrieval', memoryRetrieval)
     .addNode('keyword_extraction', keywordExtraction)
     .addNode('dynamic_agent_selection', dynamicAgentSelection)
     
@@ -223,14 +267,17 @@ export async function createWorkflow(
         if (state.ingestionError) {
           return 'error';
         }
-        // Otherwise, proceed to keyword extraction
-        return 'keyword_extraction';
+        // Otherwise, proceed to memory retrieval
+        return 'memory_retrieval';
       },
       {
-        keyword_extraction: 'keyword_extraction',
+        memory_retrieval: 'memory_retrieval',
         error: END,
       }
     )
+
+    // Add edge from memory retrieval to keyword extraction
+    .addEdge('memory_retrieval', 'keyword_extraction')
 
     // Add edge from keyword extraction to dynamic agent selection
     .addEdge('keyword_extraction', 'dynamic_agent_selection')
