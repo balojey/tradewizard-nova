@@ -34,6 +34,7 @@ The Market Intelligence Engine transforms raw prediction market data from Polyma
 - 🎯 **Actionable Recommendations**: Clear trade signals with entry/exit zones and risk assessment
 - 🛡️ **Robust Error Handling**: Graceful degradation and comprehensive error recovery
 - 🔧 **Autonomous News Agents**: AI agents that autonomously fetch and research news data using LangChain tools
+- 🧠 **Agent Memory System**: Closed-loop analysis where agents access and build upon their historical outputs
 
 ## Architecture
 
@@ -59,18 +60,30 @@ The Market Intelligence Engine is built on **LangGraph**, a framework for buildi
 │                     │                                        │
 │                     ▼                                        │
 │  ┌──────────────────────────────────────────────────────┐  │
+│  │ Node: Memory Context Retrieval                       │  │
+│  │ - Query historical agent signals from database       │  │
+│  │ - Retrieve last 3-5 signals per agent for market     │  │
+│  │ - Format as structured memory context                │  │
+│  │ - Populate memoryContext in graph state              │  │
+│  └──────────────────┬───────────────────────────────────┘  │
+│                     │                                        │
+│                     ▼                                        │
+│  ┌──────────────────────────────────────────────────────┐  │
 │  │ Parallel Nodes: Intelligence Agents                  │  │
 │  │ ┌────────────────────────────────────────────────┐  │  │
 │  │ │ Market Microstructure Agent (GPT-4-turbo)      │  │  │
 │  │ │ - Order book analysis, spread, momentum        │  │  │
+│  │ │ - Receives own historical signals as context   │  │  │
 │  │ └────────────────────────────────────────────────┘  │  │
 │  │ ┌────────────────────────────────────────────────┐  │  │
 │  │ │ Probability Baseline Agent (Gemini-1.5-flash)  │  │  │
 │  │ │ - Naive baseline probability estimate          │  │  │
+│  │ │ - Receives own historical signals as context   │  │  │
 │  │ └────────────────────────────────────────────────┘  │  │
 │  │ ┌────────────────────────────────────────────────┐  │  │
 │  │ │ Risk Assessment Agent (Claude-3-sonnet)        │  │  │
 │  │ │ - Tail risks and failure modes                 │  │  │
+│  │ │ - Receives own historical signals as context   │  │  │
 │  │ └────────────────────────────────────────────────┘  │  │
 │  └──────────────────┬───────────────────────────────────┘  │
 │                     │                                        │
@@ -129,6 +142,9 @@ const GraphState = Annotation.Root({
   // Market Ingestion Output
   mbd: Annotation<MarketBriefingDocument | null>,
   ingestionError: Annotation<IngestionError | null>,
+  
+  // Memory Context (Agent Memory System)
+  memoryContext: Annotation<Map<string, AgentMemoryContext>>,
   
   // Agent Signals Output
   agentSignals: Annotation<AgentSignal[]>,
@@ -391,6 +407,46 @@ BREAKING_NEWS_AGENT_TIMEOUT=45000
 - Default is `false` for backward compatibility
 
 See [Autonomous News Agents Documentation](./docs/AUTONOMOUS_NEWS_AGENTS.md) for complete configuration options.
+
+### Agent Memory System Configuration
+
+The Agent Memory System enables closed-loop analysis where agents access and build upon their historical outputs:
+
+```bash
+# .env
+# Enable/disable memory system
+MEMORY_SYSTEM_ENABLED=true
+
+# Maximum historical signals per agent (default: 3)
+MEMORY_MAX_SIGNALS_PER_AGENT=3
+
+# Query timeout in milliseconds (default: 5000)
+MEMORY_QUERY_TIMEOUT_MS=5000
+
+# Retry attempts for rate limits (default: 3)
+MEMORY_RETRY_ATTEMPTS=3
+```
+
+**How it works:**
+- Before each analysis, agents retrieve their previous 3-5 signals for the same market
+- Historical signals are formatted as structured memory context in agent prompts
+- Agents reference previous analysis and explain changes in reasoning
+- System tracks evolution of agent analysis over time (direction changes, probability shifts, confidence changes)
+
+**Benefits:**
+- ✅ More consistent analysis across time periods
+- ✅ Agents can explain changes in their reasoning
+- ✅ Better tracking of evolving market conditions
+- ✅ Improved analysis quality through continuity
+
+**Error Handling:**
+- If memory retrieval fails, agents continue with empty memory context (graceful degradation)
+- All errors are logged for debugging
+- Retry logic with exponential backoff for rate limits
+
+See [Agent Memory System Documentation](./src/database/MEMORY_SYSTEM_CONFIG.md) for complete details.
+
+**Quick Start**: See [Memory System Quick Start Guide](./docs/MEMORY_SYSTEM_QUICK_START.md) for 5-minute setup.
 
 ### Consensus Configuration
 
@@ -818,6 +874,25 @@ docker logs -f market-intelligence-engine
 - Review Opik configuration in `.env`
 - Check application logs for Opik errors
 
+#### Memory system not working
+
+**Problem:** Agents not receiving historical context or memory retrieval failing.
+
+**Solutions:**
+- Verify `MEMORY_SYSTEM_ENABLED=true` in `.env`
+- Check database connection: `npm run cli -- checkpoint <conditionId>`
+- Verify historical signals exist in database:
+  ```sql
+  SELECT COUNT(*) FROM agent_signals WHERE market_id = 'your-market-id';
+  ```
+- Check audit logs for memory retrieval errors
+- Ensure database indexes exist:
+  ```sql
+  SELECT indexname FROM pg_indexes WHERE tablename = 'agent_signals';
+  ```
+- Increase timeout if needed: `MEMORY_QUERY_TIMEOUT_MS=10000`
+- See [Memory System Troubleshooting](./src/database/MEMORY_SYSTEM_CONFIG.md#troubleshooting) for detailed guide
+
 ### LangGraph Debugging
 
 #### Using LangGraph Studio
@@ -914,8 +989,12 @@ View cost breakdown in Opik:
 
 - **[CLI Documentation](./CLI.md)** - Complete CLI reference
 - **[Autonomous News Agents](./docs/AUTONOMOUS_NEWS_AGENTS.md)** - Autonomous news intelligence agents with tool-calling capabilities
+- **[Agent Memory System](./src/database/MEMORY_SYSTEM_CONFIG.md)** - Closed-loop analysis with historical context
+- **[Memory System Quick Start](./docs/MEMORY_SYSTEM_QUICK_START.md)** - 5-minute setup guide
+- **[Memory System Examples](./docs/MEMORY_SYSTEM_EXAMPLES.md)** - Practical usage examples and code samples
 - **[LLM Provider Setup Guide](./docs/LLM_PROVIDERS.md)** - Setup instructions for OpenAI, Anthropic, Google, and Amazon Nova
 - **[Nova Troubleshooting Guide](./docs/NOVA_TROUBLESHOOTING.md)** - Amazon Nova integration troubleshooting
+- **[Database Module](./src/database/README.md)** - Supabase PostgreSQL integration
 - **[Design Document](./.kiro/specs/market-intelligence-engine/design.md)** - System architecture and design decisions
 - **[Requirements Document](./.kiro/specs/market-intelligence-engine/requirements.md)** - Functional requirements
 - **[Tasks Document](./.kiro/specs/market-intelligence-engine/tasks.md)** - Implementation plan

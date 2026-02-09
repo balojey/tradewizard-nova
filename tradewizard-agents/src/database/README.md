@@ -9,6 +9,13 @@ This module provides Supabase PostgreSQL integration for the Automated Market Mo
 - **Health Checks**: Connection health monitoring
 - **Retry Logic**: Configurable retry mechanism for database operations
 - **Schema Migrations**: Managed via Supabase CLI
+- **Agent Memory System**: Historical signal retrieval for closed-loop agent analysis
+
+## Quick Links
+
+- **[Memory System Configuration](./MEMORY_SYSTEM_CONFIG.md)** - Complete guide to the Agent Memory System
+- **[Migration Guide](./MIGRATIONS.md)** - Database schema migration documentation
+- **[Setup Guide](./SETUP.md)** - Initial database setup instructions
 
 ## Setup
 
@@ -159,6 +166,47 @@ const result = await manager.withRetry(async () => {
 }, 'insert market');
 ```
 
+### Agent Memory System
+
+```typescript
+import { createMemoryRetrievalService } from './memory-retrieval.js';
+
+const manager = createSupabaseClientManager();
+await manager.connect();
+
+// Create memory retrieval service
+const memoryService = createMemoryRetrievalService(manager);
+
+// Get historical signals for an agent
+const memory = await memoryService.getAgentMemory(
+  'Market Microstructure Agent',
+  '0x1234567890abcdef',
+  3  // Retrieve last 3 signals
+);
+
+console.log('Has history:', memory.hasHistory);
+console.log('Signals:', memory.historicalSignals);
+
+// Get memory for all agents
+const allMemories = await memoryService.getAllAgentMemories(
+  '0x1234567890abcdef',
+  ['Market Microstructure Agent', 'Risk Assessment Agent'],
+  3
+);
+
+// Format memory context for agent prompts
+import { formatMemoryContext } from '../utils/memory-formatter.js';
+
+const formatted = formatMemoryContext(memory, {
+  maxLength: 1000,
+  dateFormat: 'human'
+});
+
+console.log('Formatted context:', formatted.text);
+```
+
+See [Memory System Configuration](./MEMORY_SYSTEM_CONFIG.md) for complete documentation.
+
 ## Database Schema
 
 The schema is defined in `supabase/migrations/` and includes:
@@ -171,6 +219,8 @@ Stores trade recommendations with direction, fair_probability, market_edge, conf
 
 ### agent_signals
 Stores individual agent signals with agent_name, agent_type, fair_probability, confidence, direction, and key_drivers.
+
+**Memory System Integration**: This table is used by the Agent Memory System to retrieve historical signals for closed-loop analysis. Agents query their previous signals before generating new analysis, enabling them to track evolution and explain changes in reasoning.
 
 ### analysis_history
 Tracks analysis execution history with analysis_type, status, duration, cost, and agents_used.
