@@ -70,8 +70,8 @@ This implementation plan transforms three existing TradeWizard agents (Breaking 
     - Test sentiment filtering works correctly
     - _Requirements: 4.1, 4.2, 4.4, 4.5, 4.6, 4.7_
 
-- [ ] 5. Implement fetchMarketNews tool
-  - [ ] 5.1 Create fetchMarketNews tool with Zod schema
+- [x] 5. Implement fetchMarketNews tool
+  - [x] 5.1 Create fetchMarketNews tool with Zod schema
     - Define input schema with symbols, organizations, and filtering parameters
     - Implement market-specific parameter handling
     - Add market metadata extraction logic

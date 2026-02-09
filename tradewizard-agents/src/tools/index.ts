@@ -119,4 +119,6 @@ export {
   createFetchArchiveNewsTool,
   fetchCryptoNews,
   createFetchCryptoNewsTool,
+  fetchMarketNews,
+  createFetchMarketNewsTool,
 } from './newsdata-tools.js';

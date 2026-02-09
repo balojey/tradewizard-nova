@@ -1036,3 +1036,191 @@ Example usage:
     },
   };
 }
+
+/**
+ * fetchMarketNews Tool
+ *
+ * Fetches financial market and company news with market-specific filtering.
+ * This tool is designed for market microstructure analysis and company event tracking.
+ *
+ * **Key Features**:
+ * - Stock symbol filtering (AAPL, TSLA, MSFT, etc.)
+ * - Organization name filtering (Apple, Tesla, Microsoft, etc.)
+ * - Timeframe or date range filtering
+ * - Keyword search in title or content
+ * - Sentiment filtering (positive, negative, neutral)
+ * - Country filtering for regional market news
+ * - Market-specific metadata extraction (symbol tags, organization tags)
+ * - Automatic duplicate removal
+ * - Result caching within session
+ *
+ * **Use Cases**:
+ * - Market microstructure analysis
+ * - Company-specific event monitoring
+ * - Financial market sentiment tracking
+ * - Liquidity catalyst identification
+ *
+ * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7
+ *
+ * @param input - Tool input parameters (validated against FetchMarketNewsInputSchema)
+ * @param context - Tool execution context
+ * @returns Array of NewsArticle objects with market metadata or ToolError
+ */
+export async function fetchMarketNews(
+  input: FetchMarketNewsInput,
+  context: ToolContext
+): Promise<NewsArticle[] | ToolError> {
+  return executeToolWithWrapper<FetchMarketNewsInput, NewsArticle[]>(
+    'fetchMarketNews',
+    input,
+    context,
+    async (params, ctx) => {
+      // Validate input parameters (Requirement 5.1)
+      const validation = validateToolInput(FetchMarketNewsInputSchema, params);
+      if (!validation.success) {
+        throw new Error(validation.error);
+      }
+
+      const validatedParams = validation.data;
+
+      // Transform parameters to NewsData API format
+      const apiParams: any = {
+        size: Math.min(validatedParams.size || 20, 50), // Requirement 5.7: Max 50 articles
+        language: validatedParams.languages,
+        removeduplicate: validatedParams.removeDuplicates ? 1 : 0,
+      };
+
+      // Add stock symbols (Requirement 5.2)
+      if (validatedParams.symbols && validatedParams.symbols.length > 0) {
+        // NewsData API expects 'symbol' parameter as comma-separated string or array
+        apiParams.symbol = validatedParams.symbols;
+      }
+
+      // Add organization names (Requirement 5.3)
+      if (validatedParams.organizations && validatedParams.organizations.length > 0) {
+        // NewsData API expects 'ai_org' parameter for organization filtering
+        apiParams.ai_org = validatedParams.organizations;
+      }
+
+      // Add query parameters (Requirement 5.3)
+      if (validatedParams.query) {
+        apiParams.q = validatedParams.query;
+      }
+      if (validatedParams.queryInTitle) {
+        apiParams.qInTitle = validatedParams.queryInTitle;
+      }
+
+      // Add timeframe or date range (Requirement 5.3)
+      if (validatedParams.timeframe) {
+        // Convert timeframe format if needed: '1h' -> '1', '24h' -> '24'
+        const timeframeValue = validatedParams.timeframe.replace('h', '');
+        apiParams.timeframe = timeframeValue;
+      }
+      if (validatedParams.fromDate) {
+        apiParams.from_date = validatedParams.fromDate;
+      }
+      if (validatedParams.toDate) {
+        apiParams.to_date = validatedParams.toDate;
+      }
+
+      // Add sentiment filtering (Requirement 5.5)
+      if (validatedParams.sentiment) {
+        apiParams.sentiment = validatedParams.sentiment;
+      }
+
+      // Add country filtering (Requirement 5.3)
+      if (validatedParams.countries && validatedParams.countries.length > 0) {
+        apiParams.country = validatedParams.countries;
+      }
+
+      // Call NewsData API
+      const response = await ctx.newsDataClient.fetchMarketNews(apiParams, ctx.agentName);
+
+      // Handle no results case (Requirement 5.6)
+      if (!response.results || response.results.length === 0) {
+        console.warn(`[fetchMarketNews] No articles found for query: ${JSON.stringify(params)}`);
+        return []; // Return empty array with warning logged
+      }
+
+      // Transform articles to standardized format with market metadata (Requirement 5.4)
+      const articles = response.results.map(transformNewsDataArticle);
+
+      // Ensure we don't exceed 50 articles (Requirement 5.7)
+      return articles.slice(0, 50);
+    }
+  );
+}
+
+/**
+ * Create LangChain-compatible fetchMarketNews tool
+ *
+ * This function creates a LangChain StructuredTool that can be used by
+ * autonomous agents. The tool includes schema validation and proper
+ * error handling.
+ *
+ * @param context - Tool execution context
+ * @returns LangChain StructuredTool
+ */
+export function createFetchMarketNewsTool(context: ToolContext) {
+  return {
+    name: 'fetchMarketNews',
+    description: `Fetch financial market and company news.
+
+Use this tool to:
+- Analyze market microstructure and dynamics
+- Monitor company-specific events and announcements
+- Track financial market sentiment
+- Identify liquidity catalysts and market-moving events
+
+Parameters:
+- symbols: Stock symbols to filter by (e.g., ["AAPL", "TSLA", "MSFT"]) (optional)
+- organizations: Organization names to filter by (e.g., ["Apple", "Tesla", "Microsoft"]) (optional)
+- query: Search query for article content (optional)
+- queryInTitle: Search query for article titles only (optional, more precise)
+- timeframe: Time window for news (e.g., "1h", "6h", "24h") (optional)
+- fromDate: Start date in YYYY-MM-DD format (optional)
+- toDate: End date in YYYY-MM-DD format (optional)
+- sentiment: Filter by sentiment - 'positive', 'negative', or 'neutral' (optional)
+- countries: Country codes to filter by (e.g., ["us", "uk"]) (optional)
+- languages: Language codes (default: ["en"])
+- size: Number of articles to return (1-50, default: 20)
+- removeDuplicates: Remove duplicate articles (default: true)
+
+Returns: Array of news articles with title, url, source, content, metadata, and market-specific fields (symbol tags, organization tags).
+
+Important notes:
+- When no symbols or organizations specified, returns general financial market news
+- Articles include market metadata with symbol and organization tags when available
+- Maximum 50 articles per query
+- Can use either timeframe OR date range, not both
+- Symbols should be stock ticker symbols (e.g., "AAPL" not "Apple")
+- Organizations should be company names (e.g., "Apple" not "AAPL")
+
+Example usage:
+- Company news: { symbols: ["AAPL"], timeframe: "24h" }
+- Market sentiment: { query: "Federal Reserve", sentiment: "negative", size: 30 }
+- Multi-company: { organizations: ["Apple", "Tesla", "Microsoft"], queryInTitle: "earnings" }
+- General market: { query: "stock market", countries: ["us"], timeframe: "48h" }
+- Microstructure: { symbols: ["TSLA"], query: "trading volume", timeframe: "6h" }`,
+    schema: FetchMarketNewsInputSchema,
+    func: async (input: FetchMarketNewsInput) => {
+      const result = await fetchMarketNews(input, context);
+      
+      // If error, return error message for LLM
+      if (isToolError(result)) {
+        return JSON.stringify({
+          error: true,
+          message: result.message,
+          code: result.code,
+        });
+      }
+      
+      // Return articles as JSON string for LLM
+      return JSON.stringify({
+        success: true,
+        articleCount: result.length,
+        articles: result,
+      });
+    },
+  };
+}
