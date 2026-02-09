@@ -120,15 +120,15 @@ This implementation plan transforms three existing TradeWizard agents (Breaking 
   - Update `src/nodes/index.ts` to export autonomous agents
   - _Requirements: 6.1, 6.2, 7.1, 7.2, 8.1, 8.2_
 
-- [ ] 9. Implement Breaking News Agent system prompt
-  - [ ] 9.1 Create AUTONOMOUS_BREAKING_NEWS_SYSTEM_PROMPT
+- [x] 9. Implement Breaking News Agent system prompt
+  - [x] 9.1 Create AUTONOMOUS_BREAKING_NEWS_SYSTEM_PROMPT
     - Define agent role and capabilities
     - Document available tools and usage guidelines
     - Specify breaking news detection strategy
     - Add analysis focus and output format instructions
     - _Requirements: 6.2, 6.4_
   
-  - [ ] 9.2 Create autonomous breaking news agent node function
+  - [x] 9.2 Create autonomous breaking news agent node function
     - Implement createAutonomousBreakingNewsAgentNode
     - Add tool initialization and agent creation
     - Implement agent invocation with timeout
