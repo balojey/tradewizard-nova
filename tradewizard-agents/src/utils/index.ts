@@ -122,3 +122,11 @@ export {
   type MemoryFormatOptions,
   type FormattedMemoryContext,
 } from './memory-formatter.js';
+export {
+  createEvolutionTracker,
+  logEvolutionEvents,
+  EvolutionTrackerImpl,
+  type EvolutionTracker,
+  type EvolutionEvent,
+  type EvolutionEventType,
+} from './evolution-tracker.js';
