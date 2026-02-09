@@ -63,7 +63,7 @@ This implementation plan transforms TradeWizard's multi-agent system from an ope
 - [x] 5. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Enhance Agent Node Factory
+- [x] 6. Enhance Agent Node Factory
   - Modify createAgentNode to inject memory context into prompts
   - Add memory context formatting to system prompts
   - Include instructions for using historical analysis

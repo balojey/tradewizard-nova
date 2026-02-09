@@ -10,6 +10,7 @@ import type { GraphStateType } from '../models/state.js';
 import type { AgentSignal } from '../models/types.js';
 import { AgentSignalSchema, AgentSignalLLMOutputSchema } from '../models/schemas.js';
 import type { EngineConfig } from '../config/index.js';
+import { formatMemoryContext } from '../utils/memory-formatter.js';
 
 /**
  * Type for supported LLM instances
@@ -61,10 +62,34 @@ export function createAgentNode(
       };
     }
 
+    // Requirement 2.1: Retrieve memory context for this agent
+    const memoryContext = state.memoryContext?.get(agentName);
+    const formattedMemory = memoryContext
+      ? formatMemoryContext(memoryContext, { maxLength: 1000 })
+      : { text: 'No previous analysis available for this market.', signalCount: 0, truncated: false };
+
+    // Requirement 3.1, 3.2, 3.3, 3.4, 3.5: Enhanced prompt with memory context and instructions
+    const enhancedSystemPrompt = `${systemPrompt}
+
+## Your Previous Analysis
+
+${formattedMemory.text}
+
+## Instructions for Using Memory Context
+
+When you have previous analysis available:
+1. Review your previous analysis before generating new analysis
+2. Identify what has changed since your last analysis (market conditions, probabilities, key drivers)
+3. If your view has changed significantly, explain the reasoning for the change in your key drivers
+4. If your view remains consistent, acknowledge the continuity and reinforce your reasoning
+5. Reference specific changes from previous analysis when relevant
+
+Your analysis should show thoughtful evolution over time, not random fluctuation.`;
+
     // Prepare the market context for the agent
     const marketContext = JSON.stringify(state.mbd, null, 2);
     const messages = [
-      { role: 'system', content: systemPrompt },
+      { role: 'system', content: enhancedSystemPrompt },
       {
         role: 'user',
         content: `Analyze the following prediction market and provide your signal:\n\n${marketContext}`,
