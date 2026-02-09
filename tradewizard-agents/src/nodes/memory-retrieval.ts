@@ -13,6 +13,7 @@
 
 import type { GraphStateType } from '../models/state.js';
 import type { MemoryRetrievalService } from '../database/memory-retrieval.js';
+import type { EngineConfig } from '../config/index.js';
 
 /**
  * Memory Retrieval Node
@@ -23,14 +24,34 @@ import type { MemoryRetrievalService } from '../database/memory-retrieval.js';
  * @param state - Current graph state
  * @param memoryService - Memory retrieval service instance
  * @param agentNames - List of agent names to retrieve memory for
+ * @param config - Engine configuration with memory system settings
  * @returns Partial state update with memoryContext and audit log
  */
 export async function memoryRetrievalNode(
   state: GraphStateType,
   memoryService: MemoryRetrievalService,
-  agentNames: string[]
+  agentNames: string[],
+  config: EngineConfig
 ): Promise<Partial<GraphStateType>> {
   const startTime = Date.now();
+
+  // Check feature flag - if disabled, return empty memory context
+  if (!config.memorySystem.enabled) {
+    return {
+      memoryContext: new Map(),
+      auditLog: [
+        {
+          stage: 'memory_retrieval',
+          timestamp: Date.now(),
+          data: {
+            success: true,
+            reason: 'Memory system disabled via feature flag',
+            duration: Date.now() - startTime,
+          },
+        },
+      ],
+    };
+  }
 
   // Extract market ID from state
   const marketId = state.conditionId;
@@ -54,10 +75,17 @@ export async function memoryRetrievalNode(
   }
 
   try {
-    // Retrieve memory context for all agents with timeout (Requirement 9.3)
-    const memoryPromise = memoryService.getAllAgentMemories(marketId, agentNames, 3);
+    // Retrieve memory context for all agents with configurable timeout and limit
+    const memoryPromise = memoryService.getAllAgentMemories(
+      marketId,
+      agentNames,
+      config.memorySystem.maxSignalsPerAgent
+    );
     const timeoutPromise = new Promise<Map<string, any>>((_, reject) =>
-      setTimeout(() => reject(new Error('Memory retrieval timeout')), 5000)
+      setTimeout(
+        () => reject(new Error('Memory retrieval timeout')),
+        config.memorySystem.queryTimeoutMs
+      )
     );
 
     const memoryContext = await Promise.race([memoryPromise, timeoutPromise]);
@@ -86,6 +114,8 @@ export async function memoryRetrievalNode(
             totalAgents: agentNames.length,
             agentsWithHistory,
             totalSignals,
+            maxSignalsPerAgent: config.memorySystem.maxSignalsPerAgent,
+            queryTimeoutMs: config.memorySystem.queryTimeoutMs,
             duration: Date.now() - startTime,
           },
         },
@@ -120,13 +150,15 @@ export async function memoryRetrievalNode(
  *
  * @param memoryService - Memory retrieval service instance
  * @param agentNames - List of agent names to retrieve memory for
+ * @param config - Engine configuration with memory system settings
  * @returns Node function for LangGraph
  */
 export function createMemoryRetrievalNode(
   memoryService: MemoryRetrievalService,
-  agentNames: string[]
+  agentNames: string[],
+  config: EngineConfig
 ) {
   return async (state: GraphStateType): Promise<Partial<GraphStateType>> => {
-    return memoryRetrievalNode(state, memoryService, agentNames);
+    return memoryRetrievalNode(state, memoryService, agentNames, config);
   };
 }

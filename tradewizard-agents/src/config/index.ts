@@ -302,6 +302,19 @@ const EngineConfigSchema = z
         fallbackToBasic: z.boolean().default(true),
       }),
     }),
+    // ============================================================================
+    // Agent Memory System Configuration
+    // ============================================================================
+    memorySystem: z.object({
+      // Feature flag to enable/disable the entire memory system
+      enabled: z.boolean().default(false),
+      // Maximum number of historical signals to retrieve per agent-market combination
+      maxSignalsPerAgent: z.number().positive().min(1).max(10).default(3),
+      // Query timeout in milliseconds (prevents slow queries from blocking workflow)
+      queryTimeoutMs: z.number().positive().default(5000),
+      // Number of retry attempts for rate limit errors
+      retryAttempts: z.number().min(0).max(5).default(3),
+    }),
   })
   .refine(
     (config) => {
@@ -666,6 +679,12 @@ export function loadConfig(): EngineConfig {
     },
     pollingAgent: loadPollingAgentConfig(),
     newsAgents: loadNewsAgentsConfig(),
+    memorySystem: {
+      enabled: process.env.MEMORY_SYSTEM_ENABLED === 'true',
+      maxSignalsPerAgent: parseInt(process.env.MEMORY_SYSTEM_MAX_SIGNALS_PER_AGENT || '3', 10),
+      queryTimeoutMs: parseInt(process.env.MEMORY_SYSTEM_QUERY_TIMEOUT_MS || '5000', 10),
+      retryAttempts: parseInt(process.env.MEMORY_SYSTEM_RETRY_ATTEMPTS || '3', 10),
+    },
   };
 
   // Validate configuration
