@@ -866,3 +866,173 @@ Example usage:
     },
   };
 }
+
+/**
+ * fetchCryptoNews Tool
+ *
+ * Fetches cryptocurrency and blockchain related news with crypto-specific filtering.
+ * This tool is designed for crypto market analysis and sentiment tracking.
+ *
+ * **Key Features**:
+ * - Coin symbol filtering (btc, eth, ada, etc.)
+ * - Timeframe or date range filtering
+ * - Keyword search in title or content
+ * - Sentiment filtering (positive, negative, neutral)
+ * - Crypto-specific metadata extraction (coin tags)
+ * - Automatic duplicate removal
+ * - Result caching within session
+ *
+ * **Use Cases**:
+ * - Crypto market sentiment analysis
+ * - Coin-specific news monitoring
+ * - Blockchain event tracking
+ * - Crypto market impact assessment
+ *
+ * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7
+ *
+ * @param input - Tool input parameters (validated against FetchCryptoNewsInputSchema)
+ * @param context - Tool execution context
+ * @returns Array of NewsArticle objects with crypto metadata or ToolError
+ */
+export async function fetchCryptoNews(
+  input: FetchCryptoNewsInput,
+  context: ToolContext
+): Promise<NewsArticle[] | ToolError> {
+  return executeToolWithWrapper<FetchCryptoNewsInput, NewsArticle[]>(
+    'fetchCryptoNews',
+    input,
+    context,
+    async (params, ctx) => {
+      // Validate input parameters (Requirement 4.1)
+      const validation = validateToolInput(FetchCryptoNewsInputSchema, params);
+      if (!validation.success) {
+        throw new Error(validation.error);
+      }
+
+      const validatedParams = validation.data;
+
+      // Transform parameters to NewsData API format
+      const apiParams: any = {
+        size: Math.min(validatedParams.size || 20, 50), // Requirement 4.7: Max 50 articles
+        language: validatedParams.languages,
+        removeduplicate: validatedParams.removeDuplicates ? 1 : 0,
+      };
+
+      // Add coin symbols (Requirement 4.2)
+      if (validatedParams.coins && validatedParams.coins.length > 0) {
+        // NewsData API expects 'coin' parameter as comma-separated string or array
+        apiParams.coin = validatedParams.coins;
+      }
+
+      // Add query parameters (Requirement 4.3)
+      if (validatedParams.query) {
+        apiParams.q = validatedParams.query;
+      }
+      if (validatedParams.queryInTitle) {
+        apiParams.qInTitle = validatedParams.queryInTitle;
+      }
+
+      // Add timeframe or date range (Requirement 4.3)
+      if (validatedParams.timeframe) {
+        // Convert timeframe format if needed: '1h' -> '1', '24h' -> '24'
+        const timeframeValue = validatedParams.timeframe.replace('h', '');
+        apiParams.timeframe = timeframeValue;
+      }
+      if (validatedParams.fromDate) {
+        apiParams.from_date = validatedParams.fromDate;
+      }
+      if (validatedParams.toDate) {
+        apiParams.to_date = validatedParams.toDate;
+      }
+
+      // Add sentiment filtering (Requirement 4.5)
+      if (validatedParams.sentiment) {
+        apiParams.sentiment = validatedParams.sentiment;
+      }
+
+      // Call NewsData API
+      const response = await ctx.newsDataClient.fetchCryptoNews(apiParams, ctx.agentName);
+
+      // Handle no results case (Requirement 4.6)
+      if (!response.results || response.results.length === 0) {
+        console.warn(`[fetchCryptoNews] No articles found for query: ${JSON.stringify(params)}`);
+        return []; // Return empty array with warning logged
+      }
+
+      // Transform articles to standardized format with crypto metadata (Requirement 4.4)
+      const articles = response.results.map(transformNewsDataArticle);
+
+      // Ensure we don't exceed 50 articles (Requirement 4.7)
+      return articles.slice(0, 50);
+    }
+  );
+}
+
+/**
+ * Create LangChain-compatible fetchCryptoNews tool
+ *
+ * This function creates a LangChain StructuredTool that can be used by
+ * autonomous agents. The tool includes schema validation and proper
+ * error handling.
+ *
+ * @param context - Tool execution context
+ * @returns LangChain StructuredTool
+ */
+export function createFetchCryptoNewsTool(context: ToolContext) {
+  return {
+    name: 'fetchCryptoNews',
+    description: `Fetch cryptocurrency and blockchain related news.
+
+Use this tool to:
+- Analyze crypto market sentiment
+- Monitor coin-specific news and events
+- Track blockchain developments
+- Assess crypto market impact
+
+Parameters:
+- coins: Crypto symbols to filter by (e.g., ["btc", "eth", "ada"]) (optional)
+- query: Search query for article content (optional)
+- queryInTitle: Search query for article titles only (optional, more precise)
+- timeframe: Time window for news (e.g., "1h", "6h", "24h") (optional)
+- fromDate: Start date in YYYY-MM-DD format (optional)
+- toDate: End date in YYYY-MM-DD format (optional)
+- sentiment: Filter by sentiment - 'positive', 'negative', or 'neutral' (optional)
+- languages: Language codes (default: ["en"])
+- size: Number of articles to return (1-50, default: 20)
+- removeDuplicates: Remove duplicate articles (default: true)
+
+Returns: Array of news articles with title, url, source, content, metadata, and crypto-specific fields (coin tags).
+
+Important notes:
+- When no coin symbols specified, returns general crypto/blockchain news
+- Articles include crypto metadata with coin tags when available
+- Maximum 50 articles per query
+- Can use either timeframe OR date range, not both
+
+Example usage:
+- Bitcoin news: { coins: ["btc"], timeframe: "24h" }
+- Crypto sentiment: { query: "cryptocurrency", sentiment: "positive", size: 30 }
+- Multi-coin: { coins: ["btc", "eth", "ada"], queryInTitle: "regulation" }
+- General crypto: { query: "blockchain", timeframe: "48h" }`,
+    schema: FetchCryptoNewsInputSchema,
+    func: async (input: FetchCryptoNewsInput) => {
+      const result = await fetchCryptoNews(input, context);
+      
+      // If error, return error message for LLM
+      if (isToolError(result)) {
+        return JSON.stringify({
+          error: true,
+          message: result.message,
+          code: result.code,
+        });
+      }
+      
+      // Return articles as JSON string for LLM
+      return JSON.stringify({
+        success: true,
+        articleCount: result.length,
+        articles: result,
+      });
+    },
+  };
+}

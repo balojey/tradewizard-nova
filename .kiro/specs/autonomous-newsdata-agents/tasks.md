@@ -52,8 +52,8 @@ This implementation plan transforms three existing TradeWizard agents (Breaking 
     - Test date range > 30 days logs warning
     - _Requirements: 3.1, 3.2, 3.3, 3.5, 3.6, 3.7_
 
-- [ ] 4. Implement fetchCryptoNews tool
-  - [ ] 4.1 Create fetchCryptoNews tool with Zod schema
+- [x] 4. Implement fetchCryptoNews tool
+  - [x] 4.1 Create fetchCryptoNews tool with Zod schema
     - Define input schema with coin symbols and filtering parameters
     - Implement crypto-specific parameter handling
     - Add crypto metadata extraction logic
