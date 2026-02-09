@@ -18,6 +18,7 @@ import type {
   RecommendationError,
   AuditEntry,
 } from './types.js';
+import type { AgentMemoryContext } from '../database/memory-retrieval.js';
 
 /**
  * LangGraph State Definition using Annotation API
@@ -110,6 +111,13 @@ export const GraphState = Annotation.Root({
   // ============================================================================
   // Agent Signals Output
   // ============================================================================
+
+  /**
+   * Memory context for all agents
+   * Maps agent name to their historical signals for this market
+   * Requirement 5.1: Add memoryContext field to LangGraph state
+   */
+  memoryContext: Annotation<Map<string, AgentMemoryContext>>,
 
   /**
    * Signals from intelligence agents (accumulated via reducer)
