@@ -689,3 +689,180 @@ Example usage:
     },
   };
 }
+
+/**
+ * fetchArchiveNews Tool
+ *
+ * Fetches historical news articles with date range filtering.
+ * This tool is designed for trend analysis and historical context gathering.
+ *
+ * **Key Features**:
+ * - Date range filtering with YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format
+ * - Keyword search in title or content
+ * - Country, category, and language filtering
+ * - Automatic duplicate removal
+ * - Result caching within session
+ * - Warning for date ranges exceeding 30 days (quota concern)
+ *
+ * **Use Cases**:
+ * - Historical trend analysis
+ * - Sentiment shift detection over time
+ * - Long-term pattern identification
+ * - Contextual background research
+ *
+ * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7
+ *
+ * @param input - Tool input parameters (validated against FetchArchiveNewsInputSchema)
+ * @param context - Tool execution context
+ * @returns Array of NewsArticle objects or ToolError
+ */
+export async function fetchArchiveNews(
+  input: FetchArchiveNewsInput,
+  context: ToolContext
+): Promise<NewsArticle[] | ToolError> {
+  return executeToolWithWrapper<FetchArchiveNewsInput, NewsArticle[]>(
+    'fetchArchiveNews',
+    input,
+    context,
+    async (params, ctx) => {
+      // Validate input parameters (Requirement 3.1)
+      const validation = validateToolInput(FetchArchiveNewsInputSchema, params);
+      if (!validation.success) {
+        throw new Error(validation.error);
+      }
+
+      const validatedParams = validation.data;
+
+      // Validate date range: fromDate must be before toDate (Requirement 3.2)
+      const fromDate = new Date(validatedParams.fromDate);
+      const toDate = new Date(validatedParams.toDate);
+
+      if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+        throw new Error(
+          'Invalid date format. Use YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format (Requirement 3.3)'
+        );
+      }
+
+      if (fromDate >= toDate) {
+        throw new Error(
+          'Invalid date range: fromDate must be before toDate (Requirement 3.2)'
+        );
+      }
+
+      // Warn if date range exceeds 30 days (Requirement 3.6)
+      const daysDifference = (toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24);
+      if (daysDifference > 30) {
+        console.warn(
+          `[fetchArchiveNews] Date range exceeds 30 days (${daysDifference.toFixed(1)} days). ` +
+          `This may consume significant API quota. Consider narrowing the date range.`
+        );
+      }
+
+      // Transform parameters to NewsData API format
+      const apiParams: any = {
+        from_date: validatedParams.fromDate,
+        to_date: validatedParams.toDate,
+        size: Math.min(validatedParams.size || 20, 50), // Requirement 3.7: Max 50 articles
+        language: validatedParams.languages,
+        removeduplicate: validatedParams.removeDuplicates ? 1 : 0,
+      };
+
+      // Add query parameters (Requirement 3.4)
+      if (validatedParams.query) {
+        apiParams.q = validatedParams.query;
+      }
+      if (validatedParams.queryInTitle) {
+        apiParams.qInTitle = validatedParams.queryInTitle;
+      }
+
+      // Add filtering parameters (Requirement 3.4)
+      if (validatedParams.countries && validatedParams.countries.length > 0) {
+        apiParams.country = validatedParams.countries;
+      }
+      if (validatedParams.categories && validatedParams.categories.length > 0) {
+        apiParams.category = validatedParams.categories;
+      }
+
+      // Call NewsData API
+      const response = await ctx.newsDataClient.fetchArchiveNews(apiParams, ctx.agentName);
+
+      // Handle no results case
+      if (!response.results || response.results.length === 0) {
+        console.warn(`[fetchArchiveNews] No articles found for query: ${JSON.stringify(params)}`);
+        return []; // Return empty array with warning logged
+      }
+
+      // Transform articles to standardized format (Requirement 3.5)
+      const articles = response.results.map(transformNewsDataArticle);
+
+      // Ensure we don't exceed 50 articles (Requirement 3.7)
+      return articles.slice(0, 50);
+    }
+  );
+}
+
+/**
+ * Create LangChain-compatible fetchArchiveNews tool
+ *
+ * This function creates a LangChain StructuredTool that can be used by
+ * autonomous agents. The tool includes schema validation and proper
+ * error handling.
+ *
+ * @param context - Tool execution context
+ * @returns LangChain StructuredTool
+ */
+export function createFetchArchiveNewsTool(context: ToolContext) {
+  return {
+    name: 'fetchArchiveNews',
+    description: `Fetch historical news articles with date range filtering.
+
+Use this tool to:
+- Analyze historical trends and patterns
+- Compare current vs past sentiment
+- Gather contextual background information
+- Identify long-term narrative shifts
+
+Parameters:
+- fromDate: Start date in YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format (required)
+- toDate: End date in YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format (required)
+- query: Search query for article content (optional)
+- queryInTitle: Search query for article titles only (optional, more precise)
+- countries: Country codes to filter by (e.g., ["us", "uk"])
+- categories: News categories to filter by (e.g., ["politics", "business"])
+- languages: Language codes (default: ["en"])
+- size: Number of articles to return (1-50, default: 20)
+- removeDuplicates: Remove duplicate articles (default: true)
+
+Returns: Array of news articles with title, url, source, content, metadata, and AI-enhanced fields.
+
+Important notes:
+- fromDate must be before toDate
+- Date ranges exceeding 30 days will log a warning (quota concern)
+- Maximum 50 articles per query
+
+Example usage:
+- Historical trend: { fromDate: "2024-01-01", toDate: "2024-01-31", query: "election polls" }
+- Sentiment shift: { fromDate: "2024-01-01", toDate: "2024-02-01", queryInTitle: "candidate", countries: ["us"] }
+- Background research: { fromDate: "2023-12-01", toDate: "2024-01-01", query: "policy debate" }`,
+    schema: FetchArchiveNewsInputSchema,
+    func: async (input: FetchArchiveNewsInput) => {
+      const result = await fetchArchiveNews(input, context);
+      
+      // If error, return error message for LLM
+      if (isToolError(result)) {
+        return JSON.stringify({
+          error: true,
+          message: result.message,
+          code: result.code,
+        });
+      }
+      
+      // Return articles as JSON string for LLM
+      return JSON.stringify({
+        success: true,
+        articleCount: result.length,
+        articles: result,
+      });
+    },
+  };
+}

@@ -115,4 +115,6 @@ export {
 export {
   fetchLatestNews,
   createFetchLatestNewsTool,
+  fetchArchiveNews,
+  createFetchArchiveNewsTool,
 } from './newsdata-tools.js';

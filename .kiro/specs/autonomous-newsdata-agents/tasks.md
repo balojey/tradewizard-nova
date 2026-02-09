@@ -33,8 +33,8 @@ This implementation plan transforms three existing TradeWizard agents (Breaking 
     - Test article schema compliance
     - _Requirements: 2.1, 2.2, 2.5, 2.6, 2.7_
 
-- [ ] 3. Implement fetchArchiveNews tool
-  - [ ] 3.1 Create fetchArchiveNews tool with Zod schema
+- [x] 3. Implement fetchArchiveNews tool
+  - [x] 3.1 Create fetchArchiveNews tool with Zod schema
     - Define input schema with date range and filtering parameters
     - Implement date range validation logic
     - Add warning for date ranges exceeding 30 days
