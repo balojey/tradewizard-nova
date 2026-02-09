@@ -232,15 +232,15 @@ This implementation plan transforms three existing TradeWizard agents (Breaking 
     - Test fallback to basic mode when autonomous disabled
     - _Requirements: 18.3, 18.4_
 
-- [ ] 15. Integrate autonomous agents into workflow
-  - [ ] 15.1 Update `src/workflow.ts`
+- [x] 15. Integrate autonomous agents into workflow
+  - [x] 15.1 Update `src/workflow.ts`
     - Add autonomous breaking news agent node
     - Add autonomous media sentiment agent node
     - Add autonomous market microstructure agent node
     - Add conditional logic for autonomous vs basic mode
     - _Requirements: 18.4, 18.6_
   
-  - [ ] 15.2 Add feature flag checks
+  - [x] 15.2 Add feature flag checks
     - Implement autonomous mode detection from config
     - Add fallback to basic agents when autonomous disabled
     - _Requirements: 18.3, 18.4_

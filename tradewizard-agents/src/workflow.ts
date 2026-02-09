@@ -39,6 +39,9 @@ import {
   createAgentSignalFusionNode,
   createRiskPhilosophyAgentNodes,
   createAutonomousPollingAgentNode,
+  createAutonomousBreakingNewsAgentNode,
+  createAutonomousMediaSentimentAgentNode,
+  createAutonomousMarketMicrostructureAgentNode,
 } from './nodes/index.js';
 
 /**
@@ -137,6 +140,20 @@ export async function createWorkflow(
     ? createAutonomousPollingAgentNode(config)
     : createPollingIntelligenceAgentNode(config);
   
+  // Create news agents based on configuration (Requirements 18.3, 18.4, 18.6)
+  // Use autonomous agents when enabled, basic agents when disabled
+  const breakingNewsAgentNode = config.newsAgents.breakingNewsAgent.autonomous
+    ? createAutonomousBreakingNewsAgentNode(config)
+    : breakingNewsAgent;
+  
+  const mediaSentimentAgentNode = config.newsAgents.mediaSentimentAgent.autonomous
+    ? createAutonomousMediaSentimentAgentNode(config)
+    : mediaSentimentAgent;
+  
+  const marketMicrostructureAgentNode = config.newsAgents.marketMicrostructureAgent.autonomous
+    ? createAutonomousMarketMicrostructureAgentNode(config)
+    : agents.marketMicrostructureAgent;
+  
   const historicalPatternAgent = createHistoricalPatternAgentNode(config);
   const socialSentimentAgent = createSocialSentimentAgentNode(config);
   const narrativeVelocityAgent = createNarrativeVelocityAgentNode(config);
@@ -154,21 +171,21 @@ export async function createWorkflow(
     .addNode('keyword_extraction', keywordExtraction)
     .addNode('dynamic_agent_selection', dynamicAgentSelection)
     
-    // MVP agents
-    .addNode('market_microstructure_agent', agents.marketMicrostructureAgent)
+    // MVP agents (conditionally autonomous based on configuration)
+    .addNode('market_microstructure_agent', marketMicrostructureAgentNode)
     .addNode('probability_baseline_agent', agents.probabilityBaselineAgent)
     .addNode('risk_assessment_agent', agents.riskAssessmentAgent)
     
-    // Event Intelligence agents
-    .addNode('breaking_news_agent', breakingNewsAgent)
+    // Event Intelligence agents (conditionally autonomous based on configuration)
+    .addNode('breaking_news_agent', breakingNewsAgentNode)
     .addNode('event_impact_agent', eventImpactAgent)
     
     // Polling & Statistical agents
     .addNode('polling_intelligence_agent', pollingIntelligenceAgent)
     .addNode('historical_pattern_agent', historicalPatternAgent)
     
-    // Sentiment & Narrative agents
-    .addNode('media_sentiment_agent', mediaSentimentAgent)
+    // Sentiment & Narrative agents (conditionally autonomous based on configuration)
+    .addNode('media_sentiment_agent', mediaSentimentAgentNode)
     .addNode('social_sentiment_agent', socialSentimentAgent)
     .addNode('narrative_velocity_agent', narrativeVelocityAgent)
     
