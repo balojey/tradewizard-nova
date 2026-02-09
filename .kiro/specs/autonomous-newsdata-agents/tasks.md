@@ -13,8 +13,8 @@ This implementation plan transforms three existing TradeWizard agents (Breaking 
   - Update `src/tools/index.ts` to export NewsData tools
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.6_
 
-- [ ] 2. Implement fetchLatestNews tool
-  - [ ] 2.1 Create fetchLatestNews tool with Zod schema
+- [x] 2. Implement fetchLatestNews tool
+  - [x] 2.1 Create fetchLatestNews tool with Zod schema
     - Define input schema with query, timeframe, filtering parameters
     - Implement tool execution function
     - Add parameter validation and transformation logic

@@ -110,3 +110,9 @@ export {
   transformNewsDataArticle,
   generateCacheKey,
 } from './newsdata-tools.js';
+
+// Export individual tool functions (for testing and direct use)
+export {
+  fetchLatestNews,
+  createFetchLatestNewsTool,
+} from './newsdata-tools.js';

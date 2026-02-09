@@ -530,3 +530,162 @@ function sortObject(obj: any): any {
 
   return sorted;
 }
+
+// ============================================================================
+// Tool Implementations
+// ============================================================================
+
+/**
+ * fetchLatestNews Tool
+ *
+ * Fetches the latest news articles from the past 48 hours with filtering options.
+ * This tool is designed for breaking news analysis and immediate market impact assessment.
+ *
+ * **Key Features**:
+ * - Timeframe filtering: 1h, 6h, 12h, 24h, 48h
+ * - Keyword search in title or content
+ * - Country, category, and language filtering
+ * - Sentiment filtering (positive, negative, neutral)
+ * - Automatic duplicate removal
+ * - Result caching within session
+ *
+ * **Use Cases**:
+ * - Breaking news detection
+ * - Immediate market impact analysis
+ * - Time-sensitive event monitoring
+ * - News velocity tracking
+ *
+ * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7
+ *
+ * @param input - Tool input parameters (validated against FetchLatestNewsInputSchema)
+ * @param context - Tool execution context
+ * @returns Array of NewsArticle objects or ToolError
+ */
+export async function fetchLatestNews(
+  input: FetchLatestNewsInput,
+  context: ToolContext
+): Promise<NewsArticle[] | ToolError> {
+  return executeToolWithWrapper<FetchLatestNewsInput, NewsArticle[]>(
+    'fetchLatestNews',
+    input,
+    context,
+    async (params, ctx) => {
+      // Validate input parameters (Requirement 2.1, 2.2)
+      const validation = validateToolInput(FetchLatestNewsInputSchema, params);
+      if (!validation.success) {
+        throw new Error(validation.error);
+      }
+
+      const validatedParams = validation.data;
+
+      // Transform parameters to NewsData API format
+      const apiParams: any = {
+        size: Math.min(validatedParams.size || 20, 50), // Requirement 2.7: Max 50 articles
+        language: validatedParams.languages,
+        removeduplicate: validatedParams.removeDuplicates ? 1 : 0,
+      };
+
+      // Add query parameters (Requirement 2.3)
+      if (validatedParams.query) {
+        apiParams.q = validatedParams.query;
+      }
+      if (validatedParams.queryInTitle) {
+        apiParams.qInTitle = validatedParams.queryInTitle;
+      }
+
+      // Add timeframe (Requirement 2.2)
+      if (validatedParams.timeframe) {
+        // Convert timeframe format: '1h' -> '1', '24h' -> '24'
+        const timeframeValue = validatedParams.timeframe.replace('h', '');
+        apiParams.timeframe = timeframeValue;
+      }
+
+      // Add filtering parameters (Requirement 2.4)
+      if (validatedParams.countries && validatedParams.countries.length > 0) {
+        apiParams.country = validatedParams.countries;
+      }
+      if (validatedParams.categories && validatedParams.categories.length > 0) {
+        apiParams.category = validatedParams.categories;
+      }
+      if (validatedParams.sentiment) {
+        apiParams.sentiment = validatedParams.sentiment;
+      }
+
+      // Call NewsData API
+      const response = await ctx.newsDataClient.fetchLatestNews(apiParams, ctx.agentName);
+
+      // Handle no results case (Requirement 2.6)
+      if (!response.results || response.results.length === 0) {
+        console.warn(`[fetchLatestNews] No articles found for query: ${JSON.stringify(params)}`);
+        return []; // Return empty array with warning logged
+      }
+
+      // Transform articles to standardized format (Requirement 2.5)
+      const articles = response.results.map(transformNewsDataArticle);
+
+      // Ensure we don't exceed 50 articles (Requirement 2.7)
+      return articles.slice(0, 50);
+    }
+  );
+}
+
+/**
+ * Create LangChain-compatible fetchLatestNews tool
+ *
+ * This function creates a LangChain StructuredTool that can be used by
+ * autonomous agents. The tool includes schema validation and proper
+ * error handling.
+ *
+ * @param context - Tool execution context
+ * @returns LangChain StructuredTool
+ */
+export function createFetchLatestNewsTool(context: ToolContext) {
+  return {
+    name: 'fetchLatestNews',
+    description: `Fetch the latest news articles from the past 48 hours.
+
+Use this tool to:
+- Find breaking news and time-sensitive events
+- Analyze immediate market impact
+- Track news velocity and intensity
+- Detect emerging trends and catalysts
+
+Parameters:
+- query: Search query for article content (optional)
+- queryInTitle: Search query for article titles only (optional, more precise)
+- timeframe: Time window - '1h', '6h', '12h', '24h', or '48h' (default: '24h')
+- countries: Country codes to filter by (e.g., ["us", "uk"])
+- categories: News categories to filter by (e.g., ["politics", "business"])
+- languages: Language codes (default: ["en"])
+- sentiment: Filter by sentiment - 'positive', 'negative', or 'neutral'
+- size: Number of articles to return (1-50, default: 20)
+- removeDuplicates: Remove duplicate articles (default: true)
+
+Returns: Array of news articles with title, url, source, content, metadata, and AI-enhanced fields.
+
+Example usage:
+- Breaking news: { queryInTitle: "election", timeframe: "1h" }
+- Market impact: { query: "Federal Reserve", timeframe: "6h", sentiment: "negative" }
+- Country-specific: { query: "policy", countries: ["us"], timeframe: "24h" }`,
+    schema: FetchLatestNewsInputSchema,
+    func: async (input: FetchLatestNewsInput) => {
+      const result = await fetchLatestNews(input, context);
+      
+      // If error, return error message for LLM
+      if (isToolError(result)) {
+        return JSON.stringify({
+          error: true,
+          message: result.message,
+          code: result.code,
+        });
+      }
+      
+      // Return articles as JSON string for LLM
+      return JSON.stringify({
+        success: true,
+        articleCount: result.length,
+        articles: result,
+      });
+    },
+  };
+}
