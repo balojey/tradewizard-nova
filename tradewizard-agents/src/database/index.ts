@@ -36,3 +36,16 @@ export {
 } from './postgres-checkpointer.js';
 
 export type { PostgresCheckpointerConfig as PostgresCheckpointerConfigType } from './postgres-checkpointer.js';
+
+export {
+  MemoryRetrievalService,
+  MemoryRetrievalServiceImpl,
+  createMemoryRetrievalService,
+  HistoricalSignal,
+  AgentMemoryContext,
+} from './memory-retrieval.js';
+
+export type {
+  HistoricalSignal as HistoricalSignalType,
+  AgentMemoryContext as AgentMemoryContextType,
+} from './memory-retrieval.js';
