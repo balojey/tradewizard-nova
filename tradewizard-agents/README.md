@@ -33,6 +33,7 @@ The Market Intelligence Engine transforms raw prediction market data from Polyma
 - 🔍 **Full Observability**: Complete tracing and debugging with Opik integration
 - 🎯 **Actionable Recommendations**: Clear trade signals with entry/exit zones and risk assessment
 - 🛡️ **Robust Error Handling**: Graceful degradation and comprehensive error recovery
+- 🔧 **Autonomous News Agents**: AI agents that autonomously fetch and research news data using LangChain tools
 
 ## Architecture
 
@@ -360,6 +361,36 @@ LANGGRAPH_STREAM_MODE=values       # Options: values, updates
 AGENT_TIMEOUT_MS=10000           # Maximum time per agent in milliseconds
 MIN_AGENTS_REQUIRED=2            # Minimum agents needed for consensus
 ```
+
+### NewsData Configuration
+
+The autonomous news agents require a NewsData.io API key to fetch news data:
+
+```bash
+# .env
+NEWSDATA_API_KEY=your_newsdata_api_key_here
+
+# Optional: Enable autonomous mode for news agents
+BREAKING_NEWS_AGENT_AUTONOMOUS=true
+MEDIA_SENTIMENT_AGENT_AUTONOMOUS=true
+MARKET_MICROSTRUCTURE_AGENT_AUTONOMOUS=true
+
+# Optional: Configure tool usage limits
+BREAKING_NEWS_AGENT_MAX_TOOL_CALLS=5
+BREAKING_NEWS_AGENT_TIMEOUT=45000
+```
+
+**Get a NewsData API key:**
+1. Sign up at [https://newsdata.io](https://newsdata.io)
+2. Copy your API key from the dashboard
+3. Add it to your `.env` file
+
+**Autonomous Mode:**
+- When `autonomous=true`, agents can fetch news data using LangChain tools
+- When `autonomous=false`, agents use pre-fetched data from workflow state
+- Default is `false` for backward compatibility
+
+See [Autonomous News Agents Documentation](./docs/AUTONOMOUS_NEWS_AGENTS.md) for complete configuration options.
 
 ### Consensus Configuration
 
@@ -882,6 +913,7 @@ View cost breakdown in Opik:
 ### Additional Resources
 
 - **[CLI Documentation](./CLI.md)** - Complete CLI reference
+- **[Autonomous News Agents](./docs/AUTONOMOUS_NEWS_AGENTS.md)** - Autonomous news intelligence agents with tool-calling capabilities
 - **[LLM Provider Setup Guide](./docs/LLM_PROVIDERS.md)** - Setup instructions for OpenAI, Anthropic, Google, and Amazon Nova
 - **[Nova Troubleshooting Guide](./docs/NOVA_TROUBLESHOOTING.md)** - Amazon Nova integration troubleshooting
 - **[Design Document](./.kiro/specs/market-intelligence-engine/design.md)** - System architecture and design decisions
