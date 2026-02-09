@@ -1,21 +1,25 @@
 /**
  * Tools Module - Barrel Export
  *
- * This module exports all tool-related functionality for the autonomous polling agent.
+ * This module exports all tool-related functionality for autonomous agents.
  * It provides a centralized entry point for importing tools, types, and utilities.
  *
  * Requirements: 1.1
  */
+
+// ============================================================================
+// Polling Tools Exports
+// ============================================================================
 
 // Export main tool creation function
 export { createPollingTools } from './polling-tools.js';
 
 // Export tool context and audit types
 export type {
-  ToolContext,
-  ToolAuditEntry,
-  ToolResult,
-  ToolError,
+  ToolContext as PollingToolContext,
+  ToolAuditEntry as PollingToolAuditEntry,
+  ToolResult as PollingToolResult,
+  ToolError as PollingToolError,
 } from './polling-tools.js';
 
 // Export tool input schemas
@@ -63,3 +67,46 @@ export {
   analyzeMarketMomentum,
   detectSentimentShifts,
 } from './polling-tools.js';
+
+// ============================================================================
+// NewsData Tools Exports
+// ============================================================================
+
+// Export tool context and audit types
+export type {
+  ToolContext as NewsToolContext,
+  ToolAuditEntry as NewsToolAuditEntry,
+  ToolResult as NewsToolResult,
+  ToolError as NewsToolError,
+} from './newsdata-tools.js';
+
+// Export NewsArticle type
+export type { NewsArticle } from './newsdata-tools.js';
+
+// Export tool input schemas
+export {
+  FetchLatestNewsInputSchema,
+  FetchArchiveNewsInputSchema,
+  FetchCryptoNewsInputSchema,
+  FetchMarketNewsInputSchema,
+} from './newsdata-tools.js';
+
+// Export tool input types
+export type {
+  FetchLatestNewsInput,
+  FetchArchiveNewsInput,
+  FetchCryptoNewsInput,
+  FetchMarketNewsInput,
+} from './newsdata-tools.js';
+
+// Export tool utility functions
+export {
+  executeToolWithWrapper as executeNewsToolWithWrapper,
+  isToolError as isNewsToolError,
+  validateToolInput as validateNewsToolInput,
+  createToolError as createNewsToolError,
+  logToolCall as logNewsToolCall,
+  getToolUsageSummary as getNewsToolUsageSummary,
+  transformNewsDataArticle,
+  generateCacheKey,
+} from './newsdata-tools.js';

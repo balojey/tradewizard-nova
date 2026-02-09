@@ -6,7 +6,7 @@ This implementation plan transforms three existing TradeWizard agents (Breaking 
 
 ## Tasks
 
-- [ ] 1. Set up NewsData tool infrastructure
+- [x] 1. Set up NewsData tool infrastructure
   - Create `src/tools/newsdata-tools.ts` with tool definitions
   - Implement tool context interface and helper functions
   - Set up tool cache integration (reuse from autonomous polling agent)

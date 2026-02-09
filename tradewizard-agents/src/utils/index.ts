@@ -116,3 +116,4 @@ export {
   type CircuitState,
   type CircuitBreakerOptions,
 } from './retry-logic.js';
+export { ToolCache, createToolCache, type CacheEntry, type CacheStats } from './tool-cache.js';
