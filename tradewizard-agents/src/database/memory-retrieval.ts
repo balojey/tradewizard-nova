@@ -14,6 +14,7 @@
 
 import type { SupabaseClientManager } from './supabase-client.js';
 import { validateSignal } from './signal-validation.js';
+import { getMemoryMetricsCollector, calculateContextSize } from '../utils/memory-metrics.js';
 
 /**
  * Error types for memory retrieval operations
@@ -141,6 +142,7 @@ export class MemoryRetrievalServiceImpl implements MemoryRetrievalService {
   ): Promise<AgentMemoryContext> {
     const startTime = Date.now();
     const context = { agentName, marketId, limit };
+    const metricsCollector = getMemoryMetricsCollector();
 
     try {
       // Execute query with retry logic and timeout (Requirements 9.2, 9.3)
@@ -151,6 +153,19 @@ export class MemoryRetrievalServiceImpl implements MemoryRetrievalService {
 
       const duration = Date.now() - startTime;
       
+      // Calculate context size for metrics
+      const contextSize = calculateContextSize(result);
+      
+      // Record successful retrieval in metrics
+      metricsCollector.recordRetrieval({
+        duration,
+        success: true,
+        marketId,
+        agentName,
+        signalCount: result.historicalSignals.length,
+        contextSize,
+      });
+
       // Log successful retrieval (Requirement 9.5)
       console.log('[MemoryRetrieval] Successfully retrieved agent memory:', {
         agentName,
@@ -162,6 +177,37 @@ export class MemoryRetrievalServiceImpl implements MemoryRetrievalService {
       return result;
     } catch (error) {
       const duration = Date.now() - startTime;
+
+      // Determine if this was a timeout error
+      const isTimeout = error instanceof MemoryRetrievalError && 
+        error.type === MemoryRetrievalErrorType.TIMEOUT_ERROR;
+
+      // Record failed retrieval in metrics
+      if (error instanceof MemoryRetrievalError) {
+        metricsCollector.recordRetrieval({
+          duration,
+          success: false,
+          marketId,
+          agentName,
+          error: {
+            type: error.type,
+            message: error.message,
+            context: error.context,
+          },
+          timeout: isTimeout,
+        });
+      } else {
+        metricsCollector.recordRetrieval({
+          duration,
+          success: false,
+          marketId,
+          agentName,
+          error: {
+            type: 'UNKNOWN_ERROR',
+            message: error instanceof Error ? error.message : String(error),
+          },
+        });
+      }
 
       // Comprehensive error logging (Requirement 9.5)
       if (error instanceof MemoryRetrievalError) {
@@ -424,6 +470,7 @@ export class MemoryRetrievalServiceImpl implements MemoryRetrievalService {
   ): Promise<Map<string, AgentMemoryContext>> {
     const startTime = Date.now();
     const memoryMap = new Map<string, AgentMemoryContext>();
+    const metricsCollector = getMemoryMetricsCollector();
 
     try {
       // Fetch memories in parallel for all agents

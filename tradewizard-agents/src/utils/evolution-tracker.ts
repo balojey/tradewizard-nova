@@ -9,6 +9,7 @@
 
 import type { AgentSignal } from '../models/types.js';
 import type { HistoricalSignal } from '../database/memory-retrieval.js';
+import { getMemoryMetricsCollector } from './memory-metrics.js';
 
 /**
  * Signal evolution event types
@@ -69,6 +70,7 @@ export class EvolutionTrackerImpl implements EvolutionTracker {
     // Get most recent signal (assuming sorted desc by timestamp)
     const mostRecent = historicalSignals[0];
     const events: EvolutionEvent[] = [];
+    const metricsCollector = getMemoryMetricsCollector();
 
     // Requirement 8.2: Check for direction change
     if (newSignal.direction !== mostRecent.direction) {
@@ -130,6 +132,11 @@ export class EvolutionTrackerImpl implements EvolutionTracker {
         magnitude: 0.5, // Qualitative change
         description: 'Key drivers have evolved significantly',
       });
+    }
+
+    // Record evolution events in metrics (Requirements 8.2, 8.3, 8.4, 8.5)
+    if (events.length > 0) {
+      metricsCollector.recordEvolutionEvents(events, mostRecent.marketId, newSignal.agentName);
     }
 
     return events;

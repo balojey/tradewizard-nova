@@ -14,6 +14,7 @@
 import type { GraphStateType } from '../models/state.js';
 import type { MemoryRetrievalService } from '../database/memory-retrieval.js';
 import type { EngineConfig } from '../config/index.js';
+import { getMemoryMetricsCollector } from '../utils/memory-metrics.js';
 
 /**
  * Memory Retrieval Node
@@ -34,6 +35,7 @@ export async function memoryRetrievalNode(
   config: EngineConfig
 ): Promise<Partial<GraphStateType>> {
   const startTime = Date.now();
+  const metricsCollector = getMemoryMetricsCollector();
 
   // Check feature flag - if disabled, return empty memory context
   if (!config.memorySystem.enabled) {
@@ -100,6 +102,9 @@ export async function memoryRetrievalNode(
       (sum, ctx) => sum + ctx.historicalSignals.length,
       0
     );
+
+    // Increment analysis counter in metrics
+    metricsCollector.incrementAnalysisCount();
 
     // Requirement 5.4: Preserve memoryContext in audit log
     return {

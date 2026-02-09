@@ -952,6 +952,117 @@ async function displayPerformanceMetrics(conditionId: string, config: EngineConf
 }
 
 // ============================================================================
+// Memory Metrics Command
+// ============================================================================
+
+program
+  .command('memory-metrics')
+  .description('Display memory system metrics and performance statistics')
+  .option('--reset', 'Reset all metrics after displaying')
+  .option('--check-alerts', 'Check alert thresholds and display warnings')
+  .option('--audit-log', 'Display complete audit log')
+  .option('--audit-operation <type>', 'Filter audit log by operation type (retrieval|evolution_tracking|context_formatting|validation)')
+  .option('--audit-market <marketId>', 'Filter audit log by market ID')
+  .option('--audit-agent <agentName>', 'Filter audit log by agent name')
+  .action(async (options) => {
+    console.log(chalk.cyan('\n📊 Memory System Metrics'));
+    console.log(chalk.dim('═'.repeat(80)));
+
+    try {
+      const { getMemoryMetricsCollector } = await import('./utils/memory-metrics.js');
+      const metricsCollector = getMemoryMetricsCollector();
+
+      // Display metrics summary
+      metricsCollector.printMetricsSummary();
+
+      // Check alert thresholds if requested
+      if (options.checkAlerts) {
+        console.log(chalk.cyan('\n🚨 Alert Threshold Check'));
+        console.log(chalk.dim('─'.repeat(80)));
+
+        const alertCheck = metricsCollector.checkAlertThresholds();
+
+        if (alertCheck.healthy) {
+          console.log(chalk.green('✓ All metrics within healthy thresholds'));
+        } else {
+          console.log(chalk.red(`✗ ${alertCheck.alerts.length} alert(s) detected:\n`));
+
+          alertCheck.alerts.forEach((alert) => {
+            const icon = alert.severity === 'critical' ? '🔴' : '⚠️';
+            const color = alert.severity === 'critical' ? chalk.red : chalk.yellow;
+            console.log(color(`  ${icon} [${alert.severity.toUpperCase()}] ${alert.message}`));
+          });
+        }
+      }
+
+      // Display audit log if requested
+      if (options.auditLog) {
+        console.log(chalk.cyan('\n📋 Audit Log'));
+        console.log(chalk.dim('─'.repeat(80)));
+
+        let auditLog = metricsCollector.getAuditLog();
+
+        // Apply filters
+        if (options.auditOperation) {
+          auditLog = metricsCollector.getAuditLogByOperation(options.auditOperation);
+        }
+        if (options.auditMarket) {
+          auditLog = metricsCollector.getAuditLogByMarket(options.auditMarket);
+        }
+        if (options.auditAgent) {
+          auditLog = metricsCollector.getAuditLogByAgent(options.auditAgent);
+        }
+
+        if (auditLog.length === 0) {
+          console.log(chalk.yellow('No audit log entries found'));
+        } else {
+          console.log(chalk.dim(`Showing ${auditLog.length} entries:\n`));
+
+          auditLog.slice(-20).forEach((entry) => {
+            const timestamp = new Date(entry.timestamp).toISOString();
+            const status = entry.success ? chalk.green('✓') : chalk.red('✗');
+            const operation = entry.operation.padEnd(20);
+
+            console.log(`${status} ${chalk.dim(timestamp)} ${operation} ${entry.duration}ms`);
+
+            if (entry.marketId) {
+              console.log(chalk.dim(`   Market: ${entry.marketId}`));
+            }
+            if (entry.agentName) {
+              console.log(chalk.dim(`   Agent: ${entry.agentName}`));
+            }
+            if (entry.signalCount !== undefined) {
+              console.log(chalk.dim(`   Signals: ${entry.signalCount}`));
+            }
+            if (entry.error) {
+              console.log(chalk.red(`   Error: ${entry.error.message}`));
+            }
+            console.log('');
+          });
+
+          if (auditLog.length > 20) {
+            console.log(chalk.dim(`... and ${auditLog.length - 20} more entries`));
+          }
+        }
+      }
+
+      // Reset metrics if requested
+      if (options.reset) {
+        console.log(chalk.yellow('\n🔄 Resetting all metrics...'));
+        const { resetMemoryMetricsCollector } = await import('./utils/memory-metrics.js');
+        resetMemoryMetricsCollector();
+        console.log(chalk.green('✓ Metrics reset successfully'));
+      }
+
+      console.log('');
+    } catch (error) {
+      console.log(chalk.red('\n❌ Failed to retrieve memory metrics'));
+      console.error(chalk.dim(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
+
+// ============================================================================
 // Parse and Execute
 // ============================================================================
 

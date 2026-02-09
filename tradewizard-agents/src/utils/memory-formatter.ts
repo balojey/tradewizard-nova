@@ -8,6 +8,7 @@
  */
 
 import type { AgentMemoryContext, HistoricalSignal } from '../database/memory-retrieval.js';
+import { getMemoryMetricsCollector } from './memory-metrics.js';
 
 /**
  * Format options for memory context
@@ -48,47 +49,102 @@ export function formatMemoryContext(
   memory: AgentMemoryContext,
   options: MemoryFormatOptions = {}
 ): FormattedMemoryContext {
+  const startTime = Date.now();
+  const metricsCollector = getMemoryMetricsCollector();
+  
   const {
     maxLength = 1000,
     includeMetadata = false,
     dateFormat = 'human',
   } = options;
 
-  // Requirement 2.4: Handle empty memory context
-  if (!memory.hasHistory || memory.historicalSignals.length === 0) {
+  try {
+    // Requirement 2.4: Handle empty memory context
+    if (!memory.hasHistory || memory.historicalSignals.length === 0) {
+      const result = {
+        text: 'No previous analysis available for this market.',
+        signalCount: 0,
+        truncated: false,
+      };
+      
+      // Record formatting metrics
+      const duration = Date.now() - startTime;
+      const contextSize = new TextEncoder().encode(result.text).length;
+      metricsCollector.recordContextFormatting({
+        duration,
+        success: true,
+        agentName: memory.agentName,
+        signalCount: 0,
+        contextSize,
+        truncated: false,
+      });
+      
+      return result;
+    }
+
+    // Requirement 2.5: Sort signals chronologically (oldest first) to show evolution
+    const sortedSignals = [...memory.historicalSignals].sort(
+      (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
+    );
+
+    let text = `Previous Analysis History (${sortedSignals.length} signal${sortedSignals.length > 1 ? 's' : ''}):\n\n`;
+    let truncated = false;
+
+    for (const signal of sortedSignals) {
+      const signalText = formatSingleSignal(signal, dateFormat, includeMetadata);
+
+      // Requirement 7.5: Check if adding this signal would exceed max length
+      if (text.length + signalText.length > maxLength) {
+        text += '\n[Additional signals truncated for brevity]';
+        truncated = true;
+        break;
+      }
+
+      text += signalText + '\n\n';
+    }
+
+    const result = {
+      text: text.trim(),
+      signalCount: sortedSignals.length,
+      truncated,
+    };
+    
+    // Record formatting metrics
+    const duration = Date.now() - startTime;
+    const contextSize = new TextEncoder().encode(result.text).length;
+    metricsCollector.recordContextFormatting({
+      duration,
+      success: true,
+      agentName: memory.agentName,
+      signalCount: sortedSignals.length,
+      contextSize,
+      truncated,
+    });
+
+    return result;
+  } catch (error) {
+    // Record formatting error
+    const duration = Date.now() - startTime;
+    metricsCollector.recordContextFormatting({
+      duration,
+      success: false,
+      agentName: memory.agentName,
+      signalCount: memory.historicalSignals.length,
+      contextSize: 0,
+      truncated: false,
+      error: {
+        type: 'FORMATTING_ERROR',
+        message: error instanceof Error ? error.message : String(error),
+      },
+    });
+    
+    // Return fallback
     return {
-      text: 'No previous analysis available for this market.',
+      text: 'Error formatting memory context.',
       signalCount: 0,
       truncated: false,
     };
   }
-
-  // Requirement 2.5: Sort signals chronologically (oldest first) to show evolution
-  const sortedSignals = [...memory.historicalSignals].sort(
-    (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
-  );
-
-  let text = `Previous Analysis History (${sortedSignals.length} signal${sortedSignals.length > 1 ? 's' : ''}):\n\n`;
-  let truncated = false;
-
-  for (const signal of sortedSignals) {
-    const signalText = formatSingleSignal(signal, dateFormat, includeMetadata);
-
-    // Requirement 7.5: Check if adding this signal would exceed max length
-    if (text.length + signalText.length > maxLength) {
-      text += '\n[Additional signals truncated for brevity]';
-      truncated = true;
-      break;
-    }
-
-    text += signalText + '\n\n';
-  }
-
-  return {
-    text: text.trim(),
-    signalCount: sortedSignals.length,
-    truncated,
-  };
 }
 
 /**
