@@ -10,6 +10,10 @@ export {
   createKeywordExtractionNode,
 } from './keyword-extraction.js';
 export {
+  memoryRetrievalNode,
+  createMemoryRetrievalNode,
+} from './memory-retrieval.js';
+export {
   createAgentNode,
   createLLMInstances,
   createAgentNodes,
