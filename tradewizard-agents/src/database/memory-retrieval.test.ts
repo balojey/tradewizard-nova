@@ -295,8 +295,8 @@ describe('MemoryRetrievalService', () => {
     });
 
     it('should normalize LONG_YES to YES direction', async () => {
-      // Create a test market
-      const conditionId = `test-condition-${Date.now()}`;
+      // Create a test market with unique ID
+      const conditionId = `test-condition-${Date.now()}-${Math.random().toString(36).substring(7)}`;
       const market = {
         conditionId,
         question: 'Test market for direction normalization',

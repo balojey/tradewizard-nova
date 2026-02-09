@@ -23,6 +23,16 @@ describe('Memory Retrieval Node', () => {
     'Risk Assessment Agent',
   ];
 
+  // Mock config with memory system enabled
+  const mockConfig = {
+    memorySystem: {
+      enabled: true,
+      maxSignalsPerAgent: 3,
+      queryTimeoutMs: 5000,
+      retryAttempts: 3,
+    },
+  } as any;
+
   beforeEach(() => {
     // Create a mock memory service
     mockMemoryService = {
@@ -90,7 +100,8 @@ describe('Memory Retrieval Node', () => {
       const result = await memoryRetrievalNode(
         state as GraphStateType,
         mockMemoryService,
-        agentNames
+        agentNames,
+        mockConfig
       );
 
       // Assert
@@ -138,7 +149,8 @@ describe('Memory Retrieval Node', () => {
       const result = await memoryRetrievalNode(
         state as GraphStateType,
         mockMemoryService,
-        agentNames
+        agentNames,
+        mockConfig
       );
 
       // Assert
@@ -215,7 +227,8 @@ describe('Memory Retrieval Node', () => {
       const result = await memoryRetrievalNode(
         state as GraphStateType,
         mockMemoryService,
-        agentNames
+        agentNames,
+        mockConfig
       );
 
       // Assert
@@ -241,7 +254,8 @@ describe('Memory Retrieval Node', () => {
       const result = await memoryRetrievalNode(
         state as GraphStateType,
         mockMemoryService,
-        agentNames
+        agentNames,
+        mockConfig
       );
 
       // Assert
@@ -272,7 +286,8 @@ describe('Memory Retrieval Node', () => {
       const result = await memoryRetrievalNode(
         state as GraphStateType,
         mockMemoryService,
-        agentNames
+        agentNames,
+        mockConfig
       );
 
       // Assert
@@ -307,7 +322,8 @@ describe('Memory Retrieval Node', () => {
       const result = await memoryRetrievalNode(
         state as GraphStateType,
         mockMemoryService,
-        agentNames
+        agentNames,
+        mockConfig
       );
 
       // Assert
@@ -337,7 +353,8 @@ describe('Memory Retrieval Node', () => {
       const result = await memoryRetrievalNode(
         state as GraphStateType,
         mockMemoryService,
-        agentNames
+        agentNames,
+        mockConfig
       );
 
       // Assert
@@ -394,7 +411,8 @@ describe('Memory Retrieval Node', () => {
       const result = await memoryRetrievalNode(
         state as GraphStateType,
         mockMemoryService,
-        agentNames
+        agentNames,
+        mockConfig
       );
 
       // Assert
@@ -430,7 +448,8 @@ describe('Memory Retrieval Node', () => {
       const result = await memoryRetrievalNode(
         state as GraphStateType,
         mockMemoryService,
-        agentNames
+        agentNames,
+        mockConfig
       );
 
       // Assert
@@ -460,7 +479,7 @@ describe('Memory Retrieval Node', () => {
 
       vi.mocked(mockMemoryService.getAllAgentMemories).mockResolvedValue(mockMemoryContext);
 
-      const nodeFunction = createMemoryRetrievalNode(mockMemoryService, agentNames);
+      const nodeFunction = createMemoryRetrievalNode(mockMemoryService, agentNames, mockConfig);
 
       const state: Partial<GraphStateType> = {
         conditionId,
@@ -510,7 +529,8 @@ describe('Memory Retrieval Node', () => {
       const result = await memoryRetrievalNode(
         state as GraphStateType,
         mockMemoryService,
-        agentNames
+        agentNames,
+        mockConfig
       );
       const duration = Date.now() - startTime;
 
