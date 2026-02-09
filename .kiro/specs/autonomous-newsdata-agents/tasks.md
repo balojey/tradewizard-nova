@@ -113,7 +113,7 @@ This implementation plan transforms three existing TradeWizard agents (Breaking 
 - [x] 7. Checkpoint - Ensure all tool tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 8. Create autonomous agent infrastructure
+- [x] 8. Create autonomous agent infrastructure
   - Create `src/nodes/autonomous-news-agents.ts` with agent factory functions
   - Implement createAutonomousNewsAgent function
   - Add agent configuration interfaces

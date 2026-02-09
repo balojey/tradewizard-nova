@@ -88,3 +88,10 @@ export {
   NeutralSignalSchema,
 } from './risk-philosophy.js';
 export { createAutonomousPollingAgentNode } from './autonomous-polling-agent.js';
+export {
+  createAutonomousNewsAgent,
+  createAutonomousBreakingNewsAgentNode,
+  createAutonomousMediaSentimentAgentNode,
+  createAutonomousMarketMicrostructureAgentNode,
+} from './autonomous-news-agents.js';
+export type { NewsAgentType, NewsAgentConfig } from './autonomous-news-agents.js';
