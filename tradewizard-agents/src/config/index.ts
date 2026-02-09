@@ -7,6 +7,10 @@ export * from './llm-config.js';
 export * from './polling-agent-config.js';
 import { loadPollingAgentConfig } from './polling-agent-config.js';
 
+// Export news agents configuration types
+export * from './news-agents-config.js';
+import { loadNewsAgentsConfig } from './news-agents-config.js';
+
 /**
  * Configuration schema for the Market Intelligence Engine
  * 
@@ -274,6 +278,29 @@ const EngineConfigSchema = z
       timeout: z.number().positive().default(45000),
       cacheEnabled: z.boolean().default(true),
       fallbackToBasic: z.boolean().default(true),
+    }),
+    newsAgents: z.object({
+      breakingNewsAgent: z.object({
+        autonomous: z.boolean().default(false),
+        maxToolCalls: z.number().positive().default(5),
+        timeout: z.number().positive().default(45000),
+        cacheEnabled: z.boolean().default(true),
+        fallbackToBasic: z.boolean().default(true),
+      }),
+      mediaSentimentAgent: z.object({
+        autonomous: z.boolean().default(false),
+        maxToolCalls: z.number().positive().default(5),
+        timeout: z.number().positive().default(45000),
+        cacheEnabled: z.boolean().default(true),
+        fallbackToBasic: z.boolean().default(true),
+      }),
+      marketMicrostructureAgent: z.object({
+        autonomous: z.boolean().default(false),
+        maxToolCalls: z.number().positive().default(5),
+        timeout: z.number().positive().default(45000),
+        cacheEnabled: z.boolean().default(true),
+        fallbackToBasic: z.boolean().default(true),
+      }),
     }),
   })
   .refine(
@@ -638,6 +665,7 @@ export function loadConfig(): EngineConfig {
       minSampleSize: parseInt(process.env.PERFORMANCE_TRACKING_MIN_SAMPLE_SIZE || '10', 10),
     },
     pollingAgent: loadPollingAgentConfig(),
+    newsAgents: loadNewsAgentsConfig(),
   };
 
   // Validate configuration
@@ -875,6 +903,20 @@ export function createConfig(overrides: Partial<EngineConfig>): EngineConfig {
       ...baseConfig.pollingAgent,
       ...(overrides.pollingAgent || {}),
     },
+    newsAgents: {
+      breakingNewsAgent: {
+        ...baseConfig.newsAgents.breakingNewsAgent,
+        ...(overrides.newsAgents?.breakingNewsAgent || {}),
+      },
+      mediaSentimentAgent: {
+        ...baseConfig.newsAgents.mediaSentimentAgent,
+        ...(overrides.newsAgents?.mediaSentimentAgent || {}),
+      },
+      marketMicrostructureAgent: {
+        ...baseConfig.newsAgents.marketMicrostructureAgent,
+        ...(overrides.newsAgents?.marketMicrostructureAgent || {}),
+      },
+    },
   };
 
   // Validate merged configuration
@@ -1090,6 +1132,29 @@ export function getDefaultConfig(): Partial<EngineConfig> {
       timeout: 45000,
       cacheEnabled: true,
       fallbackToBasic: true,
+    },
+    newsAgents: {
+      breakingNewsAgent: {
+        autonomous: false,
+        maxToolCalls: 5,
+        timeout: 45000,
+        cacheEnabled: true,
+        fallbackToBasic: true,
+      },
+      mediaSentimentAgent: {
+        autonomous: false,
+        maxToolCalls: 5,
+        timeout: 45000,
+        cacheEnabled: true,
+        fallbackToBasic: true,
+      },
+      marketMicrostructureAgent: {
+        autonomous: false,
+        maxToolCalls: 5,
+        timeout: 45000,
+        cacheEnabled: true,
+        fallbackToBasic: true,
+      },
     },
   };
 }

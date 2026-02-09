@@ -214,14 +214,14 @@ This implementation plan transforms three existing TradeWizard agents (Breaking 
 - [x] 13. Checkpoint - Ensure all agent tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 14. Add agent configuration
-  - [ ] 14.1 Create `src/config/news-agents-config.ts`
+- [x] 14. Add agent configuration
+  - [x] 14.1 Create `src/config/news-agents-config.ts`
     - Define NewsAgentConfig interface
     - Add default configuration values
     - Implement configuration validation
     - _Requirements: 18.3_
   
-  - [ ] 14.2 Update `src/config/index.ts`
+  - [x] 14.2 Update `src/config/index.ts`
     - Add news agent configuration to EngineConfig
     - Export news agent config types
     - _Requirements: 18.3_
