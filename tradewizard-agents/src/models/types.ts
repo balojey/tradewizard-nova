@@ -364,7 +364,7 @@ export type IngestionError =
  */
 export type AgentError =
   | { type: 'TIMEOUT'; agentName: string; timeoutMs: number }
-  | { type: 'EXECUTION_FAILED'; agentName: string; error: Error };
+  | { type: 'EXECUTION_FAILED'; agentName: string; error: Error; fallbackRecommended?: boolean };
 
 /**
  * Errors that can occur during recommendation generation

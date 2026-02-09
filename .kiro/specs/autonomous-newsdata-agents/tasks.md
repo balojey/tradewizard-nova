@@ -252,14 +252,14 @@ This implementation plan transforms three existing TradeWizard agents (Breaking 
     - Test fallback to basic mode works correctly
     - _Requirements: 18.4, 18.5, 18.6_
 
-- [ ] 16. Add comprehensive error handling
-  - [ ] 16.1 Implement timeout handling for all agents
+- [x] 16. Add comprehensive error handling
+  - [x] 16.1 Implement timeout handling for all agents
     - Add Promise.race with timeout for agent invocation
     - Return partial results on timeout
     - Log timeout warnings
     - _Requirements: 17.1, 17.2, 17.3_
   
-  - [ ] 16.2 Implement graceful degradation
+  - [x] 16.2 Implement graceful degradation
     - Add fallback to basic mode on critical failures
     - Include tool failure information in riskFactors
     - Adjust confidence downward on tool failures

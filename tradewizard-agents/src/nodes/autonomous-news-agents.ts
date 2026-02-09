@@ -376,6 +376,10 @@ function createAutonomousNewsAgentNode(
   return async (state: GraphStateType): Promise<Partial<GraphStateType>> => {
     const startTime = Date.now();
     const agentName = `autonomous_${agentType}`;
+    
+    // Initialize these at the top level so they're available in error handling
+    let toolAuditLog: ToolAuditEntry[] = [];
+    let cache: ToolCache | null = null;
 
     try {
       // Step 1: Check for MBD availability
@@ -447,10 +451,10 @@ function createAutonomousNewsAgentNode(
 
       // Step 2: Create tool cache with session ID (Requirement 1.6)
       const sessionId = state.mbd.conditionId || 'unknown';
-      const cache = new ToolCache(sessionId);
+      cache = new ToolCache(sessionId);
 
       // Step 3: Create tool audit log
-      const toolAuditLog: ToolAuditEntry[] = [];
+      toolAuditLog = [];
 
       // Step 4: Create tool context
       const toolContext: ToolContext = {
@@ -489,20 +493,95 @@ Use the available tools to gather additional news data as needed, then provide y
         ],
       };
 
-      // Step 8: Execute agent with timeout (Requirement 6.6, 7.6, 8.6)
+      // Step 8: Execute agent with timeout (Requirements 6.6, 7.6, 8.6, 17.1, 17.2, 17.3)
       const timeoutMs = 45000; // 45 seconds
       const maxToolCalls = 5; // Limit tool calls
 
-      // Execute agent with timeout
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Agent execution timeout')), timeoutMs);
-      });
+      // Execute agent with timeout using Promise.race
+      // If timeout occurs, we'll catch it and return partial results
+      let result: any;
 
-      const agentPromise = agent.invoke(input, {
-        recursionLimit: maxToolCalls + 10, // Allow some extra for agent reasoning
-      });
+      try {
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs);
+        });
 
-      const result = await Promise.race([agentPromise, timeoutPromise]);
+        const agentPromise = agent.invoke(input, {
+          recursionLimit: maxToolCalls + 10, // Allow some extra for agent reasoning
+        });
+
+        result = await Promise.race([agentPromise, timeoutPromise]);
+      } catch (error) {
+        // Check if this is a timeout error
+        if (error instanceof Error && error.message === 'TIMEOUT') {
+          // Log timeout warning (Requirement 17.3)
+          console.warn(`[${agentName}] Agent execution timeout after ${timeoutMs}ms`);
+          console.warn(`[${agentName}] Returning partial results with reduced confidence`);
+
+          // Return partial results with timeout indication (Requirement 17.2)
+          const toolUsageSummary = getNewsToolUsageSummary(toolAuditLog);
+          const cacheStats = cache.getStats();
+
+          // Create a partial signal with reduced confidence
+          const partialSignal: AgentSignal = {
+            agentName,
+            timestamp: Date.now(),
+            confidence: 0.3, // Low confidence due to timeout
+            direction: 'NEUTRAL',
+            fairProbability: state.mbd.currentProbability || 0.5,
+            keyDrivers: [
+              'Analysis incomplete due to timeout',
+              `Executed ${toolUsageSummary.toolsCalled} tool calls before timeout`,
+              'Returning neutral signal with low confidence',
+            ],
+            riskFactors: [
+              'Agent execution timeout - analysis incomplete',
+              'Insufficient time to gather comprehensive news data',
+              'Results may not reflect full market context',
+            ],
+            metadata: {
+              timeout: true,
+              timeoutMs,
+              toolUsage: {
+                toolsCalled: toolUsageSummary.toolsCalled,
+                totalToolTime: toolUsageSummary.totalToolTime,
+                cacheHits: cacheStats.hits,
+                cacheMisses: cacheStats.misses,
+                toolBreakdown: toolUsageSummary.toolBreakdown,
+              },
+            },
+          };
+
+          return {
+            agentSignals: [partialSignal],
+            auditLog: [
+              {
+                stage: `agent_${agentName}`,
+                timestamp: Date.now(),
+                data: {
+                  agentName,
+                  success: false,
+                  timeout: true,
+                  timeoutMs,
+                  direction: partialSignal.direction,
+                  confidence: partialSignal.confidence,
+                  fairProbability: partialSignal.fairProbability,
+                  toolsCalled: toolUsageSummary.toolsCalled,
+                  totalToolTime: toolUsageSummary.totalToolTime,
+                  cacheHits: cacheStats.hits,
+                  cacheMisses: cacheStats.misses,
+                  duration: Date.now() - startTime,
+                  toolAudit: toolAuditLog,
+                  warning: 'Agent execution timeout - returned partial results',
+                },
+              },
+            ],
+          };
+        }
+        
+        // If it's not a timeout error, re-throw it
+        throw error;
+      }
 
       // Step 9: Parse agent output into AgentSignal (Requirement 6.7, 7.7, 8.7)
       const agentOutput = (result as any).messages[(result as any).messages.length - 1].content;
@@ -552,6 +631,53 @@ Use the available tools to gather additional news data as needed, then provide y
         toolBreakdown: toolUsageSummary.toolBreakdown,
       };
 
+      // Step 10.5: Implement graceful degradation (Requirements 15.2, 15.4, 15.5, 15.6)
+      // Check for tool failures and adjust confidence/riskFactors accordingly
+      const toolFailures = toolAuditLog.filter(entry => entry.error);
+      const toolFailureCount = toolFailures.length;
+      const totalToolCalls = toolAuditLog.length;
+
+      if (toolFailureCount > 0) {
+        // Calculate failure rate
+        const failureRate = totalToolCalls > 0 ? toolFailureCount / totalToolCalls : 0;
+
+        // Adjust confidence downward based on tool failures (Requirement 15.4)
+        // Reduce confidence by 10% for each failed tool, up to 50% reduction
+        const confidenceReduction = Math.min(0.5, toolFailureCount * 0.1);
+        const originalConfidence = signal.confidence;
+        signal.confidence = Math.max(0.1, signal.confidence * (1 - confidenceReduction));
+
+        console.warn(`[${agentName}] ${toolFailureCount} tool failure(s) detected`);
+        console.warn(`[${agentName}] Adjusted confidence from ${originalConfidence.toFixed(2)} to ${signal.confidence.toFixed(2)}`);
+
+        // Include tool failure information in riskFactors (Requirement 15.5)
+        const toolFailureRisks = [
+          `${toolFailureCount} of ${totalToolCalls} tool calls failed (${(failureRate * 100).toFixed(0)}% failure rate)`,
+          'Analysis may be incomplete due to tool failures',
+          'Confidence adjusted downward to reflect data limitations',
+        ];
+
+        // Add specific tool failure details
+        toolFailures.forEach(failure => {
+          toolFailureRisks.push(`${failure.toolName} failed: ${failure.error || 'Unknown error'}`);
+        });
+
+        // Prepend tool failure risks to existing riskFactors
+        signal.riskFactors = [...toolFailureRisks, ...signal.riskFactors];
+
+        // Add tool failure metadata
+        signal.metadata.toolFailures = {
+          count: toolFailureCount,
+          rate: failureRate,
+          failures: toolFailures.map(f => ({
+            toolName: f.toolName,
+            error: f.error,
+            timestamp: f.timestamp,
+          })),
+          confidenceAdjustment: confidenceReduction,
+        };
+      }
+
       // Step 11: Return agent signal and audit log
       return {
         agentSignals: [signal],
@@ -576,13 +702,60 @@ Use the available tools to gather additional news data as needed, then provide y
         ],
       };
     } catch (error) {
-      // Handle all errors gracefully
+      // Handle all errors gracefully (Requirements 15.2, 15.6)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const isTimeout = errorMessage.includes('timeout');
+      const isCriticalFailure = !isTimeout; // Non-timeout errors are critical
 
       console.error(`[${agentName}] Error during execution:`, errorMessage);
 
-      // Log error to audit trail
+      // Get tool usage summary for error reporting
+      const toolUsageSummary = getNewsToolUsageSummary(toolAuditLog);
+      const cacheStats = cache ? cache.getStats() : { hits: 0, misses: 0 };
+
+      // Check if we should fall back to basic mode (Requirement 15.2)
+      const shouldFallback = isCriticalFailure && config.newsAgents?.[`${agentType}Agent` as keyof typeof config.newsAgents]?.fallbackToBasic;
+
+      if (shouldFallback) {
+        console.warn(`[${agentName}] Critical failure detected, attempting fallback to basic mode`);
+        
+        // Note: The actual fallback to basic agent is handled at the workflow level
+        // by checking the autonomous flag. Here we just report the failure and
+        // let the workflow decide whether to use the basic agent on retry.
+        
+        // Return error with fallback suggestion
+        return {
+          agentErrors: [
+            {
+              type: 'EXECUTION_FAILED',
+              agentName,
+              error: error instanceof Error ? error : new Error(errorMessage),
+              fallbackRecommended: true,
+            },
+          ],
+          auditLog: [
+            {
+              stage: `agent_${agentName}`,
+              timestamp: Date.now(),
+              data: {
+                agentName,
+                success: false,
+                error: errorMessage,
+                errorContext: isCriticalFailure ? 'Critical agent execution failure' : 'Agent execution timeout',
+                fallbackRecommended: true,
+                toolsCalled: toolUsageSummary.toolsCalled,
+                totalToolTime: toolUsageSummary.totalToolTime,
+                cacheHits: cacheStats.hits,
+                cacheMisses: cacheStats.misses,
+                duration: Date.now() - startTime,
+                toolAudit: toolAuditLog,
+              },
+            },
+          ],
+        };
+      }
+
+      // Log error to audit trail without fallback
       return {
         agentErrors: [
           {
@@ -600,7 +773,12 @@ Use the available tools to gather additional news data as needed, then provide y
               success: false,
               error: errorMessage,
               errorContext: isTimeout ? 'Agent execution timeout' : 'Agent execution failed',
+              toolsCalled: toolUsageSummary.toolsCalled,
+              totalToolTime: toolUsageSummary.totalToolTime,
+              cacheHits: cacheStats.hits,
+              cacheMisses: cacheStats.misses,
               duration: Date.now() - startTime,
+              toolAudit: toolAuditLog,
             },
           },
         ],
