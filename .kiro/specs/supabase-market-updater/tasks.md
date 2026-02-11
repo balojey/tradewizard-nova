@@ -133,7 +133,7 @@ This implementation plan creates a Supabase Edge Function that runs hourly via p
     - Test Polymarket API unavailable
     - _Requirements: 6.2, 6.3, 8.4_
 
-- [ ] 8. Checkpoint - Ensure edge function works end-to-end
+- [x] 8. Checkpoint - Ensure edge function works end-to-end
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 9. Create database migration for pg_cron
