@@ -226,8 +226,8 @@ This implementation plan converts the timestamp formatting design into actionabl
     - Default to enabled for new deployments
     - _Requirements: 10.3_
 
-- [ ] 12. Update memory context formatting
-  - [ ] 12.1 Update memory retrieval to use formatted timestamps
+- [-] 12. Update memory context formatting
+  - [x] 12.1 Update memory retrieval to use formatted timestamps
     - Modify `src/database/memory-retrieval.ts` if it formats timestamps for agents
     - Ensure historical signal timestamps are human-readable
     - Maintain consistency with agent context formatting
