@@ -120,13 +120,13 @@ This implementation refactors the market discovery system to fetch markets direc
     - Test invalid response structure (object instead of array)
     - _Requirements: 7.1, 7.2, 7.4, 7.5_
 
-- [ ] 4. Checkpoint - Backend implementation complete
+- [x] 4. Checkpoint - Backend implementation complete
   - Ensure all backend tests pass
   - Verify direct market fetching works with real Polymarket API
   - Ask the user if questions arise
 
-- [ ] 5. Frontend: Update API proxy to use direct market endpoint
-  - [ ] 5.1 Modify GET handler in `app/api/polymarket/markets/route.ts`
+- [-] 5. Frontend: Update API proxy to use direct market endpoint
+  - [-] 5.1 Modify GET handler in `app/api/polymarket/markets/route.ts`
     - Change URL from `/events` to `/markets` endpoint
     - Build URL with parameters: `closed`, `order`, `ascending`, `tag_id`, `limit`, `offset`
     - Map `include_closed` parameter to `closed` in Gamma API request
