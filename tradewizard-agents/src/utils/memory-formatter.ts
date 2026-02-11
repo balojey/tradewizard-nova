@@ -9,6 +9,7 @@
 
 import type { AgentMemoryContext, HistoricalSignal } from '../database/memory-retrieval.js';
 import { getMemoryMetricsCollector } from './memory-metrics.js';
+import { formatTimestamp as formatTimestampHumanReadable } from './timestamp-formatter.js';
 
 /**
  * Format options for memory context
@@ -208,17 +209,10 @@ function formatTimestamp(date: Date, format: 'iso' | 'relative' | 'human'): stri
     case 'iso':
       return date.toISOString();
     case 'relative':
-      return getRelativeTime(date);
     case 'human':
-      return date.toLocaleString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZone: 'UTC',
-        timeZoneName: 'short',
-      });
+      // Use the new timestamp-formatter utility for consistent human-readable formatting
+      const result = formatTimestampHumanReadable(date.getTime());
+      return result.formatted;
   }
 }
 
@@ -232,25 +226,4 @@ function formatTimestamp(date: Date, format: 'iso' | 'relative' | 'human'): stri
  */
 function formatPercentage(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
-}
-
-/**
- * Get relative time description
- *
- * @param date - Date to describe
- * @returns Relative time string (e.g., "2 hours ago")
- */
-function getRelativeTime(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMinutes = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffMinutes < 1) return 'less than 1 minute ago';
-  if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
-  if (diffHours < 1) return 'less than 1 hour ago';
-  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-  return date.toLocaleDateString('en-US');
 }

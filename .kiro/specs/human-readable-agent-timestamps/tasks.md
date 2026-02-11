@@ -121,8 +121,8 @@ This implementation plan converts the timestamp formatting design into actionabl
 - [ ] 3. Checkpoint - Ensure all utility tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 4. Integrate with agent nodes
-  - [ ] 4.1 Update main agent node to use formatted context
+- [x] 4. Integrate with agent nodes
+  - [x] 4.1 Update main agent node to use formatted context
     - Modify `src/nodes/agents.ts` in `createAgentNode()` function
     - Import `formatMarketContextForAgent` from agent-context-formatter
     - Replace `JSON.stringify(state.mbd, null, 2)` with formatted context

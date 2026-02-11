@@ -11,6 +11,7 @@ import type { AgentSignal } from '../models/types.js';
 import { AgentSignalSchema, AgentSignalLLMOutputSchema } from '../models/schemas.js';
 import type { EngineConfig } from '../config/index.js';
 import { formatMemoryContext } from '../utils/memory-formatter.js';
+import { formatMarketContextForAgent } from '../utils/agent-context-formatter.js';
 
 /**
  * Type for supported LLM instances
@@ -86,8 +87,8 @@ When you have previous analysis available:
 
 Your analysis should show thoughtful evolution over time, not random fluctuation.`;
 
-    // Prepare the market context for the agent
-    const marketContext = JSON.stringify(state.mbd, null, 2);
+    // Prepare the market context for the agent with human-readable timestamps
+    const marketContext = formatMarketContextForAgent(state, agentName);
     const messages = [
       { role: 'system', content: enhancedSystemPrompt },
       {

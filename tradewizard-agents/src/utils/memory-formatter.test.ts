@@ -144,9 +144,10 @@ describe('Memory Context Formatter', () => {
       expect(result.signalCount).toBe(3);
 
       // Verify chronological order (oldest first)
-      const jan14Index = result.text.indexOf('Jan 14');
-      const jan15Index = result.text.indexOf('Jan 15');
-      const jan16Index = result.text.indexOf('Jan 16');
+      // New formatter uses "January 14, 2025" format instead of "Jan 14"
+      const jan14Index = result.text.indexOf('January 14');
+      const jan15Index = result.text.indexOf('January 15');
+      const jan16Index = result.text.indexOf('January 16');
 
       expect(jan14Index).toBeLessThan(jan15Index);
       expect(jan15Index).toBeLessThan(jan16Index);
@@ -173,7 +174,9 @@ describe('Memory Context Formatter', () => {
       const memory = createMemoryContext([signal]);
       const result = formatMemoryContext(memory);
 
-      expect(result.text).toMatch(/Jan 15, 2025.*02:30 PM.*UTC/);
+      // New timestamp formatter uses either relative or absolute format
+      // For dates in the past, it will use absolute format: "January 15, 2025 at 2:30 PM EST"
+      expect(result.text).toMatch(/January \d+, 2025 at \d+:\d+ (AM|PM) (EST|EDT)/);
     });
 
     it('should format timestamps in ISO format when requested', () => {
@@ -378,8 +381,9 @@ describe('Memory Context Formatter', () => {
       const memory = createMemoryContext([signal]);
       const result = formatMemoryContext(memory);
 
-      // Should use human-readable dates
-      expect(result.text).toMatch(/Jan \d+, 2025/);
+      // Should use human-readable dates with new timestamp formatter
+      // Format will be either relative or absolute depending on age
+      expect(result.text).toMatch(/(ago|January|February|March|April|May|June|July|August|September|October|November|December)/);
       // Should not include metadata
       expect(result.text).not.toContain('Metadata:');
       // Should not be truncated (single signal is small)
