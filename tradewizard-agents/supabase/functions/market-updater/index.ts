@@ -56,8 +56,12 @@ function createSupabaseClient() {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error("Missing Supabase credentials");
+  if (!supabaseUrl) {
+    throw new Error("Missing SUPABASE_URL environment variable");
+  }
+
+  if (!supabaseKey) {
+    throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY environment variable");
   }
 
   return createClient(supabaseUrl, supabaseKey);
