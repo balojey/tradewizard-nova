@@ -153,8 +153,8 @@ This implementation plan converts the timestamp formatting design into actionabl
     - Test multiple news articles have consistent formatting
     - _Requirements: 6.1, 6.2, 8.3_
 
-- [ ] 6. Integrate with thesis construction node
-  - [ ] 6.1 Update thesis construction to use formatted context
+- [x] 6. Integrate with thesis construction node
+  - [x] 6.1 Update thesis construction to use formatted context
     - Modify `src/nodes/thesis-construction.ts`
     - Import formatting utilities
     - Update bull and bear thesis construction to use formatted timestamps

@@ -10,6 +10,7 @@ import type { GraphStateType } from '../models/state.js';
 import type { Thesis } from '../models/types.js';
 import { ThesisSchema } from '../models/schemas.js';
 import type { EngineConfig } from '../config/index.js';
+import { formatTimestamp } from '../utils/timestamp-formatter.js';
 
 /**
  * Type for supported LLM instances
@@ -270,15 +271,24 @@ export function createThesisConstructionNode(
         };
       }
 
-      // Prepare context for thesis generation
+      // Prepare context for thesis generation with human-readable timestamps
+      const expiryFormatted = formatTimestamp(state.mbd.expiryTimestamp);
+      
+      // Format catalyst timestamps
+      const formattedCatalysts = state.mbd.metadata.keyCatalysts?.map(catalyst => ({
+        event: catalyst.event,
+        timestamp: formatTimestamp(catalyst.timestamp).formatted,
+      })) || [];
+      
       const context = {
         market: {
           question: state.mbd.question,
           currentProbability: marketProbability,
           resolutionCriteria: state.mbd.resolutionCriteria,
-          expiryTimestamp: state.mbd.expiryTimestamp,
+          expiryTimestamp: expiryFormatted.formatted,
           liquidityScore: state.mbd.liquidityScore,
           volatilityRegime: state.mbd.volatilityRegime,
+          keyCatalysts: formattedCatalysts,
         },
         // Include fused signal if available, otherwise use raw agent signals
         ...(source === 'fused' && state.fusedSignal
