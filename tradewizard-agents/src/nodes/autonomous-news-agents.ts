@@ -477,7 +477,13 @@ function createAutonomousNewsAgentNode(
       const agent = createAutonomousNewsAgent(agentType, config, tools);
 
       // Step 7: Prepare agent input with market data and keywords (Requirement 6.3, 7.3, 8.3)
-      const marketContext = JSON.stringify(state.mbd, null, 2);
+      // Import formatting utilities for human-readable timestamps (Requirements 6.1, 6.2, 8.3)
+      const { formatMarketBriefingForAgent, formatExternalDataForAgent } = await import('../utils/agent-context-formatter.js');
+      
+      const marketContext = formatMarketBriefingForAgent(state.mbd);
+      const externalDataContext = state.externalData 
+        ? formatExternalDataForAgent(state.externalData)
+        : '';
       const keywordsContext = state.marketKeywords
         ? JSON.stringify(state.marketKeywords, null, 2)
         : 'None';
@@ -491,7 +497,7 @@ function createAutonomousNewsAgentNode(
 MARKET DATA:
 ${marketContext}
 
-KEYWORDS:
+${externalDataContext ? `EXTERNAL DATA:\n${externalDataContext}\n` : ''}KEYWORDS:
 ${keywordsContext}
 
 Use the available tools to gather additional news data as needed, then provide your structured analysis.`,

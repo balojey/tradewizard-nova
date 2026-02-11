@@ -140,8 +140,8 @@ This implementation plan converts the timestamp formatting design into actionabl
     - Test agent can successfully analyze with formatted timestamps
     - _Requirements: 8.1, 8.2, 8.3, 8.4_
 
-- [ ] 5. Integrate with autonomous news agents
-  - [ ] 5.1 Update autonomous news agent node to use formatted context
+- [x] 5. Integrate with autonomous news agents
+  - [x] 5.1 Update autonomous news agent node to use formatted context
     - Modify `src/nodes/autonomous-news-agents.ts` in `createAutonomousNewsAgentNode()` function
     - Import `formatExternalDataForAgent` from agent-context-formatter
     - Update news data formatting to use human-readable timestamps
