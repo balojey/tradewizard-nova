@@ -136,27 +136,27 @@ This implementation plan creates a Supabase Edge Function that runs hourly via p
 - [x] 8. Checkpoint - Ensure edge function works end-to-end
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 9. Create database migration for pg_cron
-  - [ ] 9.1 Create migration file for pg_cron setup
+- [x] 9. Create database migration for pg_cron
+  - [x] 9.1 Create migration file for pg_cron setup
     - Create file: `supabase/migrations/[timestamp]_market_updater_cron.sql`
     - Enable pg_cron extension
     - Grant necessary permissions to postgres role
     - _Requirements: 7.1, 7.6_
   
-  - [ ] 9.2 Configure cron job schedule
+  - [x] 9.2 Configure cron job schedule
     - Use cron.schedule() to create hourly job
     - Set cron expression to '0 * * * *'
     - Name job 'market-updater-hourly'
     - _Requirements: 7.2, 7.3_
   
-  - [ ] 9.3 Configure HTTP invocation
+  - [x] 9.3 Configure HTTP invocation
     - Use net.http_post to invoke edge function
     - Build Supabase Edge Functions URL
     - Include Authorization header with service role key
     - Store service role key in database settings
     - _Requirements: 7.4, 7.5_
   
-  - [ ] 9.4 Add migration documentation
+  - [x] 9.4 Add migration documentation
     - Document how to set service role key in database settings
     - Document how to verify cron job is running
     - Document how to check cron job logs
