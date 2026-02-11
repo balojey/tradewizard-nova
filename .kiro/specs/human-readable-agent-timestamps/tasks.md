@@ -81,8 +81,8 @@ This implementation plan converts the timestamp formatting design into actionabl
     - Test full month names (January, not Jan)
     - _Requirements: 2.5, 3.1-3.5, 4.1-4.4, 9.2, 11.1, 11.2_
 
-- [ ] 2. Create agent context formatter utility
-  - [ ] 2.1 Implement agent context formatter module
+- [x] 2. Create agent context formatter utility
+  - [x] 2.1 Implement agent context formatter module
     - Create `src/utils/agent-context-formatter.ts`
     - Implement `formatMarketBriefingForAgent()` to format MBD with human-readable timestamps
     - Implement `formatExternalDataForAgent()` to format news/polling/social data
