@@ -51,10 +51,98 @@ export interface FormattedTimestamp {
 }
 
 /**
+ * Configuration interface for timestamp formatting
+ */
+export interface TimestampFormatterConfig {
+  /**
+   * Enable/disable human-readable timestamp formatting
+   * @default true
+   */
+  enabled: boolean;
+  
+  /**
+   * Timezone for absolute time formatting
+   * @default 'America/New_York'
+   */
+  timezone: string;
+  
+  /**
+   * Threshold in days for switching from relative to absolute time
+   * @default 7
+   */
+  relativeThresholdDays: number;
+}
+
+/**
  * Default configuration
  */
 const DEFAULT_TIMEZONE = 'America/New_York';
 const DEFAULT_THRESHOLD_DAYS = 7;
+
+/**
+ * Default configuration values
+ */
+export const DEFAULT_CONFIG: TimestampFormatterConfig = {
+  enabled: true,
+  timezone: DEFAULT_TIMEZONE,
+  relativeThresholdDays: DEFAULT_THRESHOLD_DAYS,
+};
+
+/**
+ * Global configuration (can be overridden at runtime)
+ */
+let globalConfig: TimestampFormatterConfig = { ...DEFAULT_CONFIG };
+
+/**
+ * Load configuration from environment variables
+ */
+function loadConfigFromEnv(): TimestampFormatterConfig {
+  return {
+    enabled: process.env.ENABLE_HUMAN_READABLE_TIMESTAMPS !== 'false',
+    timezone: process.env.TIMESTAMP_TIMEZONE || DEFAULT_TIMEZONE,
+    relativeThresholdDays: parseInt(
+      process.env.RELATIVE_TIME_THRESHOLD_DAYS || String(DEFAULT_THRESHOLD_DAYS),
+      10
+    ),
+  };
+}
+
+/**
+ * Initialize global configuration from environment variables
+ */
+function initializeConfig(): void {
+  globalConfig = loadConfigFromEnv();
+}
+
+/**
+ * Get current global configuration
+ */
+export function getConfig(): Readonly<TimestampFormatterConfig> {
+  return { ...globalConfig };
+}
+
+/**
+ * Set global configuration (for runtime override)
+ * 
+ * @param config - Partial configuration to merge with current config
+ * 
+ * @example
+ * setConfig({ enabled: false }); // Disable formatting globally
+ * setConfig({ timezone: 'America/Los_Angeles' }); // Change timezone
+ */
+export function setConfig(config: Partial<TimestampFormatterConfig>): void {
+  globalConfig = { ...globalConfig, ...config };
+}
+
+/**
+ * Reset configuration to defaults from environment variables
+ */
+export function resetConfig(): void {
+  initializeConfig();
+}
+
+// Initialize configuration on module load
+initializeConfig();
 
 /**
  * Parse timestamp input to Date object
@@ -170,7 +258,7 @@ export function formatAbsoluteTime(
  * Main formatting function - automatically chooses relative or absolute format
  * 
  * @param isoTimestamp - ISO 8601 timestamp string or Unix timestamp number
- * @param options - Formatting options
+ * @param options - Formatting options (overrides global config)
  * @returns Formatted timestamp with metadata
  * 
  * @example
@@ -205,8 +293,19 @@ export function formatTimestamp(
     };
   }
 
-  const timezone = options?.timezone || DEFAULT_TIMEZONE;
-  const thresholdDays = options?.relativeThresholdDays || DEFAULT_THRESHOLD_DAYS;
+  // Check if formatting is disabled globally
+  if (!globalConfig.enabled) {
+    // Return ISO 8601 format when disabled
+    return {
+      formatted: date.toISOString(),
+      formatType: 'fallback',
+      original: originalStr,
+    };
+  }
+
+  // Merge options with global config
+  const timezone = options?.timezone || globalConfig.timezone;
+  const thresholdDays = options?.relativeThresholdDays ?? globalConfig.relativeThresholdDays;
   const referenceTime = options?.referenceTime || new Date();
 
   // Calculate age in days

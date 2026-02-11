@@ -3,6 +3,11 @@
  * 
  * Formats market data, news, and agent signals for LLM consumption with human-readable timestamps.
  * This module provides the formatting layer at the boundary between LangGraph state and agent prompts.
+ * 
+ * Feature Flag Support:
+ * - When ENABLE_HUMAN_READABLE_TIMESTAMPS=true: Timestamps are formatted as human-readable strings
+ * - When ENABLE_HUMAN_READABLE_TIMESTAMPS=false: Timestamps are returned in ISO 8601 format
+ * - The feature flag is checked in timestamp-formatter module, no additional logic needed here
  */
 
 import type {
@@ -10,7 +15,16 @@ import type {
   AgentSignal,
 } from '../models/types.js';
 import type { GraphStateType } from '../models/state.js';
-import { formatTimestamp } from './timestamp-formatter.js';
+import { formatTimestamp, getConfig } from './timestamp-formatter.js';
+
+/**
+ * Check if human-readable timestamp formatting is enabled
+ * 
+ * @returns true if formatting is enabled, false otherwise
+ */
+export function isTimestampFormattingEnabled(): boolean {
+  return getConfig().enabled;
+}
 
 /**
  * Format Market Briefing Document for agent consumption

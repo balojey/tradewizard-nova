@@ -211,15 +211,15 @@ This implementation plan converts the timestamp formatting design into actionabl
     - Test disabling formatting returns ISO 8601 strings
     - _Requirements: 10.2, 10.3_
 
-- [ ] 11. Add configuration and feature flag support
-  - [ ] 11.1 Add configuration options for timestamp formatting
+- [x] 11. Add configuration and feature flag support
+  - [x] 11.1 Add configuration options for timestamp formatting
     - Add environment variables: `ENABLE_HUMAN_READABLE_TIMESTAMPS`, `TIMESTAMP_TIMEZONE`, `RELATIVE_TIME_THRESHOLD_DAYS`
     - Create configuration interface in timestamp-formatter
     - Add default configuration values
     - Support runtime configuration override
     - _Requirements: 10.3_
   
-  - [ ] 11.2 Implement feature flag for gradual rollout
+  - [x] 11.2 Implement feature flag for gradual rollout
     - Add feature flag check in agent-context-formatter
     - When disabled, return ISO 8601 format
     - When enabled, use human-readable format
