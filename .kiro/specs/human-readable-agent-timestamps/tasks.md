@@ -6,8 +6,8 @@ This implementation plan converts the timestamp formatting design into actionabl
 
 ## Tasks
 
-- [ ] 1. Create core timestamp formatter utility
-  - [ ] 1.1 Implement timestamp formatter module with core functions
+- [x] 1. Create core timestamp formatter utility
+  - [x] 1.1 Implement timestamp formatter module with core functions
     - Create `src/utils/timestamp-formatter.ts`
     - Implement `formatTimestamp()` main function with auto-selection logic
     - Implement `formatRelativeTime()` for recent timestamps

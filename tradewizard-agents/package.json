@@ -63,6 +63,8 @@
     "@supabase/supabase-js": "^2.90.1",
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
     "dotenv": "^17.2.3",
     "opik": "^1.9.81",
     "opik-langchain": "^1.9.82",
