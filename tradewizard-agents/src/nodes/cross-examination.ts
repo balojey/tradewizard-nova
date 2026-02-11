@@ -9,6 +9,7 @@ import { createLLMInstance, type LLMInstance } from '../utils/llm-factory.js';
 import type { GraphStateType } from '../models/state.js';
 import type { DebateRecord, DebateTest, Thesis } from '../models/types.js';
 import type { EngineConfig } from '../config/index.js';
+import { formatTimestamp } from '../utils/timestamp-formatter.js';
 
 /**
  * Type for supported LLM instances
@@ -33,7 +34,7 @@ function createCrossExaminationLLM(config: EngineConfig): LLMInstance {
 /**
  * System prompt for evidence testing
  */
-const EVIDENCE_TEST_PROMPT = `Current date and time: ${new Date().toISOString()}
+const EVIDENCE_TEST_PROMPT = `Current date and time: ${formatTimestamp(Date.now()).formatted}
 
 You are a fact-checker for prediction market theses.
 
@@ -59,7 +60,7 @@ Respond with a structured test result including:
 /**
  * System prompt for causality testing
  */
-const CAUSALITY_TEST_PROMPT = `Current date and time: ${new Date().toISOString()}
+const CAUSALITY_TEST_PROMPT = `Current date and time: ${formatTimestamp(Date.now()).formatted}
 
 You are a causality analyst for prediction market theses.
 
@@ -85,7 +86,7 @@ Respond with a structured test result including:
 /**
  * System prompt for timing testing
  */
-const TIMING_TEST_PROMPT = `Current date and time: ${new Date().toISOString()}
+const TIMING_TEST_PROMPT = `Current date and time: ${formatTimestamp(Date.now()).formatted}
 
 You are a timeline analyst for prediction market theses.
 
@@ -111,7 +112,7 @@ Respond with a structured test result including:
 /**
  * System prompt for liquidity testing
  */
-const LIQUIDITY_TEST_PROMPT = `Current date and time: ${new Date().toISOString()}
+const LIQUIDITY_TEST_PROMPT = `Current date and time: ${formatTimestamp(Date.now()).formatted}
 
 You are a market microstructure analyst for prediction market theses.
 
@@ -137,7 +138,7 @@ Respond with a structured test result including:
 /**
  * System prompt for tail risk testing
  */
-const TAIL_RISK_TEST_PROMPT = `Current date and time: ${new Date().toISOString()}
+const TAIL_RISK_TEST_PROMPT = `Current date and time: ${formatTimestamp(Date.now()).formatted}
 
 You are a tail risk analyst for prediction market theses.
 
@@ -270,11 +271,12 @@ async function executeTimingTest(
     };
   }
 
+  const marketExpiry = formatTimestamp(mbd.expiryTimestamp);
   const prompt = `Evaluate the timing of catalysts in this thesis:
 
 Thesis Direction: ${thesis.direction}
 Catalysts: ${thesis.catalysts.join(', ')}
-Market Expiry: ${new Date(mbd.expiryTimestamp).toISOString()}
+Market Expiry: ${marketExpiry.formatted}
 
 Analyze whether the catalyst timeline is realistic given the market expiry.`;
 

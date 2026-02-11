@@ -166,8 +166,8 @@ This implementation plan converts the timestamp formatting design into actionabl
     - Test catalyst timestamps are human-readable
     - _Requirements: 8.1, 8.3_
 
-- [ ] 7. Integrate with cross-examination node
-  - [ ] 7.1 Update cross-examination to use formatted context
+- [x] 7. Integrate with cross-examination node
+  - [x] 7.1 Update cross-examination to use formatted context
     - Modify `src/nodes/cross-examination.ts`
     - Import formatting utilities
     - Update debate context to use formatted timestamps
