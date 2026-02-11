@@ -13,18 +13,18 @@ This implementation plan creates a Supabase Edge Function that runs hourly via p
   - Set up import maps for @supabase/supabase-js and @polymarket/clob-client
   - _Requirements: 1.1, 1.4_
 
-- [ ] 2. Implement client initialization and configuration
-  - [ ] 2.1 Create Supabase client initialization function
+- [x] 2. Implement client initialization and configuration
+  - [x] 2.1 Create Supabase client initialization function
     - Read SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY from environment
     - Return configured Supabase client with service role
     - _Requirements: 1.3, 8.1, 8.2_
   
-  - [ ] 2.2 Create Polymarket client initialization function
+  - [x] 2.2 Create Polymarket client initialization function
     - Configure ClobClient with chainId from environment
     - Set up read-only client (no private key needed)
     - _Requirements: 1.4, 8.3_
   
-  - [ ] 2.3 Implement configuration validation
+  - [x] 2.3 Implement configuration validation
     - Check for required environment variables
     - Return error response if any are missing
     - _Requirements: 8.4_
