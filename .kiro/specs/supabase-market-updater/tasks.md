@@ -6,7 +6,7 @@ This implementation plan creates a Supabase Edge Function that runs hourly via p
 
 ## Tasks
 
-- [ ] 1. Set up Edge Function structure and dependencies
+- [x] 1. Set up Edge Function structure and dependencies
   - Create `supabase/functions/market-updater/` directory
   - Create `index.ts` with basic Deno serve handler
   - Define TypeScript interfaces for MarketRecord, UpdateResult, ExecutionSummary
