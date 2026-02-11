@@ -89,6 +89,25 @@ function validateConfiguration(): { valid: boolean; error?: string } {
 }
 
 /**
+ * Fetch all active markets from the database
+ * @param supabase - Configured Supabase client
+ * @returns Array of active market records
+ * @throws Error if database query fails
+ */
+async function fetchActiveMarkets(supabase: any): Promise<MarketRecord[]> {
+  const { data, error } = await supabase
+    .from("markets")
+    .select("id, condition_id, question, status, market_probability, volume_24h, liquidity")
+    .eq("status", "active");
+
+  if (error) {
+    throw new Error(`Failed to fetch active markets: ${error.message}`);
+  }
+
+  return data || [];
+}
+
+/**
  * Main Edge Function handler
  * Runs hourly to update active market data from Polymarket
  */
@@ -120,7 +139,19 @@ serve(async (req: Request) => {
     const supabase = createSupabaseClient();
     const polymarket = createPolymarketClient();
 
-    // TODO: Fetch active markets
+    // Fetch active markets
+    const markets = await fetchActiveMarkets(supabase);
+    summary.total_markets = markets.length;
+
+    // Handle empty market list - return early with success
+    if (markets.length === 0) {
+      summary.duration_ms = Date.now() - startTime;
+      return new Response(JSON.stringify(summary), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     // TODO: Process each market
     // TODO: Update database records
 

@@ -29,8 +29,8 @@ This implementation plan creates a Supabase Edge Function that runs hourly via p
     - Return error response if any are missing
     - _Requirements: 8.4_
 
-- [ ] 3. Implement active market discovery
-  - [ ] 3.1 Create fetchActiveMarkets function
+- [x] 3. Implement active market discovery
+  - [x] 3.1 Create fetchActiveMarkets function
     - Query markets table with status = 'active'
     - Select id, condition_id, question, status, market_probability, volume_24h, liquidity
     - Return array of MarketRecord objects
@@ -40,7 +40,7 @@ This implementation plan creates a Supabase Edge Function that runs hourly via p
     - **Property 1: Active Market Filtering**
     - **Validates: Requirements 2.1, 2.2**
   
-  - [ ] 3.3 Handle empty market list edge case
+  - [x] 3.3 Handle empty market list edge case
     - Return early with success status if no active markets
     - Include zero counts in execution summary
     - _Requirements: 2.3_
