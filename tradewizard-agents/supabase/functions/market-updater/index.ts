@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { ClobClient } from "https://esm.sh/@polymarket/clob-client@4";
 
 /**
  * Represents a market record from the database
@@ -65,17 +64,9 @@ function createSupabaseClient() {
 }
 
 /**
- * Initialize Polymarket CLOB client for read-only operations
- * @returns Configured ClobClient
+ * Polymarket API base URL
  */
-function createPolymarketClient() {
-  const chainId = parseInt(Deno.env.get("POLYMARKET_CHAIN_ID") || "137", 10);
-
-  return new ClobClient({
-    chainId,
-    // No private key needed for read-only operations
-  });
-}
+const POLYMARKET_API_BASE = "https://gamma-api.polymarket.com";
 
 /**
  * Validate that all required environment variables are present
@@ -128,13 +119,11 @@ function sleep(ms: number): Promise<void> {
 
 /**
  * Fetch current market data from Polymarket API with retry logic
- * @param polymarket - Configured ClobClient
  * @param conditionId - Polymarket condition ID
  * @param attempt - Current attempt number (for retry logic)
  * @returns PolymarketMarketData object or null if fetch fails
  */
 async function fetchPolymarketData(
-  polymarket: any,
   conditionId: string,
   attempt: number = 1
 ): Promise<PolymarketMarketData | null> {
@@ -142,8 +131,15 @@ async function fetchPolymarketData(
   const delays = [1000, 2000, 4000]; // 1s, 2s, 4s
 
   try {
-    // Call getMarket() method on CLOB client
-    const market = await polymarket.getMarket(conditionId);
+    // Fetch market data from Polymarket Gamma API
+    const response = await fetch(`${POLYMARKET_API_BASE}/markets/${conditionId}`);
+    
+    if (!response.ok) {
+      console.error(`Market not found for condition_id: ${conditionId} (status: ${response.status})`);
+      return null;
+    }
+
+    const market = await response.json();
 
     if (!market) {
       console.error(`Market not found for condition_id: ${conditionId}`);
@@ -179,7 +175,7 @@ async function fetchPolymarketData(
       const delay = delays[attempt - 1];
       console.log(`Retrying in ${delay}ms...`);
       await sleep(delay);
-      return fetchPolymarketData(polymarket, conditionId, attempt + 1);
+      return fetchPolymarketData(conditionId, attempt + 1);
     }
 
     // Return null for failed fetches after max attempts
@@ -191,13 +187,11 @@ async function fetchPolymarketData(
 /**
  * Update a single market with current data from Polymarket
  * @param supabase - Configured Supabase client
- * @param polymarket - Configured ClobClient
  * @param market - Market record from database
  * @returns UpdateResult with success status and updated fields
  */
 async function updateMarket(
   supabase: any,
-  polymarket: any,
   market: MarketRecord
 ): Promise<UpdateResult> {
   const result: UpdateResult = {
@@ -208,7 +202,7 @@ async function updateMarket(
 
   try {
     // Call fetchPolymarketData to get current state
-    const marketData = await fetchPolymarketData(polymarket, market.condition_id);
+    const marketData = await fetchPolymarketData(market.condition_id);
 
     if (!marketData) {
       result.error = "Market not found on Polymarket";
@@ -303,7 +297,6 @@ serve(async (req: Request) => {
 
     // Initialize clients
     const supabase = createSupabaseClient();
-    const polymarket = createPolymarketClient();
 
     // Fetch active markets
     const markets = await fetchActiveMarkets(supabase);
@@ -320,7 +313,7 @@ serve(async (req: Request) => {
 
     // Process each market and update database records
     for (const market of markets) {
-      const result = await updateMarket(supabase, polymarket, market);
+      const result = await updateMarket(supabase, market);
       
       if (result.success) {
         summary.updated++;
