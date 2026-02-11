@@ -6,15 +6,15 @@ This implementation refactors the market discovery system to fetch markets direc
 
 ## Tasks
 
-- [ ] 1. Backend: Implement direct market fetching
-  - [ ] 1.1 Create `fetchTrendingMarketsDirectly()` method in `PolymarketDiscoveryEngine`
+- [x] 1. Backend: Implement direct market fetching
+  - [x] 1.1 Create `fetchTrendingMarketsDirectly()` method in `PolymarketDiscoveryEngine`
     - Replace event-based fetching with direct `/markets` endpoint call
     - Build URL with query parameters: `closed=false&order=volume24hr&ascending=false&tag_id&limit&offset`
     - Implement 15-second timeout using `AbortSignal.timeout(15000)`
     - Parse and validate API response as array of markets
     - _Requirements: 1.1, 1.2_
   
-  - [ ] 1.2 Create `enrichMarketWithEventContext()` helper method
+  - [x] 1.2 Create `enrichMarketWithEventContext()` helper method
     - Check if market has non-empty `events` array
     - Extract event metadata from first event: `title`, `slug`, `id`, `image/icon`
     - Populate market fields: `eventTitle`, `eventSlug`, `eventId`, `eventIcon`
@@ -22,7 +22,7 @@ This implementation refactors the market discovery system to fetch markets direc
     - Map field names for backend compatibility (`conditionId`, `condition_id`, etc.)
     - _Requirements: 1.4, 3.1, 3.2, 3.3_
   
-  - [ ] 1.3 Implement filtering logic in `fetchTrendingMarketsDirectly()`
+  - [x] 1.3 Implement filtering logic in `fetchTrendingMarketsDirectly()`
     - Filter out markets where `acceptingOrders === false`
     - Filter out markets without `clobTokenIds`
     - Validate tradeable prices (at least one price between 0.05 and 0.95)
@@ -30,13 +30,13 @@ This implementation refactors the market discovery system to fetch markets direc
     - Use evergreen tag IDs: [2, 21, 120, 596, 1401, 100265, 100639]
     - _Requirements: 1.5, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
   
-  - [ ] 1.4 Implement sorting logic in `fetchTrendingMarketsDirectly()`
+  - [x] 1.4 Implement sorting logic in `fetchTrendingMarketsDirectly()`
     - Sort open markets by combined score (liquidity + volume24hr) descending
     - Sort closed markets by end date (most recent first), then by volume
     - Prioritize open markets over closed markets in mixed arrays
     - _Requirements: 6.1, 6.2, 6.3_
   
-  - [ ] 1.5 Implement error handling and retry logic
+  - [x] 1.5 Implement error handling and retry logic
     - Throw descriptive errors for non-200 status codes
     - Throw error for invalid response structure (non-array)
     - Skip markets with invalid JSON in fields, continue processing
@@ -44,7 +44,7 @@ This implementation refactors the market discovery system to fetch markets direc
     - Do not retry on 400 or 404 errors
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
   
-  - [ ] 1.6 Update `fetchPoliticalMarkets()` to use new method
+  - [x] 1.6 Update `fetchPoliticalMarkets()` to use new method
     - Replace call to `fetchTrendingMarketsFromEvents()` with `fetchTrendingMarketsDirectly()`
     - Maintain same return type and interface
     - Add logging for metrics (markets received, valid markets, final sorted)

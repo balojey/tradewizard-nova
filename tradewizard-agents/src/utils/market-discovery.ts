@@ -231,52 +231,71 @@ export class PolymarketDiscoveryEngine implements MarketDiscoveryEngine {
    * Enhanced to use the same approach as frontend for consistency
    * Implements Requirements 1.1, 1.2, 1.3 while maintaining interface compatibility
    */
-  async fetchPoliticalMarkets(): Promise<PolymarketMarket[]> {
-    logger.info('[PolymarketDiscoveryEngine] Fetching political markets using trending events approach');
+  /**
+     * Fetch all active political markets using direct /markets endpoint
+     * Enhanced to use direct market fetching instead of event-based approach
+     * Implements Requirements 1.1, 9.1, 9.2 while maintaining interface compatibility
+     */
+    async fetchPoliticalMarkets(): Promise<PolymarketMarket[]> {
+      logger.info('[PolymarketDiscoveryEngine] Fetching political markets using direct /markets endpoint');
 
-    try {
-      // Use the new trending markets approach (matching frontend)
-      const markets = await this.fetchTrendingMarketsFromEvents(this.config.maxEventsPerDiscovery || 100);
-
-      logger.info({
-        marketsFound: markets.length,
-      }, '[PolymarketDiscoveryEngine] Political markets fetched using trending events approach');
-
-      return markets;
-    } catch (error) {
-      logger.error({ error: (error as Error).message }, 
-        '[PolymarketDiscoveryEngine] Trending events approach failed, falling back to enhanced event-based approach');
-      
       try {
-        // Fallback to enhanced event-based discovery
-        const events = await this.eventClient.discoverPoliticalEvents({
-          tagId: this.config.politicsTagId,
-          relatedTags: this.config.includeRelatedTags,
-          active: true,
-          closed: false,
-          limit: this.config.maxEventsPerDiscovery,
-          sortBy: this.config.defaultSortBy,
-          sortOrder: 'desc',
-        });
-
-        // Extract all markets from events
-        const markets = this.extractMarketsFromEvents(events);
+        // Use the new direct markets approach
+        const markets = await this.fetchTrendingMarketsDirectly(this.config.maxEventsPerDiscovery || 100);
 
         logger.info({
-          eventsFound: events.length,
-          marketsExtracted: markets.length,
-        }, '[PolymarketDiscoveryEngine] Political markets fetched using enhanced event-based discovery');
+          marketsFound: markets.length,
+        }, '[PolymarketDiscoveryEngine] Political markets fetched using direct /markets endpoint');
 
         return markets;
-      } catch (enhancedError) {
-        logger.error({ error: (enhancedError as Error).message }, 
-          '[PolymarketDiscoveryEngine] Enhanced event-based fetch failed, falling back to legacy approach');
-        
-        // Final fallback to legacy approach for backward compatibility
-        return this.fetchPoliticalMarketsLegacy();
+      } catch (error) {
+        logger.error({ error: (error as Error).message }, 
+          '[PolymarketDiscoveryEngine] Direct markets approach failed, falling back to events-based approach');
+
+        try {
+          // Fallback to events-based discovery
+          const markets = await this.fetchTrendingMarketsFromEvents(this.config.maxEventsPerDiscovery || 100);
+
+          logger.info({
+            marketsFound: markets.length,
+          }, '[PolymarketDiscoveryEngine] Political markets fetched using fallback events approach');
+
+          return markets;
+        } catch (eventsError) {
+          logger.error({ error: (eventsError as Error).message }, 
+            '[PolymarketDiscoveryEngine] Events approach failed, falling back to enhanced event-based approach');
+
+          try {
+            // Second fallback to enhanced event-based discovery
+            const events = await this.eventClient.discoverPoliticalEvents({
+              tagId: this.config.politicsTagId,
+              relatedTags: this.config.includeRelatedTags,
+              active: true,
+              closed: false,
+              limit: this.config.maxEventsPerDiscovery,
+              sortBy: this.config.defaultSortBy,
+              sortOrder: 'desc',
+            });
+
+            // Extract all markets from events
+            const markets = this.extractMarketsFromEvents(events);
+
+            logger.info({
+              eventsFound: events.length,
+              marketsExtracted: markets.length,
+            }, '[PolymarketDiscoveryEngine] Political markets fetched using enhanced event-based discovery');
+
+            return markets;
+          } catch (enhancedError) {
+            logger.error({ error: (enhancedError as Error).message }, 
+              '[PolymarketDiscoveryEngine] Enhanced event-based fetch failed, falling back to legacy approach');
+
+            // Final fallback to legacy approach for backward compatibility
+            return this.fetchPoliticalMarketsLegacy();
+          }
+        }
       }
     }
-  }
 
   /**
    * Rank markets by trending score with enhanced event-level analysis
@@ -867,6 +886,183 @@ export class PolymarketDiscoveryEngine implements MarketDiscoveryEngine {
     }
 
     throw lastError || new Error('Max retries exceeded');
+  }
+  /**
+   * Fetch trending markets directly from /markets endpoint (NEW IMPLEMENTATION)
+   * Replaces event-based fetching with direct market API calls
+   * Implements Requirements 1.1, 1.2, 1.5, 5.1-5.6, 6.1-6.3, 7.1-7.5
+   */
+  private async fetchTrendingMarketsDirectly(limit: number = 100): Promise<PolymarketMarket[]> {
+    const maxRetries = 3;
+    let lastError: Error | null = null;
+
+    // Constants for filtering
+    const MIN_LIQUIDITY_USD = 1000;
+    const MIN_LIQUIDITY_NON_EVERGREEN_USD = 5000;
+    const EVERGREEN_TAG_IDS = [2, 21, 120, 596, 1401, 100265, 100639];
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        // Fetch more than requested to account for filtering
+        const fetchLimit = Math.max(limit * 3, 100);
+
+        // Build URL with direct /markets endpoint
+        let url = `${this.config.gammaApiUrl}/markets?closed=false&order=volume24hr&ascending=false&limit=${fetchLimit}&offset=0`;
+        url += `&tag_id=${this.config.politicsTagId}`;
+
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(15000), // 15 second timeout
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const markets = await response.json();
+
+        if (!Array.isArray(markets)) {
+          throw new Error('Invalid API response: expected array of markets');
+        }
+
+        // Enrich markets with event context
+        const enrichedMarkets = markets.map(market => this.enrichMarketWithEventContext(market));
+
+        // Apply filtering logic
+        const validMarkets = enrichedMarkets.filter((market: PolymarketMarket) => {
+          // Filter out markets not accepting orders
+          if (market.acceptingOrders === false) return false;
+
+          // Filter out closed markets
+          if (market.closed === true) return false;
+
+          // Filter out markets without CLOB token IDs
+          if (!market.clobTokenIds) return false;
+
+          // Check tradeable prices (at least one price between 0.05 and 0.95)
+          if (market.outcomePrices || market.outcome_prices) {
+            try {
+              const pricesStr = market.outcomePrices || market.outcome_prices;
+              const prices = typeof pricesStr === 'string' ? JSON.parse(pricesStr) : pricesStr;
+              const hasTradeablePrice = prices.some((price: string) => {
+                const priceNum = parseFloat(price);
+                return priceNum >= 0.05 && priceNum <= 0.95;
+              });
+              if (!hasTradeablePrice) return false;
+            } catch {
+              // Skip markets with invalid JSON in outcomePrices, continue processing
+              return false;
+            }
+          }
+
+          // Apply liquidity filtering
+          const marketTagIds = market.tags?.map((t: any) => parseInt(t.id)) || [];
+          const hasEvergreenTag = EVERGREEN_TAG_IDS.some((id) => marketTagIds.includes(id));
+          const liquidity = parseFloat(market.liquidity || '0');
+
+          // Apply different thresholds based on evergreen tags
+          if (!hasEvergreenTag && liquidity < MIN_LIQUIDITY_NON_EVERGREEN_USD) {
+            return false;
+          }
+          if (liquidity < MIN_LIQUIDITY_USD) return false;
+
+          return true;
+        });
+
+        // Sort markets by combined liquidity + volume score
+        const sortedMarkets = validMarkets.sort((a: PolymarketMarket, b: PolymarketMarket) => {
+          const aScore = parseFloat(a.liquidity || '0') +
+                        parseFloat(a.volume24hr?.toString() || a.volume_24h?.toString() || a.volume || '0');
+          const bScore = parseFloat(b.liquidity || '0') +
+                        parseFloat(b.volume24hr?.toString() || b.volume_24h?.toString() || b.volume || '0');
+          return bScore - aScore;
+        });
+
+        logger.info({
+          marketsReceived: markets.length,
+          validMarkets: validMarkets.length,
+          finalSorted: sortedMarkets.length,
+        }, '[PolymarketDiscoveryEngine] Markets fetched directly from /markets API');
+
+        return sortedMarkets;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Unknown error');
+
+        // Don't retry on 404 or 400 errors
+        if (lastError.message.includes('404') || lastError.message.includes('400')) {
+          throw lastError;
+        }
+
+        if (attempt === maxRetries) {
+          throw lastError;
+        }
+
+        // Exponential backoff with jitter
+        const baseDelay = Math.pow(2, attempt) * 1000;
+        const jitter = Math.random() * 1000;
+        await new Promise((resolve) => setTimeout(resolve, baseDelay + jitter));
+      }
+    }
+
+    throw lastError || new Error('Max retries exceeded');
+  }
+
+  /**
+   * Enrich market with event context if available
+   * Implements Requirements 1.4, 3.1, 3.2, 3.3
+   */
+  private enrichMarketWithEventContext(market: any): PolymarketMarket {
+    // Check if market has events array
+    if (market.events && Array.isArray(market.events) && market.events.length > 0) {
+      const event = market.events[0];
+
+      return {
+        ...market,
+        eventTitle: event.title,
+        eventSlug: event.slug,
+        eventId: event.id,
+        eventIcon: event.image || event.icon,
+        // Map field names for backend compatibility
+        conditionId: market.conditionId || market.id,
+        condition_id: market.conditionId || market.id,
+        slug: market.slug,
+        market_slug: market.slug,
+        volume24hr: market.volume24hr,
+        volume_24h: market.volume24hr,
+        liquidity: market.liquidity || '0',
+        active: market.active !== false,
+        closed: market.closed === true,
+        endDate: market.endDate,
+        end_date_iso: market.endDate,
+        createdAt: market.createdAt,
+        created_at: market.createdAt,
+        outcomes: market.outcomes,
+        outcomePrices: market.outcomePrices,
+        outcome_prices: market.outcomePrices,
+      };
+    }
+
+    // No event context available - handle gracefully
+    return {
+      ...market,
+      conditionId: market.conditionId || market.id,
+      condition_id: market.conditionId || market.id,
+      slug: market.slug,
+      market_slug: market.slug,
+      volume24hr: market.volume24hr,
+      volume_24h: market.volume24hr,
+      liquidity: market.liquidity || '0',
+      active: market.active !== false,
+      closed: market.closed === true,
+      endDate: market.endDate,
+      end_date_iso: market.endDate,
+      createdAt: market.createdAt,
+      created_at: market.createdAt,
+      outcomes: market.outcomes,
+      outcomePrices: market.outcomePrices,
+      outcome_prices: market.outcomePrices,
+    };
   }
 
   /**
