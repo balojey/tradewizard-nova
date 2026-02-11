@@ -9,6 +9,35 @@
 import type { GraphStateType } from '../models/state.js';
 import type { ConsensusProbability, ProbabilityRegime } from '../models/types.js';
 import type { EngineConfig } from '../config/index.js';
+import { formatTimestamp } from '../utils/timestamp-formatter.js';
+
+/**
+ * Format agent signals with human-readable timestamps for consensus context
+ * This prepares signal data for potential logging or display purposes
+ * 
+ * @param signals - Array of agent signals
+ * @returns Formatted signal summary with timestamps
+ */
+function formatSignalsForConsensusContext(
+  signals: GraphStateType['agentSignals']
+): string {
+  if (!signals || signals.length === 0) {
+    return 'No agent signals available';
+  }
+  
+  const lines: string[] = [];
+  lines.push('Agent Signals for Consensus:');
+  
+  signals.forEach((signal, index) => {
+    const signalTime = formatTimestamp(signal.timestamp);
+    lines.push(
+      `  ${index + 1}. ${signal.agentName}: ${(signal.fairProbability * 100).toFixed(1)}% ` +
+      `(confidence: ${(signal.confidence * 100).toFixed(1)}%, ${signalTime.formatted})`
+    );
+  });
+  
+  return lines.join('\n');
+}
 
 /**
  * Calculate standard deviation of agent fair probabilities
@@ -141,6 +170,8 @@ export function createConsensusEngineNode(
 ): (state: GraphStateType) => Promise<Partial<GraphStateType>> {
   return async (state: GraphStateType): Promise<Partial<GraphStateType>> => {
     const startTime = Date.now();
+    const startTimeFormatted = formatTimestamp(startTime);
+    
     console.log('[ConsensusEngine] Starting with state:', {
       hasDebateRecord: !!state.debateRecord,
       hasBullThesis: !!state.bullThesis,
@@ -149,10 +180,14 @@ export function createConsensusEngineNode(
       bearScore: state.debateRecord?.bearScore,
       bullProbability: state.bullThesis?.fairProbability,
       bearProbability: state.bearThesis?.fairProbability,
+      startTime: startTimeFormatted.formatted,
     });
 
     // Check if debate record and agent signals are available
     if (!state.debateRecord) {
+      const errorTime = Date.now();
+      const errorTimeFormatted = formatTimestamp(errorTime);
+      
       return {
         consensusError: {
           type: 'INSUFFICIENT_DATA',
@@ -161,11 +196,12 @@ export function createConsensusEngineNode(
         auditLog: [
           {
             stage: 'consensus_engine',
-            timestamp: Date.now(),
+            timestamp: errorTime,
             data: {
               success: false,
               error: 'Missing debate record',
-              duration: Date.now() - startTime,
+              duration: errorTime - startTime,
+              errorAt: errorTimeFormatted.formatted,
             },
           },
         ],
@@ -173,6 +209,9 @@ export function createConsensusEngineNode(
     }
 
     if (!state.agentSignals || state.agentSignals.length < config.agents.minAgentsRequired) {
+      const errorTime = Date.now();
+      const errorTimeFormatted = formatTimestamp(errorTime);
+      
       return {
         consensusError: {
           type: 'INSUFFICIENT_DATA',
@@ -181,13 +220,14 @@ export function createConsensusEngineNode(
         auditLog: [
           {
             stage: 'consensus_engine',
-            timestamp: Date.now(),
+            timestamp: errorTime,
             data: {
               success: false,
               error: 'Insufficient agent signals',
               signalCount: state.agentSignals?.length || 0,
               minRequired: config.agents.minAgentsRequired,
-              duration: Date.now() - startTime,
+              duration: errorTime - startTime,
+              errorAt: errorTimeFormatted.formatted,
             },
           },
         ],
@@ -195,6 +235,9 @@ export function createConsensusEngineNode(
     }
 
     if (!state.bullThesis || !state.bearThesis) {
+      const errorTime = Date.now();
+      const errorTimeFormatted = formatTimestamp(errorTime);
+      
       return {
         consensusError: {
           type: 'INSUFFICIENT_DATA',
@@ -203,13 +246,14 @@ export function createConsensusEngineNode(
         auditLog: [
           {
             stage: 'consensus_engine',
-            timestamp: Date.now(),
+            timestamp: errorTime,
             data: {
               success: false,
               error: 'Missing theses',
               hasBullThesis: !!state.bullThesis,
               hasBearThesis: !!state.bearThesis,
-              duration: Date.now() - startTime,
+              duration: errorTime - startTime,
+              errorAt: errorTimeFormatted.formatted,
             },
           },
         ],
@@ -217,6 +261,10 @@ export function createConsensusEngineNode(
     }
 
     try {
+      // Log formatted signal context for debugging and audit trail
+      const signalContext = formatSignalsForConsensusContext(state.agentSignals);
+      console.log('[ConsensusEngine] Signal context:\n', signalContext);
+      
       // Calculate weighted consensus probability from debate scores
       const consensusProbability = calculateWeightedConsensus(
         state.bullThesis.fairProbability,
@@ -234,6 +282,9 @@ export function createConsensusEngineNode(
 
       // Handle consensus failure for high disagreement (> 0.30)
       if (disagreementIndex > 0.3) {
+        const errorTime = Date.now();
+        const errorTimeFormatted = formatTimestamp(errorTime);
+        
         return {
           consensusError: {
             type: 'CONSENSUS_FAILED',
@@ -242,13 +293,15 @@ export function createConsensusEngineNode(
           auditLog: [
             {
               stage: 'consensus_engine',
-              timestamp: Date.now(),
+              timestamp: errorTime,
               data: {
                 success: false,
                 error: 'High disagreement',
                 disagreementIndex,
                 threshold: 0.3,
-                duration: Date.now() - startTime,
+                duration: errorTime - startTime,
+                errorAt: errorTimeFormatted.formatted,
+                signalSummary: signalContext,
               },
             },
           ],
@@ -277,13 +330,16 @@ export function createConsensusEngineNode(
       const marketProbability = state.mbd?.currentProbability || 0.5;
       const efficientlyPriced = isEfficientlyPriced(consensusProbability, marketProbability);
       const edge = Math.abs(consensusProbability - marketProbability);
+      
+      const endTime = Date.now();
+      const endTimeFormatted = formatTimestamp(endTime);
 
       return {
         consensus,
         auditLog: [
           {
             stage: 'consensus_engine',
-            timestamp: Date.now(),
+            timestamp: endTime,
             data: {
               success: true,
               consensusProbability,
@@ -294,12 +350,17 @@ export function createConsensusEngineNode(
               regime,
               confidenceBand,
               contributingAgents: contributingSignals.length,
-              duration: Date.now() - startTime,
+              duration: endTime - startTime,
+              completedAt: endTimeFormatted.formatted,
+              signalSummary: signalContext,
             },
           },
         ],
       };
     } catch (error) {
+      const errorTime = Date.now();
+      const errorTimeFormatted = formatTimestamp(errorTime);
+      
       return {
         consensusError: {
           type: 'CONSENSUS_FAILED',
@@ -311,11 +372,12 @@ export function createConsensusEngineNode(
         auditLog: [
           {
             stage: 'consensus_engine',
-            timestamp: Date.now(),
+            timestamp: errorTime,
             data: {
               success: false,
               error: error instanceof Error ? error.message : 'Unknown error',
-              duration: Date.now() - startTime,
+              duration: errorTime - startTime,
+              errorAt: errorTimeFormatted.formatted,
             },
           },
         ],

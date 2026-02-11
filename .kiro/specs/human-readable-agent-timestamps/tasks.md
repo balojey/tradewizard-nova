@@ -179,8 +179,8 @@ This implementation plan converts the timestamp formatting design into actionabl
     - Test consistency with other nodes
     - _Requirements: 8.1, 8.3_
 
-- [ ] 8. Integrate with consensus engine node
-  - [ ] 8.1 Update consensus engine to use formatted context
+- [-] 8. Integrate with consensus engine node
+  - [-] 8.1 Update consensus engine to use formatted context
     - Modify `src/nodes/consensus-engine.ts`
     - Import formatting utilities
     - Update consensus calculation context to use formatted timestamps
