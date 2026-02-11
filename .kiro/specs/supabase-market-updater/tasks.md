@@ -73,7 +73,7 @@ This implementation plan creates a Supabase Edge Function that runs hourly via p
     - Maximum 3 attempts per market
     - _Requirements: 3.5_
 
-- [ ] 5. Checkpoint - Ensure data fetching works correctly
+- [x] 5. Checkpoint - Ensure data fetching works correctly
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 6. Implement market update logic
