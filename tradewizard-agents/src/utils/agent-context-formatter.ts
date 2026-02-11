@@ -20,7 +20,17 @@ import { formatTimestamp, getConfig } from './timestamp-formatter.js';
 /**
  * Check if human-readable timestamp formatting is enabled
  * 
+ * Queries the global configuration to determine if timestamp formatting is active.
+ * Useful for conditional logic or debugging.
+ * 
  * @returns true if formatting is enabled, false otherwise
+ * 
+ * @example
+ * if (isTimestampFormattingEnabled()) {
+ *   console.log('Using human-readable timestamps');
+ * } else {
+ *   console.log('Using ISO 8601 timestamps');
+ * }
  */
 export function isTimestampFormattingEnabled(): boolean {
   return getConfig().enabled;
@@ -30,8 +40,45 @@ export function isTimestampFormattingEnabled(): boolean {
  * Format Market Briefing Document for agent consumption
  * Converts all timestamps to human-readable format
  * 
- * @param mbd - Market Briefing Document from state
- * @returns Formatted string for LLM prompt
+ * This function transforms the Market Briefing Document (MBD) into a formatted
+ * string suitable for LLM agent prompts. All timestamps are converted to
+ * human-readable format while the original state remains unchanged.
+ * 
+ * Formatted sections include:
+ * - Market overview (question, IDs, event type)
+ * - Market expiry (human-readable timestamp)
+ * - Resolution criteria
+ * - Market metrics (probability, liquidity, spread, volatility, volume)
+ * - Event context (if available)
+ * - Keywords
+ * - Key catalysts (with human-readable timestamps)
+ * - Ambiguity flags
+ * - Key insights
+ * - Primary risk factors
+ * - Top opportunities
+ * - Market position
+ * 
+ * @param mbd - Market Briefing Document from state (readonly)
+ * @returns Formatted string for LLM prompt with human-readable timestamps
+ * 
+ * @example
+ * const mbd = {
+ *   question: "Will Biden win the 2024 election?",
+ *   marketId: "0x123...",
+ *   conditionId: "0xabc...",
+ *   expiryTimestamp: 1705330200000,
+ *   currentProbability: 0.65,
+ *   // ... other fields
+ * };
+ * 
+ * const formatted = formatMarketBriefingForAgent(mbd);
+ * // Returns multi-line string:
+ * // === MARKET OVERVIEW ===
+ * // Question: Will Biden win the 2024 election?
+ * // Market ID: 0x123...
+ * // ...
+ * // Market Expires: January 20, 2025 at 11:59 PM EST
+ * // ...
  */
 export function formatMarketBriefingForAgent(
   mbd: Readonly<MarketBriefingDocument>
@@ -149,8 +196,53 @@ export function formatMarketBriefingForAgent(
  * Format external data (news, polling, social) for agent consumption
  * Converts all timestamps to human-readable format
  * 
- * @param externalData - External data from state
- * @returns Formatted string for LLM prompt
+ * This function formats external data sources (news articles, polling data,
+ * social media sentiment) into a human-readable string for LLM agents.
+ * All timestamps are converted to natural language format.
+ * 
+ * Formatted sections include:
+ * - News articles (title, source, published time, sentiment, relevance, summary, URL)
+ * - Polling data (aggregated probability, momentum, bias adjustment, individual polls)
+ * - Social media sentiment (overall sentiment, narrative velocity, platform breakdown)
+ * - Data freshness (last update times for each source)
+ * 
+ * @param externalData - External data from state (readonly)
+ * @returns Formatted string for LLM prompt, or empty string if no data
+ * 
+ * @example
+ * const externalData = {
+ *   news: [{
+ *     title: "Biden announces new policy",
+ *     source: "CNN",
+ *     publishedAt: 1705330200000,
+ *     sentiment: "positive",
+ *     relevanceScore: 0.85,
+ *     summary: "President Biden announced...",
+ *     url: "https://..."
+ *   }],
+ *   polling: {
+ *     aggregatedProbability: 0.52,
+ *     momentum: "stable",
+ *     biasAdjustment: 0.02,
+ *     polls: [...]
+ *   },
+ *   dataFreshness: {
+ *     news: 1705330200000,
+ *     polling: 1705330100000
+ *   }
+ * };
+ * 
+ * const formatted = formatExternalDataForAgent(externalData);
+ * // Returns multi-line string:
+ * // === NEWS ARTICLES ===
+ * // 1. Biden announces new policy
+ * //    Source: CNN
+ * //    Published: 2 hours ago
+ * //    Sentiment: positive
+ * //    Relevance: 85%
+ * //    Summary: President Biden announced...
+ * //    URL: https://...
+ * // ...
  */
 export function formatExternalDataForAgent(
   externalData: Readonly<GraphStateType['externalData']>
@@ -236,8 +328,42 @@ export function formatExternalDataForAgent(
  * Format agent signals for agent consumption (for memory context)
  * Converts all timestamps to human-readable format
  * 
- * @param signals - Array of agent signals
- * @returns Formatted string for LLM prompt
+ * This function formats historical agent signals into a human-readable string
+ * for LLM agents. Useful for providing memory context about previous analysis.
+ * All timestamps are converted to natural language format.
+ * 
+ * Formatted information includes:
+ * - Agent name
+ * - Signal timestamp (human-readable)
+ * - Direction (bullish/bearish)
+ * - Confidence level
+ * - Fair probability estimate
+ * - Key drivers
+ * - Risk factors
+ * 
+ * @param signals - Array of agent signals (readonly)
+ * @returns Formatted string for LLM prompt, or empty string if no signals
+ * 
+ * @example
+ * const signals = [{
+ *   agentName: "NewsAgent",
+ *   timestamp: 1705330200000,
+ *   direction: "bullish",
+ *   confidence: 0.75,
+ *   fairProbability: 0.68,
+ *   keyDrivers: ["Positive polling", "Strong fundraising"],
+ *   riskFactors: ["Economic uncertainty"]
+ * }];
+ * 
+ * const formatted = formatAgentSignalsForAgent(signals);
+ * // Returns multi-line string:
+ * // === HISTORICAL AGENT SIGNALS ===
+ * // 1. NewsAgent (2 hours ago)
+ * //    Direction: bullish
+ * //    Confidence: 75.0%
+ * //    Fair Probability: 68.0%
+ * //    Key Drivers: Positive polling, Strong fundraising
+ * //    Risk Factors: Economic uncertainty
  */
 export function formatAgentSignalsForAgent(
   signals: Readonly<AgentSignal[]>
@@ -274,9 +400,59 @@ export function formatAgentSignalsForAgent(
  * Format complete market context for agent
  * Combines MBD, external data, and memory context with human-readable timestamps
  * 
- * @param state - LangGraph state
+ * This is the main integration function that combines all context sources into
+ * a single formatted string for LLM agent prompts. It includes:
+ * - Market Briefing Document (with human-readable timestamps)
+ * - External data (news, polling, social media)
+ * - Agent's own historical signals (memory context)
+ * - Other agents' signals
+ * 
+ * All timestamps are converted to human-readable format. The original state
+ * remains unchanged (immutable).
+ * 
+ * @param state - LangGraph state (readonly)
  * @param agentName - Name of the agent receiving the context
- * @returns Formatted context string for LLM prompt
+ * @returns Formatted context string for LLM prompt with all relevant data
+ * 
+ * @example
+ * const state = {
+ *   mbd: { ... }, // Market Briefing Document
+ *   externalData: { ... }, // News, polling, social
+ *   memoryContext: new Map([
+ *     ['NewsAgent', {
+ *       historicalSignals: [...]
+ *     }]
+ *   ]),
+ *   agentSignals: [...]
+ * };
+ * 
+ * const context = formatMarketContextForAgent(state, 'NewsAgent');
+ * // Returns comprehensive formatted string:
+ * // === MARKET OVERVIEW ===
+ * // Question: Will Biden win the 2024 election?
+ * // ...
+ * // Market Expires: January 20, 2025 at 11:59 PM EST
+ * // ...
+ * // === NEWS ARTICLES ===
+ * // 1. Biden announces new policy
+ * //    Published: 2 hours ago
+ * // ...
+ * // === YOUR PREVIOUS ANALYSIS ===
+ * // You have analyzed this market 3 time(s) before.
+ * // ...
+ * // === OTHER AGENT SIGNALS ===
+ * // 1. PollingAgent (1 day ago)
+ * // ...
+ * 
+ * @example
+ * // Use in agent node
+ * import { formatMarketContextForAgent } from '../utils/agent-context-formatter.js';
+ * 
+ * const marketContext = formatMarketContextForAgent(state, 'NewsAgent');
+ * const messages = [
+ *   { role: 'system', content: systemPrompt },
+ *   { role: 'user', content: `Analyze this market:\n\n${marketContext}` }
+ * ];
  */
 export function formatMarketContextForAgent(
   state: Readonly<GraphStateType>,

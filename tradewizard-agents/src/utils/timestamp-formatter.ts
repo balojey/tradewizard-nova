@@ -116,6 +116,17 @@ function initializeConfig(): void {
 
 /**
  * Get current global configuration
+ * 
+ * Returns a readonly copy of the current configuration.
+ * Useful for debugging or checking current settings.
+ * 
+ * @returns Readonly copy of current configuration
+ * 
+ * @example
+ * const config = getConfig();
+ * console.log(`Formatting enabled: ${config.enabled}`);
+ * console.log(`Timezone: ${config.timezone}`);
+ * console.log(`Threshold: ${config.relativeThresholdDays} days`);
  */
 export function getConfig(): Readonly<TimestampFormatterConfig> {
   return { ...globalConfig };
@@ -124,11 +135,30 @@ export function getConfig(): Readonly<TimestampFormatterConfig> {
 /**
  * Set global configuration (for runtime override)
  * 
+ * This function allows you to override the default configuration at runtime.
+ * Useful for testing, feature flags, or dynamic configuration changes.
+ * 
  * @param config - Partial configuration to merge with current config
  * 
  * @example
- * setConfig({ enabled: false }); // Disable formatting globally
- * setConfig({ timezone: 'America/Los_Angeles' }); // Change timezone
+ * // Disable formatting globally (fallback to ISO 8601)
+ * setConfig({ enabled: false });
+ * 
+ * @example
+ * // Change timezone to Pacific Time
+ * setConfig({ timezone: 'America/Los_Angeles' });
+ * 
+ * @example
+ * // Adjust relative time threshold to 14 days
+ * setConfig({ relativeThresholdDays: 14 });
+ * 
+ * @example
+ * // Multiple options at once
+ * setConfig({
+ *   enabled: true,
+ *   timezone: 'America/Chicago',
+ *   relativeThresholdDays: 3
+ * });
  */
 export function setConfig(config: Partial<TimestampFormatterConfig>): void {
   globalConfig = { ...globalConfig, ...config };
@@ -136,6 +166,19 @@ export function setConfig(config: Partial<TimestampFormatterConfig>): void {
 
 /**
  * Reset configuration to defaults from environment variables
+ * 
+ * Reloads configuration from environment variables, discarding any runtime overrides.
+ * Useful for testing or resetting to known state.
+ * 
+ * Environment variables:
+ * - ENABLE_HUMAN_READABLE_TIMESTAMPS: 'true' or 'false' (default: 'true')
+ * - TIMESTAMP_TIMEZONE: IANA timezone name (default: 'America/New_York')
+ * - RELATIVE_TIME_THRESHOLD_DAYS: Number of days (default: '7')
+ * 
+ * @example
+ * // After runtime overrides, reset to environment defaults
+ * setConfig({ timezone: 'America/Los_Angeles' });
+ * resetConfig(); // Back to America/New_York (from env)
  */
 export function resetConfig(): void {
   initializeConfig();
@@ -161,13 +204,35 @@ function parseTimestamp(timestamp: string | number): Date | null {
 /**
  * Format timestamp as relative time (e.g., "2 hours ago")
  * 
+ * Converts timestamps to human-readable relative time strings.
+ * Uses natural language for recent events.
+ * 
+ * Time ranges:
+ * - < 1 minute: "just now"
+ * - 1-59 minutes: "X minutes ago"
+ * - 1-23 hours: "X hours ago"
+ * - 1-6 days: "X days ago"
+ * - 7+ days: Falls back to formatDistanceToNow
+ * 
  * @param isoTimestamp - ISO 8601 timestamp string or Unix timestamp number
  * @param referenceTime - Reference time for calculation (defaults to now)
  * @returns Relative time string
  * 
  * @example
- * formatRelativeTime('2024-01-15T15:30:00Z')
- * // => 'just now' | '5 minutes ago' | '2 hours ago' | '3 days ago'
+ * // Recent timestamps
+ * formatRelativeTime('2024-01-15T15:30:00Z') // => 'just now'
+ * formatRelativeTime('2024-01-15T15:25:00Z') // => '5 minutes ago'
+ * formatRelativeTime('2024-01-15T13:30:00Z') // => '2 hours ago'
+ * formatRelativeTime('2024-01-12T15:30:00Z') // => '3 days ago'
+ * 
+ * @example
+ * // With custom reference time
+ * const refTime = new Date('2024-01-15T15:30:00Z');
+ * formatRelativeTime('2024-01-15T15:00:00Z', refTime) // => '30 minutes ago'
+ * 
+ * @example
+ * // Unix timestamp (milliseconds)
+ * formatRelativeTime(1705330200000) // => '2 hours ago'
  */
 export function formatRelativeTime(
   isoTimestamp: string | number,
@@ -213,13 +278,46 @@ export function formatRelativeTime(
 /**
  * Format timestamp as absolute time (e.g., "January 15, 2024 at 3:30 PM EST")
  * 
+ * Converts timestamps to human-readable absolute time strings with timezone.
+ * Uses 12-hour clock format with full month names.
+ * 
+ * Format pattern: "Month Day, Year at Hour:Minute AM/PM Timezone"
+ * - Month: Full name (January, February, etc.)
+ * - Day: Without leading zero (1, 15, 31)
+ * - Year: Full year (2024)
+ * - Hour: 12-hour format without leading zero (1-12)
+ * - Minute: With leading zero (00-59)
+ * - AM/PM: Uppercase
+ * - Timezone: Abbreviation (EST, EDT, PST, PDT, etc.)
+ * 
  * @param isoTimestamp - ISO 8601 timestamp string or Unix timestamp number
- * @param timezone - Timezone for formatting (defaults to America/New_York)
- * @returns Absolute time string
+ * @param timezone - IANA timezone name (defaults to America/New_York)
+ * @returns Absolute time string with timezone
  * 
  * @example
- * formatAbsoluteTime('2024-01-15T15:30:00Z')
+ * // Eastern Time (default)
+ * formatAbsoluteTime('2024-01-15T20:30:00Z')
  * // => 'January 15, 2024 at 3:30 PM EST'
+ * 
+ * @example
+ * // During Daylight Saving Time
+ * formatAbsoluteTime('2024-07-15T19:30:00Z')
+ * // => 'July 15, 2024 at 3:30 PM EDT'
+ * 
+ * @example
+ * // Pacific Time
+ * formatAbsoluteTime('2024-01-15T20:30:00Z', 'America/Los_Angeles')
+ * // => 'January 15, 2024 at 12:30 PM PST'
+ * 
+ * @example
+ * // Unix timestamp
+ * formatAbsoluteTime(1705349400000)
+ * // => 'January 15, 2024 at 3:30 PM EST'
+ * 
+ * @example
+ * // Fallback to UTC on timezone error
+ * formatAbsoluteTime('2024-01-15T15:30:00Z', 'Invalid/Timezone')
+ * // => 'January 15, 2024 at 3:30 PM (UTC)'
  */
 export function formatAbsoluteTime(
   isoTimestamp: string | number,
@@ -257,16 +355,57 @@ export function formatAbsoluteTime(
 /**
  * Main formatting function - automatically chooses relative or absolute format
  * 
- * @param isoTimestamp - ISO 8601 timestamp string or Unix timestamp number
+ * This is the primary function for timestamp formatting. It automatically selects
+ * between relative and absolute formats based on the timestamp age and threshold.
+ * 
+ * Selection Logic:
+ * - Age < threshold (default 7 days): Relative format ("2 hours ago")
+ * - Age >= threshold: Absolute format ("January 15, 2024 at 3:30 PM EST")
+ * - Null/undefined: "unknown time"
+ * - Invalid format: "invalid timestamp"
+ * - Formatting disabled: Returns ISO 8601 format
+ * 
+ * @param isoTimestamp - ISO 8601 timestamp string, Unix timestamp number, or null/undefined
  * @param options - Formatting options (overrides global config)
  * @returns Formatted timestamp with metadata
  * 
  * @example
+ * // Recent timestamp (< 7 days) - uses relative format
  * formatTimestamp('2024-01-15T15:30:00Z')
  * // => { formatted: '2 hours ago', formatType: 'relative', original: '2024-01-15T15:30:00Z' }
  * 
+ * @example
+ * // Older timestamp (>= 7 days) - uses absolute format
  * formatTimestamp('2024-01-01T15:30:00Z')
  * // => { formatted: 'January 1, 2024 at 3:30 PM EST', formatType: 'absolute', original: '2024-01-01T15:30:00Z' }
+ * 
+ * @example
+ * // Null timestamp
+ * formatTimestamp(null)
+ * // => { formatted: 'unknown time', formatType: 'fallback', original: 'null' }
+ * 
+ * @example
+ * // Invalid timestamp
+ * formatTimestamp('not-a-date')
+ * // => { formatted: 'invalid timestamp', formatType: 'fallback', original: 'not-a-date' }
+ * 
+ * @example
+ * // With custom options
+ * formatTimestamp('2024-01-15T15:30:00Z', {
+ *   timezone: 'America/Los_Angeles',
+ *   relativeThresholdDays: 14
+ * })
+ * 
+ * @example
+ * // Unix timestamp (milliseconds)
+ * formatTimestamp(1705330200000)
+ * // => { formatted: '2 hours ago', formatType: 'relative', original: '1705330200000' }
+ * 
+ * @example
+ * // When formatting is disabled globally
+ * setConfig({ enabled: false });
+ * formatTimestamp('2024-01-15T15:30:00Z')
+ * // => { formatted: '2024-01-15T15:30:00.000Z', formatType: 'fallback', original: '2024-01-15T15:30:00Z' }
  */
 export function formatTimestamp(
   isoTimestamp: string | number | null | undefined,
@@ -332,9 +471,35 @@ export function formatTimestamp(
 /**
  * Batch format multiple timestamps efficiently
  * 
- * @param timestamps - Array of ISO 8601 timestamps
- * @param options - Formatting options
- * @returns Array of formatted timestamps
+ * Formats multiple timestamps in a single call. More efficient than calling
+ * formatTimestamp repeatedly when processing arrays of timestamps.
+ * 
+ * @param timestamps - Array of ISO 8601 timestamps, Unix timestamps, or null/undefined values
+ * @param options - Formatting options applied to all timestamps
+ * @returns Array of formatted timestamps with metadata
+ * 
+ * @example
+ * // Format multiple timestamps
+ * const timestamps = [
+ *   '2024-01-15T15:30:00Z',
+ *   '2024-01-01T12:00:00Z',
+ *   null,
+ *   1705330200000
+ * ];
+ * const formatted = formatTimestampBatch(timestamps);
+ * // => [
+ * //   { formatted: '2 hours ago', formatType: 'relative', ... },
+ * //   { formatted: 'January 1, 2024 at 12:00 PM EST', formatType: 'absolute', ... },
+ * //   { formatted: 'unknown time', formatType: 'fallback', ... },
+ * //   { formatted: '2 hours ago', formatType: 'relative', ... }
+ * // ]
+ * 
+ * @example
+ * // With custom options
+ * formatTimestampBatch(timestamps, {
+ *   timezone: 'America/Chicago',
+ *   relativeThresholdDays: 3
+ * })
  */
 export function formatTimestampBatch(
   timestamps: Array<string | number | null | undefined>,

@@ -448,6 +448,56 @@ See [Agent Memory System Documentation](./src/database/MEMORY_SYSTEM_CONFIG.md) 
 
 **Quick Start**: See [Memory System Quick Start Guide](./docs/MEMORY_SYSTEM_QUICK_START.md) for 5-minute setup.
 
+### Human-Readable Timestamp Formatting
+
+The system automatically converts ISO 8601 timestamps to natural language format when presenting data to LLM agents, improving temporal comprehension:
+
+```bash
+# .env
+# Enable/disable human-readable timestamps (default: true)
+ENABLE_HUMAN_READABLE_TIMESTAMPS=true
+
+# Timezone for absolute time formatting (default: America/New_York)
+TIMESTAMP_TIMEZONE=America/New_York
+
+# Threshold for relative vs absolute format in days (default: 7)
+RELATIVE_TIME_THRESHOLD_DAYS=7
+```
+
+**Format Examples:**
+- Recent timestamps: "just now", "5 minutes ago", "2 hours ago", "3 days ago"
+- Older timestamps: "January 15, 2024 at 3:30 PM EST"
+- Automatic DST handling: EST/EDT based on date
+
+**How it works:**
+- Timestamps < 7 days old: Relative format ("2 hours ago")
+- Timestamps >= 7 days old: Absolute format ("January 15, 2024 at 3:30 PM EST")
+- All timestamps in agent prompts are automatically formatted
+- Original ISO 8601 timestamps remain unchanged in state and database
+
+**Benefits:**
+- ✅ Improved agent understanding of temporal relationships
+- ✅ Reduced cognitive load on LLM agents
+- ✅ Better analysis quality through clearer time context
+- ✅ Zero impact on existing data structures
+- ✅ Backward compatible with feature flag support
+
+**Runtime Configuration:**
+```typescript
+import { setConfig } from './utils/timestamp-formatter.js';
+
+// Disable formatting globally
+setConfig({ enabled: false });
+
+// Change timezone
+setConfig({ timezone: 'America/Los_Angeles' });
+
+// Adjust threshold
+setConfig({ relativeThresholdDays: 14 });
+```
+
+See [Timestamp Formatting Documentation](./docs/TIMESTAMP_FORMATTING.md) for complete API reference and examples.
+
 ### Consensus Configuration
 
 ```bash
@@ -992,6 +1042,7 @@ View cost breakdown in Opik:
 - **[Agent Memory System](./src/database/MEMORY_SYSTEM_CONFIG.md)** - Closed-loop analysis with historical context
 - **[Memory System Quick Start](./docs/MEMORY_SYSTEM_QUICK_START.md)** - 5-minute setup guide
 - **[Memory System Examples](./docs/MEMORY_SYSTEM_EXAMPLES.md)** - Practical usage examples and code samples
+- **[Timestamp Formatting](./docs/TIMESTAMP_FORMATTING.md)** - Human-readable timestamp formatting for AI agents
 - **[LLM Provider Setup Guide](./docs/LLM_PROVIDERS.md)** - Setup instructions for OpenAI, Anthropic, Google, and Amazon Nova
 - **[Nova Troubleshooting Guide](./docs/NOVA_TROUBLESHOOTING.md)** - Amazon Nova integration troubleshooting
 - **[Database Module](./src/database/README.md)** - Supabase PostgreSQL integration
