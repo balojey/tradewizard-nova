@@ -189,6 +189,91 @@ async function fetchPolymarketData(
 }
 
 /**
+ * Update a single market with current data from Polymarket
+ * @param supabase - Configured Supabase client
+ * @param polymarket - Configured ClobClient
+ * @param market - Market record from database
+ * @returns UpdateResult with success status and updated fields
+ */
+async function updateMarket(
+  supabase: any,
+  polymarket: any,
+  market: MarketRecord
+): Promise<UpdateResult> {
+  const result: UpdateResult = {
+    condition_id: market.condition_id,
+    success: false,
+    updated_fields: [],
+  };
+
+  try {
+    // Call fetchPolymarketData to get current state
+    const marketData = await fetchPolymarketData(polymarket, market.condition_id);
+
+    if (!marketData) {
+      result.error = "Market not found on Polymarket";
+      return result;
+    }
+
+    // Build update payload with changed fields
+    const updates: Record<string, any> = {};
+
+    // Compare fetched data with database record
+    // Update probability if changed
+    if (marketData.probability !== market.market_probability) {
+      updates.market_probability = marketData.probability;
+      result.updated_fields.push("market_probability");
+    }
+
+    // Update volume if changed
+    if (marketData.volume24h !== market.volume_24h) {
+      updates.volume_24h = marketData.volume24h;
+      result.updated_fields.push("volume_24h");
+    }
+
+    // Update liquidity if changed
+    if (marketData.liquidity !== market.liquidity) {
+      updates.liquidity = marketData.liquidity;
+      result.updated_fields.push("liquidity");
+    }
+
+    // Check if marketData.resolved is true
+    if (marketData.resolved) {
+      // Add status = 'resolved' to update payload
+      updates.status = "resolved";
+      result.updated_fields.push("status");
+
+      // Add resolved_outcome to update payload
+      if (marketData.outcome) {
+        updates.resolved_outcome = marketData.outcome;
+        result.updated_fields.push("resolved_outcome");
+      }
+    }
+
+    // Only execute database update if fields have changed
+    if (Object.keys(updates).length > 0) {
+      // Execute database update via Supabase client
+      const { error } = await supabase
+        .from("markets")
+        .update(updates)
+        .eq("id", market.id);
+
+      if (error) {
+        result.error = error.message;
+        return result;
+      }
+    }
+
+    // Return UpdateResult with success status and updated fields
+    result.success = true;
+    return result;
+  } catch (error) {
+    result.error = (error as Error).message;
+    return result;
+  }
+}
+
+/**
  * Main Edge Function handler
  * Runs hourly to update active market data from Polymarket
  */
@@ -233,8 +318,22 @@ serve(async (req: Request) => {
       });
     }
 
-    // TODO: Process each market
-    // TODO: Update database records
+    // Process each market and update database records
+    for (const market of markets) {
+      const result = await updateMarket(supabase, polymarket, market);
+      
+      if (result.success) {
+        summary.updated++;
+        
+        // Check if market was resolved
+        if (result.updated_fields.includes("status")) {
+          summary.resolved++;
+        }
+      } else {
+        summary.failed++;
+        summary.errors.push(`${market.condition_id}: ${result.error}`);
+      }
+    }
 
     summary.duration_ms = Date.now() - startTime;
 

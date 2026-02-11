@@ -76,8 +76,8 @@ This implementation plan creates a Supabase Edge Function that runs hourly via p
 - [x] 5. Checkpoint - Ensure data fetching works correctly
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Implement market update logic
-  - [ ] 6.1 Create updateMarket function
+- [x] 6. Implement market update logic
+  - [x] 6.1 Create updateMarket function
     - Accept Supabase client, Polymarket client, and MarketRecord
     - Call fetchPolymarketData to get current state
     - Compare fetched data with database record
@@ -90,7 +90,7 @@ This implementation plan creates a Supabase Edge Function that runs hourly via p
     - **Property 5: Complete Market Updates**
     - **Validates: Requirements 4.1, 4.2, 4.3, 4.4**
   
-  - [ ] 6.3 Implement resolution detection and update
+  - [x] 6.3 Implement resolution detection and update
     - Check if marketData.resolved is true
     - Add status = 'resolved' to update payload
     - Add resolved_outcome to update payload
@@ -100,7 +100,7 @@ This implementation plan creates a Supabase Edge Function that runs hourly via p
     - **Property 6: Resolution Detection and Recording**
     - **Validates: Requirements 5.1, 5.2, 5.3**
   
-  - [ ] 6.5 Optimize update logic to skip unchanged records
+  - [x] 6.5 Optimize update logic to skip unchanged records
     - Only execute database update if fields have changed
     - Track which fields were updated in UpdateResult
     - _Requirements: 4.1_
