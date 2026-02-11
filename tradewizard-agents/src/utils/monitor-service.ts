@@ -309,16 +309,17 @@ export class AutomatedMarketMonitor implements MonitorService {
       // Get configured max markets per cycle from environment (user has full control)
       const maxMarkets = parseInt(process.env.MAX_MARKETS_PER_CYCLE || '3', 10);
       
-      console.log(`[MonitorService] Analyzing up to ${maxMarkets} markets (configured via MAX_MARKETS_PER_CYCLE)`);
+      console.log(`[MonitorService] Analyzing up to ${maxMarkets} markets total per cycle (configured via MAX_MARKETS_PER_CYCLE)`);
 
-      // Discover markets
-      const markets = await this.discovery.discoverMarkets(maxMarkets);
-      console.log(`[MonitorService] Discovered ${markets.length} markets for analysis`);
+      // Discover new markets (allocate half the quota to discovery, minimum 1)
+      const discoveryQuota = Math.max(1, Math.floor(maxMarkets / 2));
+      const markets = await this.discovery.discoverMarkets(discoveryQuota);
+      console.log(`[MonitorService] Discovered ${markets.length} new markets for analysis`);
       
       // Record discovery in Opik
       this.opikIntegration.recordDiscovery(markets.length);
 
-      // Analyze each market
+      // Analyze each discovered market
       for (const market of markets) {
         try {
           await this.analyzeMarket(market.conditionId);
@@ -328,8 +329,13 @@ export class AutomatedMarketMonitor implements MonitorService {
         }
       }
 
-      // Update existing markets
-      await this.updateExistingMarkets();
+      // Update existing markets with remaining quota
+      const updateQuota = maxMarkets - markets.length;
+      if (updateQuota > 0) {
+        await this.updateExistingMarkets(updateQuota);
+      } else {
+        console.log('[MonitorService] No quota remaining for market updates this cycle');
+      }
 
       // End cycle and log metrics
       const cycleMetrics = this.opikIntegration.endCycle();
@@ -355,16 +361,20 @@ export class AutomatedMarketMonitor implements MonitorService {
 
   /**
    * Update existing markets
+   * 
+   * @param maxUpdates - Maximum number of markets to update (respects quota allocation)
    */
-  async updateExistingMarkets(): Promise<void> {
-    console.log('[MonitorService] Updating existing markets');
+  async updateExistingMarkets(maxUpdates: number): Promise<void> {
+    console.log(`[MonitorService] Updating existing markets (quota: ${maxUpdates})`);
 
     try {
       const updateIntervalHours = parseInt(process.env.UPDATE_INTERVAL_HOURS || '24', 10);
       const updateIntervalMs = updateIntervalHours * 60 * 60 * 1000;
 
-      const markets = await this.database.getMarketsForUpdate(updateIntervalMs);
-      console.log(`[MonitorService] Found ${markets.length} markets for update`);
+      const allMarkets = await this.database.getMarketsForUpdate(updateIntervalMs);
+      // Respect the allocated quota
+      const markets = allMarkets.slice(0, maxUpdates);
+      console.log(`[MonitorService] Found ${allMarkets.length} markets for update, processing ${markets.length} (limited by quota)`);
 
       for (const market of markets) {
         try {

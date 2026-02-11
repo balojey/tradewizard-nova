@@ -432,7 +432,7 @@ describe('MonitorService', () => {
       vi.mocked(mockDatabase.getMarketsForUpdate).mockResolvedValue(marketsToUpdate);
 
       await monitor.initialize();
-      await (monitor as any).updateExistingMarkets();
+      await (monitor as any).updateExistingMarkets(3);
 
       expect(mockDatabase.getMarketsForUpdate).toHaveBeenCalled();
       expect(mockAnalyzeMarket).toHaveBeenCalledWith(
@@ -718,7 +718,7 @@ describe('MonitorService', () => {
       });
 
       await monitor.initialize();
-      await (monitor as any).updateExistingMarkets();
+      await (monitor as any).updateExistingMarkets(3);
 
       // Should have checked resolution for both markets
       expect(mockPolymarketClient.checkMarketResolution).toHaveBeenCalledTimes(2);
@@ -770,7 +770,7 @@ describe('MonitorService', () => {
       } as any);
 
       await monitor.initialize();
-      await (monitor as any).updateExistingMarkets();
+      await (monitor as any).updateExistingMarkets(3);
 
       // Should log resolution detection
       expect(consoleLogSpy).toHaveBeenCalledWith(
@@ -833,7 +833,7 @@ describe('MonitorService', () => {
       });
 
       await monitor.initialize();
-      await (monitor as any).updateExistingMarkets();
+      await (monitor as any).updateExistingMarkets(3);
 
       // Should have attempted both markets
       expect(mockPolymarketClient.checkMarketResolution).toHaveBeenCalledTimes(2);
@@ -881,7 +881,7 @@ describe('MonitorService', () => {
       } as any);
 
       await monitor.initialize();
-      await (monitor as any).updateExistingMarkets();
+      await (monitor as any).updateExistingMarkets(3);
 
       // Should have marked both as resolved
       expect(mockDatabase.markMarketResolved).toHaveBeenCalledTimes(2);
@@ -922,7 +922,7 @@ describe('MonitorService', () => {
       } as any);
 
       await monitor.initialize();
-      await (monitor as any).updateExistingMarkets();
+      await (monitor as any).updateExistingMarkets(3);
 
       // Should store the exact outcome
       expect(mockDatabase.markMarketResolved).toHaveBeenCalledWith('market-uuid-789', 'YES');

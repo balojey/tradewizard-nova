@@ -116,10 +116,10 @@ export async function createWorkflow(
   let memoryRetrieval;
   if (supabaseManager) {
     const memoryService = createMemoryRetrievalService(supabaseManager);
-    memoryRetrieval = createMemoryRetrievalNode(memoryService, allAgentNames);
+    memoryRetrieval = createMemoryRetrievalNode(memoryService, allAgentNames, config);
   } else {
     // Fallback: create a no-op memory retrieval node if no Supabase manager
-    memoryRetrieval = async (state: GraphStateType) => ({
+    memoryRetrieval = async (_state: GraphStateType) => ({
       memoryContext: new Map(),
       auditLog: [
         {
