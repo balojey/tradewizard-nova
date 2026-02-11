@@ -38,6 +38,17 @@ interface ExecutionSummary {
 }
 
 /**
+ * Market data fetched from Polymarket API
+ */
+interface PolymarketMarketData {
+  probability: number;
+  volume24h: number;
+  liquidity: number;
+  resolved: boolean;
+  outcome: string | null;
+}
+
+/**
  * Initialize Supabase client with service role credentials
  * @returns Configured Supabase client
  * @throws Error if required environment variables are missing
@@ -105,6 +116,76 @@ async function fetchActiveMarkets(supabase: any): Promise<MarketRecord[]> {
   }
 
   return data || [];
+}
+
+/**
+ * Sleep for a specified duration
+ * @param ms - Duration in milliseconds
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Fetch current market data from Polymarket API with retry logic
+ * @param polymarket - Configured ClobClient
+ * @param conditionId - Polymarket condition ID
+ * @param attempt - Current attempt number (for retry logic)
+ * @returns PolymarketMarketData object or null if fetch fails
+ */
+async function fetchPolymarketData(
+  polymarket: any,
+  conditionId: string,
+  attempt: number = 1
+): Promise<PolymarketMarketData | null> {
+  const maxAttempts = 3;
+  const delays = [1000, 2000, 4000]; // 1s, 2s, 4s
+
+  try {
+    // Call getMarket() method on CLOB client
+    const market = await polymarket.getMarket(conditionId);
+
+    if (!market) {
+      console.error(`Market not found for condition_id: ${conditionId}`);
+      return null;
+    }
+
+    // Extract probability, volume24h, liquidity from response
+    const probability = parseFloat(market.clobTokenIds?.[0]?.price || "0");
+    const volume24h = parseFloat(market.volume24hr || "0");
+    const liquidity = parseFloat(market.liquidity || "0");
+
+    // Detect resolution status and outcome
+    const resolved = market.closed && market.resolvedAt !== null;
+    const outcome = market.outcome || null;
+
+    // Return structured PolymarketMarketData object
+    return {
+      probability,
+      volume24h,
+      liquidity,
+      resolved,
+      outcome,
+    };
+  } catch (error) {
+    // Log individual market fetch errors
+    console.error(
+      `Error fetching market ${conditionId} (attempt ${attempt}/${maxAttempts}):`,
+      (error as Error).message
+    );
+
+    // Implement exponential backoff retry logic
+    if (attempt < maxAttempts) {
+      const delay = delays[attempt - 1];
+      console.log(`Retrying in ${delay}ms...`);
+      await sleep(delay);
+      return fetchPolymarketData(polymarket, conditionId, attempt + 1);
+    }
+
+    // Return null for failed fetches after max attempts
+    // This allows processing to continue
+    return null;
+  }
 }
 
 /**
