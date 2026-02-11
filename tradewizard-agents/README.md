@@ -995,6 +995,7 @@ View cost breakdown in Opik:
 - **[LLM Provider Setup Guide](./docs/LLM_PROVIDERS.md)** - Setup instructions for OpenAI, Anthropic, Google, and Amazon Nova
 - **[Nova Troubleshooting Guide](./docs/NOVA_TROUBLESHOOTING.md)** - Amazon Nova integration troubleshooting
 - **[Database Module](./src/database/README.md)** - Supabase PostgreSQL integration
+- **[Direct Market Discovery Migration](./docs/DIRECT_MARKET_DISCOVERY_MIGRATION.md)** - Migration guide for direct market fetching
 - **[Design Document](./.kiro/specs/market-intelligence-engine/design.md)** - System architecture and design decisions
 - **[Requirements Document](./.kiro/specs/market-intelligence-engine/requirements.md)** - Functional requirements
 - **[Tasks Document](./.kiro/specs/market-intelligence-engine/tasks.md)** - Implementation plan

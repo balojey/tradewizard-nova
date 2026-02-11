@@ -467,7 +467,14 @@ export class PolymarketDiscoveryEngine implements MarketDiscoveryEngine {
   }
 
   /**
-   * Extract markets from events for backward compatibility
+   * Extract markets from events for backward compatibility (DEPRECATED - Legacy Helper)
+   * 
+   * @deprecated This method is deprecated and kept only for the legacy fallback mechanism.
+   * It is used by fetchTrendingMarketsFromEvents() which itself is deprecated.
+   * 
+   * Once the direct markets approach is proven stable, both this method and
+   * fetchTrendingMarketsFromEvents() should be removed.
+   * 
    * Implements Requirements 1.2, 2.1 - event structure parsing and market extraction
    */
   private extractMarketsFromEvents(events: PolymarketEvent[]): PolymarketMarket[] {
@@ -651,11 +658,25 @@ export class PolymarketDiscoveryEngine implements MarketDiscoveryEngine {
   }
 
   // ==========================================================================
-  // Legacy Fallback Methods - Maintaining Backward Compatibility
+  // DEPRECATED: Legacy Fallback Methods
+  // ==========================================================================
+  // 
+  // These methods are deprecated and maintained only for backward compatibility
+  // and as fallback mechanisms. They should be removed once the direct markets
+  // approach is proven stable in production.
+  //
+  // Migration path:
+  // 1. Monitor direct markets approach in production
+  // 2. Verify fallback is rarely/never triggered
+  // 3. Remove all legacy methods in next major version
   // ==========================================================================
 
   /**
-   * Legacy market discovery fallback for backward compatibility
+   * Legacy market discovery fallback for backward compatibility (DEPRECATED)
+   * 
+   * @deprecated Use discoverMarkets() which calls fetchTrendingMarketsDirectly()
+   * This method is kept as a fallback mechanism only.
+   * 
    * Now uses the same trending markets approach as frontend
    */
   private async discoverMarketsLegacy(limit: number): Promise<RankedMarket[]> {
@@ -682,7 +703,11 @@ export class PolymarketDiscoveryEngine implements MarketDiscoveryEngine {
   }
 
   /**
-   * Legacy political markets fetch for backward compatibility
+   * Legacy political markets fetch for backward compatibility (DEPRECATED)
+   * 
+   * @deprecated Use fetchPoliticalMarkets() which calls fetchTrendingMarketsDirectly()
+   * This method is kept as a fallback mechanism only.
+   * 
    * Now uses trending markets approach first, then falls back to keyword filtering
    */
   private async fetchPoliticalMarketsLegacy(): Promise<PolymarketMarket[]> {
@@ -700,7 +725,10 @@ export class PolymarketDiscoveryEngine implements MarketDiscoveryEngine {
   }
 
   /**
-   * Legacy market ranking for backward compatibility
+   * Legacy market ranking for backward compatibility (DEPRECATED)
+   * 
+   * @deprecated Use rankMarkets() instead
+   * This method is kept as a fallback mechanism only.
    */
   private rankMarketsLegacy(markets: PolymarketMarket[]): RankedMarket[] {
     // Calculate trending score for each market using legacy algorithm
@@ -728,7 +756,17 @@ export class PolymarketDiscoveryEngine implements MarketDiscoveryEngine {
   }
 
   /**
-   * Fetch trending markets from Polymarket events API (matching frontend approach)
+   * Fetch trending markets from Polymarket events endpoint (DEPRECATED - Legacy Fallback)
+   * 
+   * @deprecated This method is deprecated and kept only as a fallback mechanism.
+   * Use fetchTrendingMarketsDirectly() instead for better performance and simpler code.
+   * 
+   * This implementation fetches events and extracts markets from nested structures.
+   * It is maintained as a fallback in case the direct markets endpoint fails.
+   * 
+   * Migration: Once the direct markets approach is proven stable in production,
+   * this method should be removed entirely.
+   * 
    * Uses the same filtering and sorting logic as the frontend for consistency
    */
   private async fetchTrendingMarketsFromEvents(limit: number = 100): Promise<PolymarketMarket[]> {
@@ -892,28 +930,63 @@ export class PolymarketDiscoveryEngine implements MarketDiscoveryEngine {
    * Replaces event-based fetching with direct market API calls
    * Implements Requirements 1.1, 1.2, 1.5, 5.1-5.6, 6.1-6.3, 7.1-7.5
    */
+  /**
+   * Fetch trending markets directly from /markets endpoint
+   * 
+   * This method replaces the event-based fetching approach with direct market queries.
+   * It implements comprehensive filtering, sorting, and retry logic with exponential backoff.
+   * 
+   * Implements Requirements: 1.1, 1.2, 1.5, 5.1-5.6, 6.1, 7.1-7.5
+   * 
+   * @param limit - Maximum number of markets to return (default: 100)
+   * @returns Promise resolving to array of filtered and sorted markets
+   * 
+   * Filtering thresholds:
+   * - MIN_LIQUIDITY_USD: $1,000 minimum for evergreen tag markets
+   * - MIN_LIQUIDITY_NON_EVERGREEN_USD: $5,000 minimum for non-evergreen markets
+   * - Tradeable price range: 0.05 to 0.95 (5% to 95%)
+   * - Evergreen tags: [2, 21, 120, 596, 1401, 100265, 100639] (politics, elections, etc.)
+   * 
+   * Retry strategy:
+   * - Max retries: 3 attempts
+   * - Exponential backoff: 2^attempt * 1000ms base delay
+   * - Jitter: Random 0-1000ms added to prevent thundering herd
+   * - No retry on 400/404 errors (client errors)
+   * 
+   * Pagination over-fetching:
+   * - Fetches 3x requested limit to account for filtering
+   * - Minimum fetch limit: 100 markets
+   */
   private async fetchTrendingMarketsDirectly(limit: number = 100): Promise<PolymarketMarket[]> {
     const maxRetries = 3;
     let lastError: Error | null = null;
 
-    // Constants for filtering
+    // Filtering thresholds - see method documentation for details
     const MIN_LIQUIDITY_USD = 1000;
     const MIN_LIQUIDITY_NON_EVERGREEN_USD = 5000;
     const EVERGREEN_TAG_IDS = [2, 21, 120, 596, 1401, 100265, 100639];
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        // Fetch more than requested to account for filtering
+        // Over-fetching strategy: Fetch 3x requested limit to account for filtering
+        // This ensures we have enough valid markets after applying quality filters
         const fetchLimit = Math.max(limit * 3, 100);
 
         // Build URL with direct /markets endpoint
+        // Query parameters:
+        // - closed=false: Only active markets
+        // - order=volume24hr: Sort by 24-hour trading volume
+        // - ascending=false: Descending order (highest volume first)
+        // - limit: Number of markets to fetch
+        // - offset: Pagination offset (currently 0)
+        // - tag_id: Filter by category (e.g., politics)
         let url = `${this.config.gammaApiUrl}/markets?closed=false&order=volume24hr&ascending=false&limit=${fetchLimit}&offset=0`;
         url += `&tag_id=${this.config.politicsTagId}`;
 
         const response = await fetch(url, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
-          signal: AbortSignal.timeout(15000), // 15 second timeout
+          signal: AbortSignal.timeout(15000), // 15 second timeout to prevent hanging requests
         });
 
         if (!response.ok) {
@@ -922,25 +995,28 @@ export class PolymarketDiscoveryEngine implements MarketDiscoveryEngine {
 
         const markets = await response.json();
 
+        // Validate response structure
         if (!Array.isArray(markets)) {
           throw new Error('Invalid API response: expected array of markets');
         }
 
-        // Enrich markets with event context
+        // Event context enrichment: Add event metadata to markets when available
         const enrichedMarkets = markets.map(market => this.enrichMarketWithEventContext(market));
 
-        // Apply filtering logic
+        // Apply comprehensive filtering logic to ensure market quality
         const validMarkets = enrichedMarkets.filter((market: PolymarketMarket) => {
-          // Filter out markets not accepting orders
+          // Filter 1: Exclude markets not accepting orders (trading disabled)
           if (market.acceptingOrders === false) return false;
 
-          // Filter out closed markets
+          // Filter 2: Exclude closed markets (already resolved)
           if (market.closed === true) return false;
 
-          // Filter out markets without CLOB token IDs
+          // Filter 3: Exclude markets without CLOB token IDs (not tradeable)
           if (!market.clobTokenIds) return false;
 
-          // Check tradeable prices (at least one price between 0.05 and 0.95)
+          // Filter 4: Validate tradeable prices
+          // Markets must have at least one outcome price between 0.05 and 0.95
+          // This ensures there's meaningful trading opportunity (not too certain)
           if (market.outcomePrices || market.outcome_prices) {
             try {
               const pricesStr = market.outcomePrices || market.outcome_prices;
@@ -956,7 +1032,9 @@ export class PolymarketDiscoveryEngine implements MarketDiscoveryEngine {
             }
           }
 
-          // Apply liquidity filtering
+          // Filter 5: Apply liquidity thresholds based on market tags
+          // Evergreen tags (politics, elections) get lower threshold ($1,000)
+          // Other markets require higher liquidity ($5,000) for quality
           const marketTagIds = market.tags?.map((t: any) => parseInt(t.id)) || [];
           const hasEvergreenTag = EVERGREEN_TAG_IDS.some((id) => marketTagIds.includes(id));
           const liquidity = parseFloat(market.liquidity || '0');
@@ -970,13 +1048,14 @@ export class PolymarketDiscoveryEngine implements MarketDiscoveryEngine {
           return true;
         });
 
-        // Sort markets by combined liquidity + volume score
+        // Sort markets by combined score (liquidity + 24h volume)
+        // Higher combined score indicates more active and liquid markets
         const sortedMarkets = validMarkets.sort((a: PolymarketMarket, b: PolymarketMarket) => {
           const aScore = parseFloat(a.liquidity || '0') +
                         parseFloat(a.volume24hr?.toString() || a.volume_24h?.toString() || a.volume || '0');
           const bScore = parseFloat(b.liquidity || '0') +
                         parseFloat(b.volume24hr?.toString() || b.volume_24h?.toString() || b.volume || '0');
-          return bScore - aScore;
+          return bScore - aScore; // Descending order
         });
 
         logger.info({
@@ -989,7 +1068,7 @@ export class PolymarketDiscoveryEngine implements MarketDiscoveryEngine {
       } catch (error) {
         lastError = error instanceof Error ? error : new Error('Unknown error');
 
-        // Don't retry on 404 or 400 errors
+        // Don't retry on client errors (400, 404) - these won't succeed on retry
         if (lastError.message.includes('404') || lastError.message.includes('400')) {
           throw lastError;
         }
@@ -998,7 +1077,9 @@ export class PolymarketDiscoveryEngine implements MarketDiscoveryEngine {
           throw lastError;
         }
 
-        // Exponential backoff with jitter
+        // Exponential backoff with jitter to prevent thundering herd
+        // Formula: delay = (2^attempt * 1000ms) + random(0-1000ms)
+        // Attempt 0: 1s + jitter, Attempt 1: 2s + jitter, Attempt 2: 4s + jitter
         const baseDelay = Math.pow(2, attempt) * 1000;
         const jitter = Math.random() * 1000;
         await new Promise((resolve) => setTimeout(resolve, baseDelay + jitter));
@@ -1010,20 +1091,41 @@ export class PolymarketDiscoveryEngine implements MarketDiscoveryEngine {
 
   /**
    * Enrich market with event context if available
-   * Implements Requirements 1.4, 3.1, 3.2, 3.3
+   * 
+   * Markets from the /markets endpoint may include an optional 'events' array
+   * containing parent event metadata. This method extracts that context and
+   * adds it to the market object for display purposes.
+   * 
+   * Event context includes:
+   * - eventTitle: Human-readable event name
+   * - eventSlug: URL-friendly event identifier
+   * - eventId: Unique event identifier
+   * - eventIcon: Event image/icon URL
+   * 
+   * The method also normalizes field names for backend compatibility,
+   * mapping between different naming conventions (camelCase vs snake_case).
+   * 
+   * Implements Requirements: 1.4, 3.1, 3.2, 3.3
+   * 
+   * @param market - Raw market object from API
+   * @returns Enriched market with event context and normalized field names
    */
   private enrichMarketWithEventContext(market: any): PolymarketMarket {
-    // Check if market has events array
+    // Check if market has events array with at least one event
     if (market.events && Array.isArray(market.events) && market.events.length > 0) {
+      // Extract event metadata from first event in array
       const event = market.events[0];
 
       return {
         ...market,
+        // Event context fields - populated from parent event
         eventTitle: event.title,
         eventSlug: event.slug,
         eventId: event.id,
         eventIcon: event.image || event.icon,
-        // Map field names for backend compatibility
+        
+        // Field name normalization for backend compatibility
+        // Maps between camelCase (API) and snake_case (database) conventions
         conditionId: market.conditionId || market.id,
         condition_id: market.conditionId || market.id,
         slug: market.slug,
@@ -1043,9 +1145,11 @@ export class PolymarketDiscoveryEngine implements MarketDiscoveryEngine {
       };
     }
 
-    // No event context available - handle gracefully
+    // No event context available - gracefully handle markets without parent events
+    // Event context fields (eventTitle, eventSlug, etc.) will be undefined
     return {
       ...market,
+      // Field name normalization only (no event context)
       conditionId: market.conditionId || market.id,
       condition_id: market.conditionId || market.id,
       slug: market.slug,
