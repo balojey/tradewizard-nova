@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
   const offset = searchParams.get("offset") || "0";
   const tagId = searchParams.get("tag_id");
   const includeClosed = searchParams.get("include_closed") === "true";
+  const order = searchParams.get("order") || "volume24hr";
 
   try {
     const requestedLimit = parseInt(limit);
@@ -19,13 +20,13 @@ export async function GET(request: NextRequest) {
     
     // Fetch more than requested to account for filtering
     const fetchLimit = Math.max(requestedLimit * 3, 100);
-    const fetchOffset = Math.floor(requestedOffset * 1.5); // Approximate offset accounting for filtering
+    const fetchOffset = Math.floor(requestedOffset * 1.5);
 
-    // Include closed markets if requested, otherwise default to open markets only
-    let url = `${GAMMA_API_URL}/events?closed=${includeClosed ? 'true' : 'false'}&order=volume24hr&ascending=false&limit=${fetchLimit}&offset=${fetchOffset}`;
+    // Build URL for direct /markets endpoint
+    let url = `${GAMMA_API_URL}/markets?closed=${includeClosed ? 'true' : 'false'}&order=${order}&ascending=false&limit=${fetchLimit}&offset=${fetchOffset}`;
 
     if (tagId) {
-      url += `&tag_id=${tagId}&related_tags=true`;
+      url += `&tag_id=${tagId}`;
     }
 
     const response = await fetch(url, {
@@ -38,37 +39,33 @@ export async function GET(request: NextRequest) {
       throw new Error(`Gamma API error: ${response.status}`);
     }
 
-    const events = await response.json();
+    const markets = await response.json();
 
-    if (!Array.isArray(events)) {
-      console.error("Invalid response structure:", events);
+    if (!Array.isArray(markets)) {
+      console.error("Invalid response structure:", markets);
       return NextResponse.json(
         { error: "Invalid API response" },
         { status: 500 }
       );
     }
 
-    const allMarkets: any[] = [];
-
-    for (const event of events) {
-      // For closed markets, we want to include ended/closed events
-      if (!includeClosed && (event.ended || event.closed || !event.active)) continue;
-
-      const markets = event.markets || [];
-
-      for (const market of markets) {
-        allMarkets.push({
+    // Enrich markets with event context
+    const enrichedMarkets = markets.map((market: any) => {
+      if (market.events && Array.isArray(market.events) && market.events.length > 0) {
+        const event = market.events[0];
+        return {
           ...market,
           eventTitle: event.title,
           eventSlug: event.slug,
           eventId: event.id,
           eventIcon: event.image || event.icon,
           negRisk: event.negRisk || false,
-        });
+        };
       }
-    }
+      return market;
+    });
 
-    const validMarkets = allMarkets.filter((market: any) => {
+    const validMarkets = enrichedMarkets.filter((market: any) => {
       // Basic validation that applies to all markets
       if (!market.clobTokenIds) return false;
 

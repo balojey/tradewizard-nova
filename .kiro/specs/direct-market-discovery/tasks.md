@@ -125,41 +125,41 @@ This implementation refactors the market discovery system to fetch markets direc
   - Verify direct market fetching works with real Polymarket API
   - Ask the user if questions arise
 
-- [-] 5. Frontend: Update API proxy to use direct market endpoint
-  - [-] 5.1 Modify GET handler in `app/api/polymarket/markets/route.ts`
+- [x] 5. Frontend: Update API proxy to use direct market endpoint
+  - [x] 5.1 Modify GET handler in `app/api/polymarket/markets/route.ts`
     - Change URL from `/events` to `/markets` endpoint
     - Build URL with parameters: `closed`, `order`, `ascending`, `tag_id`, `limit`, `offset`
     - Map `include_closed` parameter to `closed` in Gamma API request
     - Support `order` parameter from query string (default to `volume24hr`)
     - _Requirements: 2.1, 2.2, 2.3, 4.1, 4.2, 4.3, 4.4, 4.5_
   
-  - [ ] 5.2 Implement event context enrichment in API proxy
+  - [x] 5.2 Implement event context enrichment in API proxy
     - Map over markets array after receiving API response
     - Check each market for non-empty `events` array
     - Extract event metadata and add to market object
     - Handle markets without events gracefully
     - _Requirements: 3.1, 3.2, 3.3_
   
-  - [ ] 5.3 Maintain filtering logic in API proxy
+  - [x] 5.3 Maintain filtering logic in API proxy
     - Keep existing filtering for `clobTokenIds`, `acceptingOrders`, tradeable prices
     - Keep liquidity threshold logic (evergreen tags vs. non-evergreen)
     - Apply same evergreen tag IDs constant
     - Handle closed markets with relaxed validation
     - _Requirements: 2.5, 5.1, 5.2, 5.3, 5.4, 5.5_
   
-  - [ ] 5.4 Maintain sorting logic in API proxy
+  - [x] 5.4 Maintain sorting logic in API proxy
     - Keep existing sorting for open markets (liquidity + volume score)
     - Keep existing sorting for closed markets (end date, then volume)
     - Keep precedence of open over closed markets
     - _Requirements: 6.1, 6.2, 6.3_
   
-  - [ ] 5.5 Maintain pagination logic in API proxy
+  - [x] 5.5 Maintain pagination logic in API proxy
     - Keep over-fetching strategy (3x requested limit)
     - Apply client-side pagination after filtering and sorting
     - Return slice of results based on requested offset and limit
     - _Requirements: 8.1, 8.4_
   
-  - [ ] 5.6 Update error handling in API proxy
+  - [x] 5.6 Update error handling in API proxy
     - Return 500 status with error message for Gamma API errors
     - Return 500 status for invalid response structure
     - Log errors to console for debugging
