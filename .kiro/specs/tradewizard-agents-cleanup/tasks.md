@@ -85,7 +85,7 @@ The work is organized into discrete tasks that build incrementally, with testing
 - [x] 5. Checkpoint - Verify configuration changes
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Analyze agent files for duplicate implementations
+- [x] 6. Analyze agent files for duplicate implementations
   - Read `src/nodes/agents.ts` to identify polling and market microstructure agent implementations
   - Read `src/nodes/event-intelligence.ts` to identify breaking news agent implementation
   - Read `src/nodes/sentiment-narrative.ts` to identify media sentiment agent implementation
@@ -95,7 +95,7 @@ The work is organized into discrete tasks that build incrementally, with testing
   - Create a list of functions to keep (shared utilities and agents without autonomous versions)
   - _Requirements: 3.1, 3.2, 3.3, 3.5, 3.6_
 
-- [ ] 7. Remove duplicate polling agent implementation from agents.ts
+- [x] 7. Remove duplicate polling agent implementation from agents.ts
   - Remove `createPollingIntelligenceAgentNode()` function from agents.ts
   - Remove `pollingIntelligenceAgent` property from `createAgentNodes()` return type
   - Remove `pollingIntelligenceAgent` implementation from `createAgentNodes()` function body
@@ -103,7 +103,7 @@ The work is organized into discrete tasks that build incrementally, with testing
   - Keep `createAgentNode()` and `createLLMInstances()` shared utilities
   - _Requirements: 3.1, 3.5, 3.6_
 
-- [ ] 8. Remove duplicate news agent implementations
+- [x] 8. Remove duplicate news agent implementations
   - Remove `createBreakingNewsAgentNode()` function from event-intelligence.ts
   - Remove `createMediaSentimentAgentNode()` function from sentiment-narrative.ts
   - Keep `createEventImpactAgentNode()` in event-intelligence.ts (no autonomous version)
@@ -111,14 +111,14 @@ The work is organized into discrete tasks that build incrementally, with testing
   - Remove `marketMicrostructureAgent` from `createAgentNodes()` in agents.ts
   - _Requirements: 3.2, 3.3, 3.5_
 
-- [ ] 9. Update agent exports in index.ts
+- [x] 9. Update agent exports in index.ts
   - Remove export of `createPollingIntelligenceAgentNode` from agents.ts
   - Remove export of `createBreakingNewsAgentNode` from event-intelligence.ts
   - Remove export of `createMediaSentimentAgentNode` from sentiment-narrative.ts
   - Keep all other exports including `createAgentNodes`, `createAgentNode`, `createLLMInstances`
   - _Requirements: 3.7_
 
-- [ ] 10. Update workflow.ts to use autonomous agents
+- [x] 10. Update workflow.ts to use autonomous agents
   - Update polling agent creation to always use `createAutonomousPollingAgentNode()`
   - Update breaking news agent creation to always use `createAutonomousBreakingNewsAgentNode()`
   - Update media sentiment agent creation to always use `createAutonomousMediaSentimentAgentNode()`
@@ -142,7 +142,7 @@ The work is organized into discrete tasks that build incrementally, with testing
   - Test system uses autonomous versions even when config has autonomous=false
   - _Requirements: 10.5, 7.3, 7.5_
 
-- [ ] 11. Remove unnecessary markdown files from root directory
+- [x] 11. Remove unnecessary markdown files from root directory
   - Delete `AWS_SALES_PITCH.md`
   - Delete `AWS_SALES_PITCH_SHORT.md`
   - Delete `AWS_SUPPORT_CASE_TEMPLATE.md`
@@ -152,7 +152,7 @@ The work is organized into discrete tasks that build incrementally, with testing
   - Verify preserved files still exist (README.md, DEPLOYMENT.md, CLI.md, CLI-MONITOR.md)
   - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 12. Remove unnecessary markdown files from docs directory
+- [x] 12. Remove unnecessary markdown files from docs directory
   - Delete all NOVA migration files (NOVA_2_UPGRADE.md, NOVA_MIGRATION_COMPLETE.md, NOVA_TOOL_CALLING_FIX.md, NOVA_TOOL_CALLING_MIGRATION.md, NOVA_TROUBLESHOOTING.md)
   - Delete troubleshooting files (BEDROCK_PERMISSIONS_TROUBLESHOOTING.md, LANGGRAPH_TROUBLESHOOTING.md, DIRECT_MARKET_DISCOVERY_MIGRATION.md)
   - Delete E2E testing files (E2E_DEPLOYMENT_CHECKLIST.md, E2E_QUICK_START.md, E2E_TEST_SUMMARY.md, E2E_TESTING_GUIDE.md)
@@ -161,7 +161,7 @@ The work is organized into discrete tasks that build incrementally, with testing
   - Verify preserved files still exist (DEPLOYMENT.md, EXAMPLES.md, RUNBOOK.md, README.md, OPIK_GUIDE.md, LLM_PROVIDERS.md, ADVANCED_AGENT_LEAGUE.md, AUTONOMOUS_NEWS_AGENTS.md, EXTERNAL_DATA_SOURCES.md)
   - _Requirements: 4.5, 4.6, 4.7, 4.8, 4.9_
 
-- [ ] 13. Remove unnecessary markdown files from scripts and supabase directories
+- [x] 13. Remove unnecessary markdown files from scripts and supabase directories
   - Delete `scripts/AWS_SUPPORT_ESCALATION_RESPONSE.md`
   - Delete `supabase/DASHBOARD_SETUP.md`
   - Delete `supabase/DEPLOYMENT_COMPLETE.md`
@@ -173,7 +173,7 @@ The work is organized into discrete tasks that build incrementally, with testing
   - Verify all files in keep list still exist
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 4.10, 4.11, 4.12, 8.3_
 
-- [ ] 14. Add warning logging for explicit autonomous mode disable
+- [x] 14. Add warning logging for explicit autonomous mode disable
   - Update loadPollingAgentConfig() to log warning when POLLING_AGENT_AUTONOMOUS=false
   - Update loadNewsAgentsConfig() to log warning when any news agent autonomous variable is false
   - Use appropriate log level (warn) for the messages
@@ -191,7 +191,7 @@ The work is organized into discrete tasks that build incrementally, with testing
   - Verify any set env var overrides its corresponding default
   - _Requirements: 9.2_
 
-- [ ] 16. Final checkpoint - Comprehensive testing
+- [x] 16. Final checkpoint - Comprehensive testing
   - Run all unit tests and verify they pass
   - Run all property tests and verify they pass (minimum 100 iterations each)
   - Test configuration loading with no environment variables

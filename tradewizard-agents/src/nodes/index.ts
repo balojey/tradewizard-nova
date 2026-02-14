@@ -17,7 +17,6 @@ export {
   createAgentNode,
   createLLMInstances,
   createAgentNodes,
-  createPollingIntelligenceAgentNode,
 } from './agents.js';
 export {
   createThesisConstructionNode,
@@ -47,9 +46,7 @@ export {
   RISK_PHILOSOPHY_AGENTS,
 } from './dynamic-agent-selection.js';
 export {
-  createBreakingNewsAgentNode,
   createEventImpactAgentNode,
-  BreakingNewsSignalSchema,
   EventImpactSignalSchema,
 } from './event-intelligence.js';
 export {
@@ -59,10 +56,8 @@ export {
   HistoricalPatternSignalSchema,
 } from './polling-statistical.js';
 export {
-  createMediaSentimentAgentNode,
   createSocialSentimentAgentNode,
   createNarrativeVelocityAgentNode,
-  MediaSentimentSignalSchema,
   SocialSentimentSignalSchema,
   NarrativeVelocitySignalSchema,
 } from './sentiment-narrative.js';

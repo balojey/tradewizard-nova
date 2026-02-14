@@ -122,8 +122,19 @@ export const DEFAULT_POLLING_AGENT_CONFIG: PollingAgentConfig = {
  * @returns Polling agent configuration
  */
 export function loadPollingAgentConfig(): PollingAgentConfig {
+  const autonomous = process.env.POLLING_AGENT_AUTONOMOUS !== 'false';
+  
+  // Warn if autonomous mode is explicitly disabled
+  if (process.env.POLLING_AGENT_AUTONOMOUS === 'false') {
+    console.warn(
+      '[Polling Agent] Autonomous mode has been explicitly disabled via POLLING_AGENT_AUTONOMOUS=false. ' +
+      'Autonomous mode is the recommended default for optimal agent performance. ' +
+      'The agent will fall back to basic polling analysis using only pre-fetched data.'
+    );
+  }
+  
   return {
-    autonomous: process.env.POLLING_AGENT_AUTONOMOUS !== 'false',
+    autonomous,
     maxToolCalls: parseInt(process.env.POLLING_AGENT_MAX_TOOL_CALLS || '5', 10),
     timeout: parseInt(process.env.POLLING_AGENT_TIMEOUT || '45000', 10),
     cacheEnabled: process.env.POLLING_AGENT_CACHE_ENABLED !== 'false',

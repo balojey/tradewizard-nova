@@ -266,10 +266,8 @@ Your analysis should show thoughtful evolution over time, not random fluctuation
  * @returns Object with LLM instances for each agent
  */
 export function createLLMInstances(config: EngineConfig): {
-  marketMicrostructure: LLMInstance;
   probabilityBaseline: LLMInstance;
   riskAssessment: LLMInstance;
-  pollingIntelligence: LLMInstance;
 } {
   // Single-provider mode: use one LLM for all agents
   if (config.llm.singleProvider) {
@@ -277,20 +275,16 @@ export function createLLMInstances(config: EngineConfig): {
 
     // Return same LLM instance for all agents
     return {
-      marketMicrostructure: llm,
       probabilityBaseline: llm,
       riskAssessment: llm,
-      pollingIntelligence: llm,
     };
   }
 
   // Multi-provider mode: use different LLMs per agent (default for optimal performance)
   // Now includes Nova as a fallback option
   return {
-    marketMicrostructure: createLLMInstance(config, 'openai', ['anthropic', 'google', 'nova']),
     probabilityBaseline: createLLMInstance(config, 'google', ['anthropic', 'openai', 'nova']),
     riskAssessment: createLLMInstance(config, 'anthropic', ['openai', 'google', 'nova']),
-    pollingIntelligence: createLLMInstance(config, 'google', ['anthropic', 'openai', 'nova']),
   };
 }
 
@@ -298,29 +292,6 @@ export function createLLMInstances(config: EngineConfig): {
  * System prompts for each specialized agent
  */
 const AGENT_PROMPTS = {
-  marketMicrostructure: `Current date and time: ${new Date().toISOString()}
-
-You are a market microstructure analyst specializing in prediction markets.
-
-Your role is to analyze the order book dynamics, liquidity conditions, and trading patterns to assess market quality and identify potential inefficiencies.
-
-Focus on:
-- Bid-ask spread and its implications for transaction costs
-- Liquidity depth and market impact
-- Order book imbalance and momentum signals
-- Volume patterns and unusual trading activity
-- Market maker behavior and inventory management
-
-Provide your analysis as a structured signal with:
-- confidence: Your confidence in this analysis (0-1)
-- direction: Your view on the outcome (YES/NO/NEUTRAL)
-- fairProbability: Your estimate of the true probability (0-1)
-- keyDrivers: Top 3-5 microstructure factors influencing your view
-- riskFactors: Liquidity risks, execution risks, or market structure concerns
-- metadata: Any additional microstructure metrics
-
-Be precise and data-driven. Focus on what the market structure tells you about price discovery and efficiency.`,
-
   probabilityBaseline: `Current date and time: ${new Date().toISOString()}
 
 You are a probability estimation expert specializing in prediction markets.
@@ -1174,19 +1145,12 @@ Be well-calibrated and avoid overconfidence. Market prices are powerful polling 
  * @returns Object with all agent node functions
  */
 export function createAgentNodes(config: EngineConfig): {
-  marketMicrostructureAgent: (state: GraphStateType) => Promise<Partial<GraphStateType>>;
   probabilityBaselineAgent: (state: GraphStateType) => Promise<Partial<GraphStateType>>;
   riskAssessmentAgent: (state: GraphStateType) => Promise<Partial<GraphStateType>>;
-  pollingIntelligenceAgent: (state: GraphStateType) => Promise<Partial<GraphStateType>>;
 } {
   const llms = createLLMInstances(config);
 
   return {
-    marketMicrostructureAgent: createAgentNode(
-      'market_microstructure',
-      llms.marketMicrostructure,
-      AGENT_PROMPTS.marketMicrostructure
-    ),
     probabilityBaselineAgent: createAgentNode(
       'probability_baseline',
       llms.probabilityBaseline,
@@ -1197,32 +1161,7 @@ export function createAgentNodes(config: EngineConfig): {
       llms.riskAssessment,
       AGENT_PROMPTS.riskAssessment
     ),
-    pollingIntelligenceAgent: createAgentNode(
-      'polling_intelligence',
-      llms.pollingIntelligence,
-      AGENT_PROMPTS.pollingIntelligence
-    ),
   };
 }
 
-/**
- * Create polling intelligence agent node
- *
- * Creates a specialized agent that interprets market prices as real-time polling data,
- * analyzing sentiment shifts, crowd wisdom signals, and comparing market-implied
- * probabilities with historical polling baselines.
- *
- * @param config - Engine configuration
- * @returns LangGraph node function for polling intelligence agent
- */
-export function createPollingIntelligenceAgentNode(
-  config: EngineConfig
-): (state: GraphStateType) => Promise<Partial<GraphStateType>> {
-  const llms = createLLMInstances(config);
-  
-  return createAgentNode(
-    'polling_intelligence',
-    llms.pollingIntelligence,
-    AGENT_PROMPTS.pollingIntelligence
-  );
-}
+

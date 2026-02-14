@@ -184,6 +184,31 @@ export const DEFAULT_NEWS_AGENTS_CONFIG: NewsAgentsConfig = {
  * @returns News agents configuration
  */
 export function loadNewsAgentsConfig(): NewsAgentsConfig {
+  // Warn if autonomous mode is explicitly disabled for any agent
+  if (process.env.BREAKING_NEWS_AGENT_AUTONOMOUS === 'false') {
+    console.warn(
+      '[Breaking News Agent] Autonomous mode has been explicitly disabled via BREAKING_NEWS_AGENT_AUTONOMOUS=false. ' +
+      'Autonomous mode is the recommended default for optimal agent performance. ' +
+      'The agent will fall back to basic news analysis using only pre-fetched data.'
+    );
+  }
+  
+  if (process.env.MEDIA_SENTIMENT_AGENT_AUTONOMOUS === 'false') {
+    console.warn(
+      '[Media Sentiment Agent] Autonomous mode has been explicitly disabled via MEDIA_SENTIMENT_AGENT_AUTONOMOUS=false. ' +
+      'Autonomous mode is the recommended default for optimal agent performance. ' +
+      'The agent will fall back to basic sentiment analysis using only pre-fetched data.'
+    );
+  }
+  
+  if (process.env.MARKET_MICROSTRUCTURE_AGENT_AUTONOMOUS === 'false') {
+    console.warn(
+      '[Market Microstructure Agent] Autonomous mode has been explicitly disabled via MARKET_MICROSTRUCTURE_AGENT_AUTONOMOUS=false. ' +
+      'Autonomous mode is the recommended default for optimal agent performance. ' +
+      'The agent will fall back to basic microstructure analysis using only pre-fetched data.'
+    );
+  }
+  
   return {
     breakingNewsAgent: {
       autonomous: process.env.BREAKING_NEWS_AGENT_AUTONOMOUS !== 'false',

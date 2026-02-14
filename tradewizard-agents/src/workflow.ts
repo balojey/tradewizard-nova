@@ -22,16 +22,14 @@ import {
   createKeywordExtractionNode,
   createMemoryRetrievalNode,
   createAgentNodes,
-  createPollingIntelligenceAgentNode,
+  createAdvancedPollingAgentNode,
   createThesisConstructionNode,
   createCrossExaminationNode,
   createConsensusEngineNode,
   createRecommendationGenerationNode,
   createDynamicAgentSelectionNode,
-  createBreakingNewsAgentNode,
   createEventImpactAgentNode,
   createHistoricalPatternAgentNode,
-  createMediaSentimentAgentNode,
   createSocialSentimentAgentNode,
   createNarrativeVelocityAgentNode,
   createMomentumAgentNode,
@@ -140,33 +138,8 @@ export async function createWorkflow(
   let breakingNewsAgent;
   let mediaSentimentAgent;
   
-  if (useEnhancedAgents && enhancedAgentFactory) {
-    // Use enhanced agents with NewsData.io integration
-    const { 
-      createEnhancedBreakingNewsAgent,
-      createEnhancedMediaSentimentAgent,
-      createEnhancedMarketMicrostructureAgent
-    } = await import('./utils/enhanced-agent-factory.js');
-    
-    // Create enhanced versions of key agents
-    const enhancedMarketAgent = createEnhancedMarketMicrostructureAgent(enhancedAgentFactory);
-    breakingNewsAgent = createEnhancedBreakingNewsAgent(enhancedAgentFactory);
-    mediaSentimentAgent = createEnhancedMediaSentimentAgent(enhancedAgentFactory);
-    
-    // Create standard agents for others
-    const standardAgents = createAgentNodes(config);
-    
-    agents = {
-      marketMicrostructureAgent: enhancedMarketAgent,
-      probabilityBaselineAgent: standardAgents.probabilityBaselineAgent,
-      riskAssessmentAgent: standardAgents.riskAssessmentAgent,
-    };
-  } else {
-    // Use standard agents
-    agents = createAgentNodes(config);
-    breakingNewsAgent = createBreakingNewsAgentNode(config);
-    mediaSentimentAgent = createMediaSentimentAgentNode(config);
-  }
+  // Always use standard agents (enhanced agents removed as part of cleanup)
+  agents = createAgentNodes(config);
   
   const thesisConstruction = createThesisConstructionNode(config);
   const crossExamination = createCrossExaminationNode(config);
@@ -177,25 +150,29 @@ export async function createWorkflow(
   const dynamicAgentSelection = createDynamicAgentSelectionNode(config, dataLayer);
   const eventImpactAgent = createEventImpactAgentNode(config);
   
-  // Create polling agent based on configuration (Requirements 15.3, 15.4, 15.6)
-  // Use autonomous agent when enabled, basic agent when disabled
-  const pollingIntelligenceAgent = config.pollingAgent.autonomous
-    ? createAutonomousPollingAgentNode(config)
-    : createPollingIntelligenceAgentNode(config);
+  // Create polling agent - always use autonomous version (Requirements 10)
+  // Log warning if config tries to disable autonomous mode
+  if (!config.pollingAgent.autonomous) {
+    console.warn('[Workflow] Non-autonomous polling agent is deprecated and removed. Using autonomous version.');
+  }
+  const pollingIntelligenceAgent = createAutonomousPollingAgentNode(config);
   
-  // Create news agents based on configuration (Requirements 18.3, 18.4, 18.6)
-  // Use autonomous agents when enabled, basic agents when disabled
-  const breakingNewsAgentNode = config.newsAgents.breakingNewsAgent.autonomous
-    ? createAutonomousBreakingNewsAgentNode(config)
-    : breakingNewsAgent;
+  // Create news agents - always use autonomous versions (Requirements 10)
+  // Log warnings if config tries to disable autonomous mode
+  if (!config.newsAgents.breakingNewsAgent.autonomous) {
+    console.warn('[Workflow] Non-autonomous breaking news agent is deprecated and removed. Using autonomous version.');
+  }
+  const breakingNewsAgentNode = createAutonomousBreakingNewsAgentNode(config);
   
-  const mediaSentimentAgentNode = config.newsAgents.mediaSentimentAgent.autonomous
-    ? createAutonomousMediaSentimentAgentNode(config)
-    : mediaSentimentAgent;
+  if (!config.newsAgents.mediaSentimentAgent.autonomous) {
+    console.warn('[Workflow] Non-autonomous media sentiment agent is deprecated and removed. Using autonomous version.');
+  }
+  const mediaSentimentAgentNode = createAutonomousMediaSentimentAgentNode(config);
   
-  const marketMicrostructureAgentNode = config.newsAgents.marketMicrostructureAgent.autonomous
-    ? createAutonomousMarketMicrostructureAgentNode(config)
-    : agents.marketMicrostructureAgent;
+  if (!config.newsAgents.marketMicrostructureAgent.autonomous) {
+    console.warn('[Workflow] Non-autonomous market microstructure agent is deprecated and removed. Using autonomous version.');
+  }
+  const marketMicrostructureAgentNode = createAutonomousMarketMicrostructureAgentNode(config);
   
   const historicalPatternAgent = createHistoricalPatternAgentNode(config);
   const socialSentimentAgent = createSocialSentimentAgentNode(config);
