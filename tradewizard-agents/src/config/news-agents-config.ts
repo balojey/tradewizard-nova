@@ -11,8 +11,9 @@
  * 
  * **Configuration Philosophy**:
  * The autonomous news agents are designed with conservative defaults that
- * prioritize reliability over advanced features. Autonomous mode is disabled
- * by default for backward compatibility, allowing gradual rollout.
+ * prioritize reliability over advanced features. Autonomous mode is enabled
+ * by default as the recommended configuration. Set environment variables to
+ * false to disable autonomous mode if needed.
  * 
  * **Usage Example**:
  * ```typescript
@@ -35,8 +36,8 @@
  * for a single news agent.
  * 
  * **Configuration Strategy**:
- * - Start with autonomous=false for backward compatibility
- * - Enable for specific market types first (e.g., high-volume markets)
+ * - Autonomous mode is enabled by default (recommended)
+ * - Set environment variables to false to disable if needed
  * - Gradually increase maxToolCalls as confidence grows
  * - Always keep fallbackToBasic=true in production for reliability
  */
@@ -49,7 +50,7 @@ export interface NewsAgentConfig {
    * When false, the agent falls back to basic analysis using only pre-fetched
    * data from the workflow state.
    * 
-   * @default false
+   * @default true
    */
   autonomous: boolean;
 
@@ -132,10 +133,10 @@ export interface NewsAgentsConfig {
  * Default news agent configuration
  * 
  * Conservative defaults that prioritize reliability over advanced features.
- * Autonomous mode is disabled by default for backward compatibility.
+ * Autonomous mode is enabled by default as the recommended configuration.
  */
 export const DEFAULT_NEWS_AGENT_CONFIG: NewsAgentConfig = {
-  autonomous: false,
+  autonomous: true,
   maxToolCalls: 5,
   timeout: 45000,
   cacheEnabled: true,
@@ -156,22 +157,25 @@ export const DEFAULT_NEWS_AGENTS_CONFIG: NewsAgentsConfig = {
 /**
  * Load news agent configuration from environment variables
  * 
+ * Autonomous mode is enabled by default. Set environment variables to 'false'
+ * to disable autonomous mode for specific agents.
+ * 
  * Environment variables for Breaking News Agent:
- * - BREAKING_NEWS_AGENT_AUTONOMOUS: Enable autonomous mode (true/false)
+ * - BREAKING_NEWS_AGENT_AUTONOMOUS: Enable autonomous mode (default: true, set to 'false' to disable)
  * - BREAKING_NEWS_AGENT_MAX_TOOL_CALLS: Maximum tool calls per analysis
  * - BREAKING_NEWS_AGENT_TIMEOUT: Timeout in milliseconds
  * - BREAKING_NEWS_AGENT_CACHE_ENABLED: Enable tool result caching (true/false)
  * - BREAKING_NEWS_AGENT_FALLBACK_TO_BASIC: Enable fallback to basic agent (true/false)
  * 
  * Environment variables for Media Sentiment Agent:
- * - MEDIA_SENTIMENT_AGENT_AUTONOMOUS: Enable autonomous mode (true/false)
+ * - MEDIA_SENTIMENT_AGENT_AUTONOMOUS: Enable autonomous mode (default: true, set to 'false' to disable)
  * - MEDIA_SENTIMENT_AGENT_MAX_TOOL_CALLS: Maximum tool calls per analysis
  * - MEDIA_SENTIMENT_AGENT_TIMEOUT: Timeout in milliseconds
  * - MEDIA_SENTIMENT_AGENT_CACHE_ENABLED: Enable tool result caching (true/false)
  * - MEDIA_SENTIMENT_AGENT_FALLBACK_TO_BASIC: Enable fallback to basic agent (true/false)
  * 
  * Environment variables for Market Microstructure Agent:
- * - MARKET_MICROSTRUCTURE_AGENT_AUTONOMOUS: Enable autonomous mode (true/false)
+ * - MARKET_MICROSTRUCTURE_AGENT_AUTONOMOUS: Enable autonomous mode (default: true, set to 'false' to disable)
  * - MARKET_MICROSTRUCTURE_AGENT_MAX_TOOL_CALLS: Maximum tool calls per analysis
  * - MARKET_MICROSTRUCTURE_AGENT_TIMEOUT: Timeout in milliseconds
  * - MARKET_MICROSTRUCTURE_AGENT_CACHE_ENABLED: Enable tool result caching (true/false)
@@ -182,21 +186,21 @@ export const DEFAULT_NEWS_AGENTS_CONFIG: NewsAgentsConfig = {
 export function loadNewsAgentsConfig(): NewsAgentsConfig {
   return {
     breakingNewsAgent: {
-      autonomous: process.env.BREAKING_NEWS_AGENT_AUTONOMOUS === 'true',
+      autonomous: process.env.BREAKING_NEWS_AGENT_AUTONOMOUS !== 'false',
       maxToolCalls: parseInt(process.env.BREAKING_NEWS_AGENT_MAX_TOOL_CALLS || '5', 10),
       timeout: parseInt(process.env.BREAKING_NEWS_AGENT_TIMEOUT || '45000', 10),
       cacheEnabled: process.env.BREAKING_NEWS_AGENT_CACHE_ENABLED !== 'false',
       fallbackToBasic: process.env.BREAKING_NEWS_AGENT_FALLBACK_TO_BASIC !== 'false',
     },
     mediaSentimentAgent: {
-      autonomous: process.env.MEDIA_SENTIMENT_AGENT_AUTONOMOUS === 'true',
+      autonomous: process.env.MEDIA_SENTIMENT_AGENT_AUTONOMOUS !== 'false',
       maxToolCalls: parseInt(process.env.MEDIA_SENTIMENT_AGENT_MAX_TOOL_CALLS || '5', 10),
       timeout: parseInt(process.env.MEDIA_SENTIMENT_AGENT_TIMEOUT || '45000', 10),
       cacheEnabled: process.env.MEDIA_SENTIMENT_AGENT_CACHE_ENABLED !== 'false',
       fallbackToBasic: process.env.MEDIA_SENTIMENT_AGENT_FALLBACK_TO_BASIC !== 'false',
     },
     marketMicrostructureAgent: {
-      autonomous: process.env.MARKET_MICROSTRUCTURE_AGENT_AUTONOMOUS === 'true',
+      autonomous: process.env.MARKET_MICROSTRUCTURE_AGENT_AUTONOMOUS !== 'false',
       maxToolCalls: parseInt(process.env.MARKET_MICROSTRUCTURE_AGENT_MAX_TOOL_CALLS || '5', 10),
       timeout: parseInt(process.env.MARKET_MICROSTRUCTURE_AGENT_TIMEOUT || '45000', 10),
       cacheEnabled: process.env.MARKET_MICROSTRUCTURE_AGENT_CACHE_ENABLED !== 'false',

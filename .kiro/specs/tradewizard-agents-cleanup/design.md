@@ -2,15 +2,34 @@
 
 ## Overview
 
-This design document outlines the technical approach for cleaning up the tradewizard-agents directory by making autonomous agents the default configuration and removing unnecessary documentation. The cleanup involves modifying configuration files, updating environment variable defaults, removing obsolete code, and deleting outdated documentation files.
+This design document outlines the technical approach for cleaning up the tradewizard-agents directory by making autonomous agents the default configuration and removing unnecessary documentation. The cleanup involves modifying configuration files, updating environment variable defaults, removing duplicate agent implementations, and deleting outdated documentation files.
+
+### Important Clarification
+
+This cleanup targets **only** the non-autonomous versions of agents that have **both** autonomous and non-autonomous implementations:
+
+**Agents with Duplicate Implementations (Remove Non-Autonomous):**
+- Polling Intelligence Agent - Keep `autonomous-polling-agent.ts`, remove from `agents.ts`
+- Breaking News Agent - Keep `autonomous-news-agents.ts`, remove from `event-intelligence.ts`
+- Media Sentiment Agent - Keep `autonomous-news-agents.ts`, remove from `sentiment-narrative.ts`
+- Market Microstructure Agent - Keep `autonomous-news-agents.ts`, remove from `agents.ts`
+
+**Agents WITHOUT Autonomous Versions (Keep As-Is):**
+- Probability Baseline Agent - Keep in `agents.ts`
+- Risk Assessment Agent - Keep in `agents.ts`
+- Event Impact Agent - Keep in `event-intelligence.ts`
+- Social Sentiment Agent - Keep in `sentiment-narrative.ts`
+- Narrative Velocity Agent - Keep in `sentiment-narrative.ts`
+- All other agents (thesis construction, cross-examination, consensus engine, etc.)
 
 ### Goals
 
-1. Make autonomous mode the default for all agents (polling and news agents)
+1. Make autonomous mode the default for polling and news agents
 2. Update all configuration files and environment variable examples to reflect autonomous-first approach
-3. Remove non-autonomous agent implementations while preserving shared utilities
-4. Delete unnecessary markdown documentation files while keeping critical operational docs
-5. Maintain backward compatibility for users who need to disable autonomous mode
+3. Remove duplicate non-autonomous implementations of polling and news agents
+4. Preserve all agents that don't have autonomous versions (probability baseline, risk assessment, etc.)
+5. Delete unnecessary markdown documentation files while keeping critical operational docs
+6. Maintain backward compatibility with warning messages when users try to disable autonomous mode
 
 ### Non-Goals
 
@@ -232,33 +251,147 @@ MARKET_MICROSTRUCTURE_AGENT_AUTONOMOUS=true
 
 ### 3. Agent Code Cleanup
 
+#### Agents to Remove (Duplicate Implementations)
+
+The following non-autonomous agent implementations have autonomous counterparts and should be removed:
+
+**From agents.ts:**
+- `createPollingIntelligenceAgentNode()` - Replaced by `createAutonomousPollingAgentNode()` in autonomous-polling-agent.ts
+- The `pollingIntelligenceAgent` property from the return value of `createAgentNodes()`
+- The `marketMicrostructureAgent` property from the return value of `createAgentNodes()` (has autonomous version)
+
+**From event-intelligence.ts:**
+- `createBreakingNewsAgentNode()` - Replaced by `createAutonomousBreakingNewsAgentNode()` in autonomous-news-agents.ts
+
+**From sentiment-narrative.ts:**
+- `createMediaSentimentAgentNode()` - Replaced by `createAutonomousMediaSentimentAgentNode()` in autonomous-news-agents.ts
+
+#### Agents to Keep (No Autonomous Versions)
+
+The following agents do NOT have autonomous versions and MUST be preserved:
+
+**From agents.ts:**
+- `createAgentNode()` - Generic agent node creator (shared utility)
+- `createLLMInstances()` - LLM instance factory (shared utility)
+- `createAgentNodes()` - Keep but modify to remove polling and market microstructure agents
+- `probabilityBaselineAgent` from `createAgentNodes()` - No autonomous version
+- `riskAssessmentAgent` from `createAgentNodes()` - No autonomous version
+
+**All other agent files:**
+- All agents in other files (thesis-construction, cross-examination, consensus-engine, etc.) have no autonomous versions and must be preserved
+
 #### src/nodes/agents.ts Analysis
 
-**Approach:**
-1. Read the entire agents.ts file to identify non-autonomous implementations
-2. Identify which functions/classes are non-autonomous agent implementations
-3. Identify which functions/classes are shared utilities used by other code
-4. Remove only the non-autonomous agent implementations
-5. Preserve shared utilities and helper functions
+**Current Structure:**
+```typescript
+export function createAgentNodes(config: EngineConfig): {
+  marketMicrostructureAgent: (state: GraphStateType) => Promise<Partial<GraphStateType>>;
+  probabilityBaselineAgent: (state: GraphStateType) => Promise<Partial<GraphStateType>>;
+  riskAssessmentAgent: (state: GraphStateType) => Promise<Partial<GraphStateType>>;
+  pollingIntelligenceAgent: (state: GraphStateType) => Promise<Partial<GraphStateType>>;
+}
+```
 
-**Expected Structure:**
-Based on the code signatures, agents.ts contains:
-- `createAgentNode()` - Generic agent node creator (likely shared utility)
-- `createLLMInstances()` - LLM instance factory (likely shared utility)
-- `createAgentNodes()` - Agent node factory (may contain non-autonomous logic)
-- `createPollingIntelligenceAgentNode()` - Specific agent creator (may be non-autonomous)
+**Target Structure:**
+```typescript
+export function createAgentNodes(config: EngineConfig): {
+  probabilityBaselineAgent: (state: GraphStateType) => Promise<Partial<GraphStateType>>;
+  riskAssessmentAgent: (state: GraphStateType) => Promise<Partial<GraphStateType>>;
+}
+```
 
-**Decision Logic:**
-- If a function is imported by autonomous agent files → Keep it (shared utility)
-- If a function creates non-autonomous agent nodes → Remove it
-- If a function is generic infrastructure → Keep it (shared utility)
-- If a function is only used by workflow for non-autonomous agents → Remove it
+**Changes:**
+1. Remove `marketMicrostructureAgent` from return type and implementation
+2. Remove `pollingIntelligenceAgent` from return type and implementation
+3. Keep `probabilityBaselineAgent` and `riskAssessmentAgent`
+4. Remove standalone `createPollingIntelligenceAgentNode()` function entirely
 
-**Verification Steps:**
-1. Search for imports of agents.ts in autonomous agent files
-2. Search for imports of agents.ts in workflow.ts
-3. Identify which exports are actually used
-4. Remove unused non-autonomous implementations
+#### src/nodes/event-intelligence.ts Changes
+
+**Remove:**
+- `createBreakingNewsAgentNode()` function and all its implementation
+- Export of `createBreakingNewsAgentNode` from the file
+
+**Keep:**
+- `createEventImpactAgentNode()` - Different agent, no autonomous version
+- `BreakingNewsSignalSchema` - May be used by autonomous version
+- All other exports and types
+
+#### src/nodes/sentiment-narrative.ts Changes
+
+**Remove:**
+- `createMediaSentimentAgentNode()` function and all its implementation
+- Export of `createMediaSentimentAgentNode` from the file
+
+**Keep:**
+- `createSocialSentimentAgentNode()` - Different agent, no autonomous version
+- `createNarrativeVelocityAgentNode()` - Different agent, no autonomous version
+- All other exports and types
+
+#### src/nodes/index.ts Updates
+
+**Remove exports:**
+```typescript
+export { createPollingIntelligenceAgentNode } from './agents.js';
+export { createBreakingNewsAgentNode } from './event-intelligence.js';
+export { createMediaSentimentAgentNode } from './sentiment-narrative.js';
+```
+
+**Keep all other exports** including:
+- `createAgentNodes` (modified version)
+- `createAgentNode` (shared utility)
+- `createLLMInstances` (shared utility)
+- All other agent node creators
+
+#### Workflow Integration Updates
+
+The workflow.ts file currently has conditional logic:
+
+```typescript
+const pollingIntelligenceAgent = config.pollingAgent.autonomous
+  ? createAutonomousPollingAgentNode(config)
+  : createPollingIntelligenceAgentNode(config);  // ← Remove this fallback
+
+const breakingNewsAgentNode = config.newsAgents.breakingNewsAgent.autonomous
+  ? createAutonomousBreakingNewsAgentNode(config)
+  : breakingNewsAgent;  // ← Remove this fallback
+
+const mediaSentimentAgentNode = config.newsAgents.mediaSentimentAgent.autonomous
+  ? createAutonomousMediaSentimentAgentNode(config)
+  : mediaSentimentAgent;  // ← Remove this fallback
+
+const marketMicrostructureAgentNode = config.newsAgents.marketMicrostructureAgent.autonomous
+  ? createAutonomousMarketMicrostructureAgentNode(config)
+  : agents.marketMicrostructureAgent;  // ← Remove this fallback
+```
+
+**After cleanup:**
+```typescript
+// Always use autonomous versions (config defaults to autonomous: true)
+const pollingIntelligenceAgent = createAutonomousPollingAgentNode(config);
+const breakingNewsAgentNode = createAutonomousBreakingNewsAgentNode(config);
+const mediaSentimentAgentNode = createAutonomousMediaSentimentAgentNode(config);
+const marketMicrostructureAgentNode = createAutonomousMarketMicrostructureAgentNode(config);
+```
+
+**Note:** Since autonomous mode is now the default, and users can still set `autonomous: false` in config, we should keep the conditional logic but log a warning when non-autonomous mode is requested (since the fallback implementations are removed).
+
+**Better approach:**
+```typescript
+// Use autonomous versions, warn if config tries to disable
+if (!config.pollingAgent.autonomous) {
+  console.warn('Non-autonomous polling agent is deprecated and removed. Using autonomous version.');
+}
+const pollingIntelligenceAgent = createAutonomousPollingAgentNode(config);
+
+// Similar for news agents
+if (!config.newsAgents.breakingNewsAgent.autonomous) {
+  console.warn('Non-autonomous breaking news agent is deprecated and removed. Using autonomous version.');
+}
+const breakingNewsAgentNode = createAutonomousBreakingNewsAgentNode(config);
+
+// ... etc for other news agents
+```
 
 ### 4. Documentation File Removal
 
@@ -483,13 +616,18 @@ Verify that `autonomous-polling-agent.ts` and `autonomous-news-agents.ts` have i
 
 **Validates: Requirements 3.2**
 
-#### Example 5: Agent Node Exports Reference Autonomous Implementations
-Verify that agent node exports only include autonomous agent implementations and do not export non-autonomous agent nodes
+#### Example 5: Agent Node Exports Reference Correct Implementations
+Verify that agent node exports only include autonomous implementations for polling and news agents, and include non-autonomous implementations for other agents (probability baseline, risk assessment, etc.)
 
-**Validates: Requirements 3.4**
+**Validates: Requirements 3.7**
 
-#### Example 6: Workflow Uses Autonomous Agents
-Verify that `workflow.ts` imports and uses only autonomous agent nodes
+#### Example 6: Workflow Uses Autonomous Agents for Polling and News
+Verify that `workflow.ts` uses only autonomous agent nodes for polling intelligence, breaking news, media sentiment, and market microstructure agents
+
+**Validates: Requirements 3.8**
+
+#### Example 7: Other Agents Preserved
+Verify that probability baseline agent, risk assessment agent, and all other agents without autonomous versions still exist and are exported correctly
 
 **Validates: Requirements 3.5**
 
@@ -504,14 +642,14 @@ Verify that all files in the keep list (README.md, DEPLOYMENT.md, CLI.md, CLI-MO
 **Validates: Requirements 4.4, 4.9, 4.12, 8.3**
 
 #### Example 9: Explicit False Disables Polling Agent Autonomous Mode
-Verify that when `POLLING_AGENT_AUTONOMOUS=false` is set, the loaded configuration has `pollingAgent.autonomous === false`
+Verify that when `POLLING_AGENT_AUTONOMOUS=false` is set, the loaded configuration has `pollingAgent.autonomous === false`, and a warning is logged that non-autonomous mode is deprecated
 
-**Validates: Requirements 7.1**
+**Validates: Requirements 7.1, 7.5**
 
-#### Example 10: Fallback Mechanism Works with Autonomous Disabled
-Verify that when autonomous mode is disabled, the fallback mechanism still functions correctly (agents can execute with pre-fetched data)
+#### Example 10: Fallback Mechanism Logs Warning
+Verify that when autonomous mode is disabled via config, the system logs a warning that non-autonomous implementations are deprecated and uses autonomous versions anyway
 
-**Validates: Requirements 7.3**
+**Validates: Requirements 7.3, 7.5**
 
 #### Example 11: Warning Logged When Autonomous Explicitly Disabled
 Verify that when any autonomous environment variable is set to "false", a warning message is logged indicating autonomous mode has been explicitly disabled
@@ -576,7 +714,7 @@ Verify that agents can be initialized successfully using configuration with auto
 **Scenario:** User explicitly sets autonomous=false but non-autonomous code is removed
 - **Detection:** Configuration loads with autonomous=false but no fallback available
 - **Handling:** Log warning that non-autonomous mode is deprecated, use autonomous mode anyway
-- **User Impact:** System uses autonomous mode despite user preference (with warning)
+- **User Impact:** System uses autonomous mode despite user preference (with clear warning message explaining the change)
 
 ## Testing Strategy
 

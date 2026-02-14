@@ -40,17 +40,20 @@ This specification defines the requirements for cleaning up the tradewizard-agen
 4. THE .env.staging.example File SHALL show autonomous mode enabled by default
 5. THE Environment_Variable_Comments SHALL explain that autonomous mode is now the default
 
-### Requirement 3: Non-Autonomous Agent Code Removal
+### Requirement 3: Duplicate Agent Implementation Removal
 
-**User Story:** As a developer, I want non-autonomous agent implementations removed from the codebase, so that there is no confusion about which agent implementations to use.
+**User Story:** As a developer, I want duplicate non-autonomous implementations of polling and news agents removed from the codebase, so that there is no confusion about which agent implementations to use.
 
 #### Acceptance Criteria
 
-1. WHEN non-autonomous agent code exists in agents.ts, THE System SHALL identify and remove it
-2. THE Autonomous_Agent_Files SHALL remain unchanged (autonomous-polling-agent.ts, autonomous-news-agents.ts)
-3. IF shared utility functions exist in agents.ts, THEN THE System SHALL preserve them
-4. THE Agent_Node_Exports SHALL reference only autonomous agent implementations
-5. THE Workflow_Integration SHALL use only autonomous agent nodes
+1. WHEN the non-autonomous polling agent implementation exists in agents.ts, THE System SHALL remove createPollingIntelligenceAgentNode function
+2. WHEN the non-autonomous news agent implementations exist, THE System SHALL remove createBreakingNewsAgentNode from event-intelligence.ts
+3. WHEN the non-autonomous news agent implementations exist, THE System SHALL remove createMediaSentimentAgentNode from sentiment-narrative.ts
+4. THE Autonomous_Agent_Files SHALL remain unchanged (autonomous-polling-agent.ts, autonomous-news-agents.ts)
+5. THE Other_Agent_Implementations SHALL remain unchanged (probability baseline, risk assessment, and all other agents without autonomous versions)
+6. IF shared utility functions exist in agents.ts, THEN THE System SHALL preserve them
+7. THE Agent_Node_Exports SHALL reference only autonomous implementations for polling and news agents
+8. THE Workflow_Integration SHALL use only autonomous agent nodes for polling and news agents
 
 ### Requirement 4: Unnecessary Markdown File Removal
 

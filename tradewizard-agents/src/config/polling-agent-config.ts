@@ -6,9 +6,9 @@
  * Polymarket data autonomously.
  * 
  * **Configuration Philosophy**:
- * The autonomous polling agent is designed with conservative defaults that
- * prioritize reliability over advanced features. Autonomous mode is disabled
- * by default for backward compatibility, allowing gradual rollout.
+ * The autonomous polling agent is designed with autonomous mode enabled by
+ * default, providing the most capable agent implementation out of the box.
+ * Autonomous mode can be explicitly disabled via environment variables if needed.
  * 
  * **Usage Example**:
  * ```typescript
@@ -30,10 +30,10 @@
  * Controls autonomous mode, tool usage limits, timeouts, and fallback behavior.
  * 
  * **Configuration Strategy**:
- * - Start with autonomous=false for backward compatibility
- * - Enable for specific market types first (e.g., high-volume markets)
- * - Gradually increase maxToolCalls as confidence grows
- * - Always keep fallbackToBasic=true in production for reliability
+ * - Autonomous mode is enabled by default (recommended)
+ * - Set POLLING_AGENT_AUTONOMOUS=false to disable if needed
+ * - Adjust maxToolCalls based on latency requirements
+ * - Keep fallbackToBasic=true in production for reliability
  */
 export interface PollingAgentConfig {
   /**
@@ -45,7 +45,7 @@ export interface PollingAgentConfig {
    * When false, the agent falls back to basic polling analysis using
    * only pre-fetched data from the workflow state.
    * 
-   * @default false
+   * @default true
    */
   autonomous: boolean;
 
@@ -96,11 +96,11 @@ export interface PollingAgentConfig {
 /**
  * Default polling agent configuration
  * 
- * Conservative defaults that prioritize reliability over advanced features.
- * Autonomous mode is disabled by default for backward compatibility.
+ * Autonomous mode is enabled by default, providing the most capable
+ * agent implementation. Set POLLING_AGENT_AUTONOMOUS=false to disable.
  */
 export const DEFAULT_POLLING_AGENT_CONFIG: PollingAgentConfig = {
-  autonomous: false,
+  autonomous: true,
   maxToolCalls: 5,
   timeout: 45000,
   cacheEnabled: true,
@@ -111,17 +111,19 @@ export const DEFAULT_POLLING_AGENT_CONFIG: PollingAgentConfig = {
  * Load polling agent configuration from environment variables
  * 
  * Environment variables:
- * - POLLING_AGENT_AUTONOMOUS: Enable autonomous mode (true/false)
+ * - POLLING_AGENT_AUTONOMOUS: Disable autonomous mode by setting to 'false' (default: true)
  * - POLLING_AGENT_MAX_TOOL_CALLS: Maximum tool calls per analysis
  * - POLLING_AGENT_TIMEOUT: Timeout in milliseconds
  * - POLLING_AGENT_CACHE_ENABLED: Enable tool result caching (true/false)
  * - POLLING_AGENT_FALLBACK_TO_BASIC: Enable fallback to basic agent (true/false)
  * 
+ * Autonomous mode is enabled by default. Set POLLING_AGENT_AUTONOMOUS=false to disable.
+ * 
  * @returns Polling agent configuration
  */
 export function loadPollingAgentConfig(): PollingAgentConfig {
   return {
-    autonomous: process.env.POLLING_AGENT_AUTONOMOUS === 'true',
+    autonomous: process.env.POLLING_AGENT_AUTONOMOUS !== 'false',
     maxToolCalls: parseInt(process.env.POLLING_AGENT_MAX_TOOL_CALLS || '5', 10),
     timeout: parseInt(process.env.POLLING_AGENT_TIMEOUT || '45000', 10),
     cacheEnabled: process.env.POLLING_AGENT_CACHE_ENABLED !== 'false',

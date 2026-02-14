@@ -273,7 +273,7 @@ const EngineConfigSchema = z
       minSampleSize: z.number().positive().default(10),
     }),
     pollingAgent: z.object({
-      autonomous: z.boolean().default(false),
+      autonomous: z.boolean().default(true),
       maxToolCalls: z.number().positive().default(5),
       timeout: z.number().positive().default(45000),
       cacheEnabled: z.boolean().default(true),
@@ -281,21 +281,21 @@ const EngineConfigSchema = z
     }),
     newsAgents: z.object({
       breakingNewsAgent: z.object({
-        autonomous: z.boolean().default(false),
+        autonomous: z.boolean().default(true),
         maxToolCalls: z.number().positive().default(5),
         timeout: z.number().positive().default(45000),
         cacheEnabled: z.boolean().default(true),
         fallbackToBasic: z.boolean().default(true),
       }),
       mediaSentimentAgent: z.object({
-        autonomous: z.boolean().default(false),
+        autonomous: z.boolean().default(true),
         maxToolCalls: z.number().positive().default(5),
         timeout: z.number().positive().default(45000),
         cacheEnabled: z.boolean().default(true),
         fallbackToBasic: z.boolean().default(true),
       }),
       marketMicrostructureAgent: z.object({
-        autonomous: z.boolean().default(false),
+        autonomous: z.boolean().default(true),
         maxToolCalls: z.number().positive().default(5),
         timeout: z.number().positive().default(45000),
         cacheEnabled: z.boolean().default(true),
@@ -1146,7 +1146,7 @@ export function getDefaultConfig(): Partial<EngineConfig> {
       minSampleSize: 10,
     },
     pollingAgent: {
-      autonomous: false,
+      autonomous: true,
       maxToolCalls: 5,
       timeout: 45000,
       cacheEnabled: true,
@@ -1154,21 +1154,21 @@ export function getDefaultConfig(): Partial<EngineConfig> {
     },
     newsAgents: {
       breakingNewsAgent: {
-        autonomous: false,
+        autonomous: true,
         maxToolCalls: 5,
         timeout: 45000,
         cacheEnabled: true,
         fallbackToBasic: true,
       },
       mediaSentimentAgent: {
-        autonomous: false,
+        autonomous: true,
         maxToolCalls: 5,
         timeout: 45000,
         cacheEnabled: true,
         fallbackToBasic: true,
       },
       marketMicrostructureAgent: {
-        autonomous: false,
+        autonomous: true,
         maxToolCalls: 5,
         timeout: 45000,
         cacheEnabled: true,
