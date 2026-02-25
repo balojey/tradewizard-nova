@@ -9,25 +9,20 @@ TradeWizard transforms prediction markets from speculative guessing into guided,
 ## Architecture
 
 ```
-├── doa/                    # Python workflow service (LangGraph + Digital Ocean Gradient AI)
-├── tradewizard-agents/     # Node.js backend with CLI and monitoring service
+├── tradewizard-agents/     # Node.js backend with CLI and monitoring service (Primary)
 ├── tradewizard-frontend/   # Web application (Next.js + React)
+├── doa/                    # Python workflow service (Alternative deployment option)
 ├── docs/                   # Product and technical documentation
 └── .kiro/                  # AI assistant configuration and specs
 ```
 
 ### System Components
 
-**🐍 DOA Workflow Service (doa/)**
-- **Purpose**: Executes market analysis workflows using Python + LangGraph
-- **LLM Provider**: Digital Ocean's Gradient AI Platform (cost-effective Llama models)
-- **Deployment**: Standalone HTTP service for workflow execution
-- **Usage**: Called by tradewizard-agents monitor service for analysis
-
-**🟢 TradeWizard Agents (tradewizard-agents/)**
-- **Purpose**: CLI tools and automated monitoring service
+**🟢 TradeWizard Agents (tradewizard-agents/)** - Primary System
+- **Purpose**: Complete AI-powered market analysis system with CLI and monitoring
+- **LLM Provider**: Amazon Nova (cost-effective, high-performance models)
 - **Features**: Market discovery, scheduled analysis, data persistence
-- **Workflow Execution**: Can use local LangGraph OR remote DOA service
+- **Workflow Execution**: Built-in LangGraph workflow with 15+ specialized AI agents
 - **Database**: Supabase PostgreSQL for storing analysis results
 - **Monitoring**: 24/7 automated market monitoring with configurable intervals
 
@@ -37,41 +32,38 @@ TradeWizard transforms prediction markets from speculative guessing into guided,
 - **Real-time UI**: Live market data and AI recommendations
 - **Professional Analytics**: Bloomberg Terminal-style market intelligence
 
+**🐍 DOA Workflow Service (doa/)** - Alternative Deployment Option
+- **Purpose**: Standalone Python service for remote workflow execution
+- **LLM Provider**: Digital Ocean's Gradient AI Platform (Llama models)
+- **Use Case**: Optional microservice architecture for separating concerns
+- **Note**: Not required for standard deployment
+
 ### How They Work Together
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  tradewizard-agents (Monitor Service)                       │
+│  tradewizard-agents (Complete System)                       │
 │  - Discovers markets                                        │
-│  - Schedules analysis                                       │
-│  - Manages API quotas                                       │
-│  - Stores results in Supabase                               │
-└────────────────┬────────────────────────────────────────────┘
-                 │
-                 │ HTTP Request
-                 ▼
-┌─────────────────────────────────────────────────────────────┐
-│  doa (Workflow Service)                                     │
-│  - Executes LangGraph workflow                              │
+│  - Executes LangGraph workflow with Amazon Nova             │
 │  - Runs 15+ specialized AI agents                           │
-│  - Uses Digital Ocean Gradient AI (Llama models)            │
-│  - Returns analysis results                                 │
+│  - Schedules analysis                                       │
+│  - Stores results in Supabase                               │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ## Quick Start
 
-### 🚀 Recommended Setup: DOA Workflow Service + TradeWizard Monitor
+### 🚀 Recommended Setup: TradeWizard with Amazon Nova
 
-**Get the full system running in 10 minutes!**
+**Get the full system running in 5 minutes!**
 
 #### Prerequisites
 
 Before starting, you'll need:
-- Python 3.10+ and Node.js 18+
-- Digital Ocean account with Gradient AI access
+- Node.js 18+
+- AWS account with Amazon Nova access (Bedrock)
 - Supabase account (free tier works)
-- Digital Ocean API token and Inference key
+- AWS credentials configured
 
 #### Step 1: Set Up Database
 
@@ -90,60 +82,36 @@ npx supabase db push
 npx supabase gen types typescript --linked > src/database/types.ts
 ```
 
-#### Step 2: Deploy DOA Workflow Service
+#### Step 2: Configure TradeWizard with Amazon Nova
 
 ```bash
-# 1. Navigate to doa directory
-cd ../doa
-
-# 2. Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Configure environment
-cp .env.example .env
-# Edit .env with your API keys:
-# - DIGITALOCEAN_INFERENCE_KEY (Digital Ocean Gradient AI)
-# - SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY
-# - NEWSDATA_API_KEY (optional)
-# - OPIK_API_KEY (optional)
-
-# 5. Start the workflow service
-export DIGITALOCEAN_API_TOKEN=your_token
-gradient agent run
-# Service runs on http://localhost:8080
-```
-
-#### Step 3: Configure TradeWizard Monitor
-
-```bash
-# 1. Navigate to tradewizard-agents directory
-cd ../tradewizard-agents
-
-# 2. Install dependencies
+# 1. Install dependencies
 npm install
 
-# 3. Configure environment
+# 2. Configure environment
 cp .env.example .env
 # Edit .env and set:
-# WORKFLOW_SERVICE_URL=http://localhost:8080/run
-# DIGITALOCEAN_API_TOKEN=your_token
+# AWS_REGION=us-east-1
+# AWS_ACCESS_KEY_ID=your_access_key
+# AWS_SECRET_ACCESS_KEY=your_secret_key
+# LLM_SINGLE_PROVIDER=bedrock-nova
+# BEDROCK_NOVA_DEFAULT_MODEL=amazon.nova-pro-v1:0
 # SUPABASE_URL and SUPABASE_KEY
-# NEWSDATA_API_KEY
+# NEWSDATA_API_KEY (optional)
 
-# 4. Build the project
+# 3. Build the project
 npm run build
 
-# 5. Start the monitor service
-npm run monitor:start
+# 4. Test with a single market analysis
+npm run cli -- analyze <polymarket-condition-id>
 ```
 
-#### Step 4: Verify Everything Works
+#### Step 3: Start Automated Monitoring
 
 ```bash
+# Start the monitor service for 24/7 automated analysis
+npm run monitor:start
+
 # Check monitor status
 npm run monitor:status
 
@@ -154,24 +122,30 @@ npm run monitor:trigger
 npm run monitor:health
 ```
 
-### 🔧 Alternative: Local Workflow Execution (No DOA Service)
+### 🔧 Alternative: Other LLM Providers
 
-If you prefer to run everything locally without the DOA service:
+TradeWizard supports multiple LLM providers:
 
 ```bash
-# Set up database first (same as Step 1 above)
-cd tradewizard-agents
-npx supabase link --project-ref your-project-ref
-npx supabase db push
+# OpenAI (GPT-4)
+LLM_SINGLE_PROVIDER=openai
+OPENAI_API_KEY=your_key
+OPENAI_DEFAULT_MODEL=gpt-4o
 
-# Configure and run
-npm install
-cp .env.example .env
-# Configure LLM providers (OpenAI, Anthropic, Google, or Amazon Nova)
-# Do NOT set WORKFLOW_SERVICE_URL
-npm run build
-npm run cli -- analyze <polymarket-condition-id>
+# Anthropic (Claude)
+LLM_SINGLE_PROVIDER=anthropic
+ANTHROPIC_API_KEY=your_key
+ANTHROPIC_DEFAULT_MODEL=claude-3-5-sonnet-20241022
+
+# Google (Gemini)
+LLM_SINGLE_PROVIDER=google
+GOOGLE_API_KEY=your_key
+GOOGLE_DEFAULT_MODEL=gemini-2.0-flash-exp
 ```
+
+### 🐍 Alternative: DOA Workflow Service (Microservice Architecture)
+
+For advanced deployments requiring service separation, see [DOA Setup Guide](doa/README.md).
 
 ### 🎨 Frontend Setup (Optional)
 
@@ -205,17 +179,12 @@ Visit `http://localhost:3000` to access the application.
 
 ## Technology Stack
 
-### DOA Workflow Service
-- **Runtime**: Python 3.10+ with type hints
-- **AI Framework**: LangGraph for multi-agent workflows
-- **LLM Provider**: Digital Ocean Gradient AI (Llama-3.3-70b, Llama-3.1-8b)
-- **HTTP Framework**: FastAPI or Flask for service endpoints
-- **Testing**: pytest with Hypothesis for property-based testing
-
-### TradeWizard Agents (Monitor & CLI)
+### TradeWizard Agents (Monitor & CLI) - Primary System
 - **Runtime**: Node.js 18+ with TypeScript
+- **AI Framework**: LangGraph for multi-agent workflows
+- **LLM Provider**: Amazon Nova (Bedrock) - cost-effective, high-performance
+- **Alternative Providers**: OpenAI, Anthropic, Google
 - **Features**: Market discovery, scheduling, data persistence
-- **Workflow Execution**: Local LangGraph OR remote DOA service
 - **Database**: Supabase (PostgreSQL)
 - **Testing**: Vitest with property-based testing (fast-check)
 
@@ -226,37 +195,19 @@ Visit `http://localhost:3000` to access the application.
 - **Authentication**: Magic Link SDK
 - **Blockchain**: ethers.js v5 and viem
 
+### DOA Workflow Service (Optional)
+- **Runtime**: Python 3.10+ with type hints
+- **AI Framework**: LangGraph for multi-agent workflows
+- **LLM Provider**: Digital Ocean Gradient AI (Llama-3.3-70b, Llama-3.1-8b)
+- **HTTP Framework**: FastAPI or Flask for service endpoints
+- **Testing**: pytest with Hypothesis for property-based testing
+- **Use Case**: Microservice architecture for service separation
+
 ## Development
 
 ### Common Commands
 
-#### DOA Workflow Service
-```bash
-cd doa
-
-# Start service locally
-export DIGITALOCEAN_API_TOKEN=your_token
-gradient agent run
-# Service runs on http://localhost:8080
-
-# Deploy to production
-gradient agent deploy
-
-# Test the service
-curl --location 'http://localhost:8080/run' \
-    --header 'Content-Type: application/json' \
-    --data '{"condition_id": "0x1234567890abcdef"}'
-
-# Run tests
-pytest
-pytest --cov=.  # With coverage
-
-# Code quality
-black . --line-length=120
-flake8 . --max-line-length=120
-```
-
-#### TradeWizard Agents (Monitor & CLI)
+#### TradeWizard Agents (Monitor & CLI) - Primary System
 ```bash
 cd tradewizard-agents
 
@@ -284,12 +235,38 @@ npm run build  # Build for production
 npm run lint   # ESLint checking
 ```
 
+#### DOA Workflow Service (Optional)
+```bash
+cd doa
+
+# Start service locally
+export DIGITALOCEAN_API_TOKEN=your_token
+gradient agent run
+# Service runs on http://localhost:8080
+
+# Deploy to production
+gradient agent deploy
+
+# Test the service
+curl --location 'http://localhost:8080/run' \
+    --header 'Content-Type: application/json' \
+    --data '{"condition_id": "0x1234567890abcdef"}'
+
+# Run tests
+pytest
+pytest --cov=.  # With coverage
+
+# Code quality
+black . --line-length=120
+flake8 . --max-line-length=120
+```
+
 ## Documentation
 
 ### Getting Started
-- **[DOA Workflow Service (doa/README.md)](doa/README.md)** - Python workflow service setup
-- **[TradeWizard Agents (tradewizard-agents/README.md)](tradewizard-agents/README.md)** - Monitor and CLI documentation
+- **[TradeWizard Agents (tradewizard-agents/README.md)](tradewizard-agents/README.md)** - Primary system with Amazon Nova
 - **[Frontend (tradewizard-frontend/README.md)](tradewizard-frontend/README.md)** - Frontend development guide
+- **[DOA Workflow Service (doa/README.md)](doa/README.md)** - Optional Python microservice
 
 ### Product Documentation
 - [Product Overview](docs/TradeWizard.md) - Detailed product specification
@@ -298,27 +275,120 @@ npm run lint   # ESLint checking
 
 ### Architecture Overview
 
-**Workflow Execution Options:**
+**Recommended Architecture:**
 
-1. **Remote Execution (Recommended for Production)**
-   - DOA service handles all LangGraph workflow execution
-   - TradeWizard monitor handles scheduling and data persistence
-   - Cost-effective with Digital Ocean Gradient AI (Llama models)
-   - Separates concerns: monitoring vs. analysis
+TradeWizard Agents with Amazon Nova provides a complete, integrated solution:
+- Built-in LangGraph workflow execution
+- Cost-effective Amazon Nova models (Bedrock)
+- Integrated monitoring and scheduling
+- Direct database persistence
+- Simple deployment and maintenance
 
-2. **Local Execution (Development/Testing)**
-   - TradeWizard agents execute workflows locally
-   - Supports multiple LLM providers (OpenAI, Anthropic, Google, Amazon Nova)
-   - No separate DOA service needed
-   - Useful for development and testing
+**Alternative Architectures:**
+
+1. **Multi-Provider Setup**
+   - Use OpenAI, Anthropic, or Google instead of Amazon Nova
+   - Same integrated architecture
+   - Configure via LLM_SINGLE_PROVIDER environment variable
+
+2. **Microservice Architecture (Advanced)**
+   - DOA service handles workflow execution remotely
+   - TradeWizard monitor handles scheduling and persistence
+   - Separates concerns for complex deployments
+   - See [DOA Setup Guide](doa/README.md) for details
 
 ## Configuration
 
 ### Environment Variables
 
-#### DOA Workflow Service (doa/.env)
+#### TradeWizard Agents (tradewizard-agents/.env) - Primary Configuration
+
+**Recommended: Amazon Nova (Bedrock)**
 ```bash
-# Digital Ocean Gradient AI (REQUIRED)
+# AWS Bedrock Configuration
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+
+# LLM Configuration
+LLM_SINGLE_PROVIDER=bedrock-nova
+BEDROCK_NOVA_DEFAULT_MODEL=amazon.nova-pro-v1:0
+# Alternative models: amazon.nova-lite-v1:0, amazon.nova-micro-v1:0
+
+# Database
+SUPABASE_URL=your_supabase_url
+SUPABASE_KEY=your_supabase_anon_key
+
+# External APIs
+NEWSDATA_API_KEY=your_newsdata_key
+
+# Monitor Configuration
+ANALYSIS_INTERVAL_HOURS=24
+MAX_MARKETS_PER_CYCLE=3
+
+# Observability (optional)
+OPIK_API_KEY=your_opik_api_key
+OPIK_PROJECT_NAME=tradewizard-analysis
+```
+
+**Alternative: Other LLM Providers**
+```bash
+# OpenAI
+LLM_SINGLE_PROVIDER=openai
+OPENAI_API_KEY=your_openai_key
+OPENAI_DEFAULT_MODEL=gpt-4o
+
+# Anthropic
+LLM_SINGLE_PROVIDER=anthropic
+ANTHROPIC_API_KEY=your_anthropic_key
+ANTHROPIC_DEFAULT_MODEL=claude-3-5-sonnet-20241022
+
+# Google
+LLM_SINGLE_PROVIDER=google
+GOOGLE_API_KEY=your_google_key
+GOOGLE_DEFAULT_MODEL=gemini-2.0-flash-exp
+
+# Database and other settings remain the same
+SUPABASE_URL=your_supabase_url
+SUPABASE_KEY=your_supabase_anon_key
+NEWSDATA_API_KEY=your_newsdata_key
+```
+
+**Advanced: Remote Workflow Execution via DOA Service**
+```bash
+# Remote DOA Workflow Service (optional microservice architecture)
+WORKFLOW_SERVICE_URL=http://localhost:8080/run
+WORKFLOW_SERVICE_TIMEOUT_MS=120000
+DIGITALOCEAN_API_TOKEN=your_api_token
+
+# Database
+SUPABASE_URL=your_supabase_url
+SUPABASE_KEY=your_supabase_anon_key
+
+# External APIs
+NEWSDATA_API_KEY=your_newsdata_key
+
+# Monitor Configuration
+ANALYSIS_INTERVAL_HOURS=24
+MAX_MARKETS_PER_CYCLE=3
+```
+
+#### Frontend (.env.local)
+```bash
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key
+
+# Magic Link
+NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY=your_magic_key
+
+# Polymarket
+NEXT_PUBLIC_POLYMARKET_API_URL=https://clob.polymarket.com
+```
+
+#### DOA Workflow Service (doa/.env) - Optional
+```bash
+# Digital Ocean Gradient AI (REQUIRED for DOA service)
 DIGITALOCEAN_INFERENCE_KEY=your_gradient_model_access_key
 
 # LLM Configuration
@@ -347,74 +417,61 @@ AGENT_TIMEOUT_MS=45000
 AGENT_MAX_RETRIES=3
 ```
 
-#### TradeWizard Agents (tradewizard-agents/.env)
-
-**Option 1: Remote Workflow Execution (Recommended)**
-```bash
-# Remote DOA Workflow Service
-WORKFLOW_SERVICE_URL=http://localhost:8080/run
-WORKFLOW_SERVICE_TIMEOUT_MS=120000
-DIGITALOCEAN_API_TOKEN=your_api_token
-
-# Database
-SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_anon_key
-
-# External APIs
-NEWSDATA_API_KEY=your_newsdata_key
-
-# Monitor Configuration
-ANALYSIS_INTERVAL_HOURS=24
-MAX_MARKETS_PER_CYCLE=3
-```
-
-**Option 2: Local Workflow Execution**
-```bash
-# Leave WORKFLOW_SERVICE_URL unset for local execution
-
-# LLM Providers (configure at least one)
-OPENAI_API_KEY=your_openai_key
-ANTHROPIC_API_KEY=your_anthropic_key
-GOOGLE_API_KEY=your_google_key
-
-# Or use single provider mode (budget-friendly)
-LLM_SINGLE_PROVIDER=openai
-OPENAI_DEFAULT_MODEL=gpt-4o-mini
-
-# Database
-SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_anon_key
-
-# External APIs
-NEWSDATA_API_KEY=your_newsdata_key
-```
-
-#### Frontend (.env.local)
-```bash
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key
-
-# Magic Link
-NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY=your_magic_key
-
-# Polymarket
-NEXT_PUBLIC_POLYMARKET_API_URL=https://clob.polymarket.com
-```
-
 ## Deployment
 
 ### Recommended Architecture
 
 ```
 Production Setup:
-1. DOA Workflow Service → Digital Ocean Gradient AI Platform
-2. TradeWizard Monitor → Digital Ocean Droplet or Docker
-3. Frontend → Vercel
-4. Database → Supabase (managed PostgreSQL)
+1. TradeWizard Agents → AWS EC2, Digital Ocean Droplet, or Docker
+2. Frontend → Vercel
+3. Database → Supabase (managed PostgreSQL)
+4. LLM Provider → Amazon Nova (Bedrock)
 ```
 
-### DOA Workflow Service
+### TradeWizard Agents (Primary System)
+
+**Deploy with Amazon Nova:**
+
+```bash
+cd tradewizard-agents
+
+# Configure environment for production
+cp .env.example .env.production
+# Set AWS credentials and Amazon Nova configuration
+# AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+# LLM_SINGLE_PROVIDER=bedrock-nova
+# BEDROCK_NOVA_DEFAULT_MODEL=amazon.nova-pro-v1:0
+
+# Build the project
+npm run build
+
+# Start monitor service
+npm run monitor:start
+
+# Or use PM2 for process management
+pm2 start dist/cli-monitor.js --name tradewizard-monitor
+pm2 save
+pm2 startup
+```
+
+**Docker Deployment:**
+
+```dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --production
+COPY . .
+RUN npm run build
+CMD ["npm", "run", "monitor:start"]
+```
+
+### Frontend
+- **Recommended**: Deploy to Vercel (automatic Next.js optimization)
+- **Alternative**: Docker with nginx
+
+### DOA Workflow Service (Optional Microservice)
 
 **Deploy to Digital Ocean Gradient AI Platform:**
 
@@ -431,18 +488,7 @@ gradient agent deploy
 # https://agents.do-ai.run/<DEPLOYED_AGENT_ID>/main/run
 ```
 
-**Invoke deployed agent:**
-
-```bash
-curl --location 'https://agents.do-ai.run/<DEPLOYED_AGENT_ID>/main/run' \
-    --header 'Content-Type: application/json' \
-    --header 'Authorization: Bearer <DIGITALOCEAN_API_TOKEN>' \
-    --data '{
-        "condition_id": "0x1234567890abcdef"
-    }'
-```
-
-### TradeWizard Monitor
+**Configure TradeWizard to use deployed DOA service:**
 
 ```bash
 cd tradewizard-agents
@@ -453,16 +499,9 @@ cd tradewizard-agents
 
 npm run build
 npm run monitor:start
-
-# Or use PM2 for process management
-pm2 start dist/cli-monitor.js --name tradewizard-monitor
 ```
 
-### Frontend
-- **Recommended**: Deploy to Vercel (automatic Next.js optimization)
-- **Alternative**: Docker with nginx
-
-See [DOA Deployment Guide](doa/README.md#deployment) and [TradeWizard Agents Deployment Guide](tradewizard-agents/docs/DEPLOYMENT.md) for detailed instructions.
+See [TradeWizard Agents Deployment Guide](tradewizard-agents/docs/DEPLOYMENT.md) and [DOA Deployment Guide](doa/README.md#deployment) for detailed instructions.
 
 ## Contributing
 
