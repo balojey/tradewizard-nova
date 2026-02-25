@@ -1048,14 +1048,12 @@ export class PolymarketDiscoveryEngine implements MarketDiscoveryEngine {
           return true;
         });
 
-        // Sort markets by combined score (liquidity + 24h volume)
-        // Higher combined score indicates more active and liquid markets
+        // Sort markets by 24h volume (trending activity)
+        // This preserves the API's volume-based ordering while ensuring quality through filters
         const sortedMarkets = validMarkets.sort((a: PolymarketMarket, b: PolymarketMarket) => {
-          const aScore = parseFloat(a.liquidity || '0') +
-                        parseFloat(a.volume24hr?.toString() || a.volume_24h?.toString() || a.volume || '0');
-          const bScore = parseFloat(b.liquidity || '0') +
-                        parseFloat(b.volume24hr?.toString() || b.volume_24h?.toString() || b.volume || '0');
-          return bScore - aScore; // Descending order
+          const aVolume = parseFloat(a.volume24hr?.toString() || a.volume_24h?.toString() || a.volume || '0');
+          const bVolume = parseFloat(b.volume24hr?.toString() || b.volume_24h?.toString() || b.volume || '0');
+          return bVolume - aVolume; // Descending order by volume
         });
 
         logger.info({

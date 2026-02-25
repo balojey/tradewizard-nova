@@ -37,6 +37,7 @@ interface TimelineEvent {
     consensusProbability?: number;
     agreementLevel?: number;
     keyChange?: string;
+    keyDrivers?: string[];
   };
   icon: React.ElementType;
   color: string;
@@ -50,6 +51,35 @@ function calculateAgreementLevel(signals: Array<{ fairProbability: number }>) {
   const variance = probabilities.reduce((sum, p) => sum + Math.pow(p - mean, 2), 0) / probabilities.length;
   const stdDev = Math.sqrt(variance);
   return Math.max(0, 1 - (stdDev * 4));
+}
+
+// Helper function to parse key drivers from Json type
+function parseKeyDrivers(keyDrivers: any): string[] {
+  if (!keyDrivers) return [];
+  
+  // If it's already an array of strings
+  if (Array.isArray(keyDrivers)) {
+    return keyDrivers.filter(item => typeof item === 'string');
+  }
+  
+  // If it's an object with arrays as values
+  if (typeof keyDrivers === 'object' && !Array.isArray(keyDrivers)) {
+    const allDrivers: string[] = [];
+    Object.entries(keyDrivers).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        // Add category prefix to each driver
+        const categoryDrivers = value
+          .filter(item => typeof item === 'string')
+          .map(item => `${key}: ${item}`);
+        allDrivers.push(...categoryDrivers);
+      } else if (typeof value === 'string') {
+        allDrivers.push(`${key}: ${value}`);
+      }
+    });
+    return allDrivers;
+  }
+  
+  return [];
 }
 
 export default function ConsensusFormationTimeline({
@@ -114,6 +144,8 @@ export default function ConsensusFormationTimeline({
 
     // Add agent signal events
     signals.forEach((signal) => {
+      const keyDrivers = parseKeyDrivers(signal.keyDrivers);
+      
       events.push({
         id: `signal-${signal.id}`,
         timestamp: signal.createdAt,
@@ -125,7 +157,8 @@ export default function ConsensusFormationTimeline({
         data: {
           fairProbability: signal.fairProbability,
           confidence: signal.confidence,
-          keyChange: `Position: ${signal.direction}`
+          keyChange: `Position: ${signal.direction}`,
+          keyDrivers: keyDrivers.length > 0 ? keyDrivers : undefined
         },
         icon: signal.agentType === 'bull' ? TrendingUp :
           signal.agentType === 'bear' ? TrendingDown : Brain,
@@ -420,6 +453,26 @@ export default function ConsensusFormationTimeline({
                               </div>
                             </div>
                           )}
+                        </div>
+                      )}
+
+                      {selectedEventData.data?.keyDrivers && selectedEventData.data.keyDrivers.length > 0 && (
+                        <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                          <h5 className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <Brain size={12} />
+                            Key Drivers
+                          </h5>
+                          <div className="space-y-2">
+                            {selectedEventData.data.keyDrivers.map((driver, idx) => (
+                              <div 
+                                key={idx}
+                                className="flex items-start gap-2 text-sm text-gray-300 p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+                              >
+                                <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 flex-shrink-0" />
+                                <span className="leading-relaxed">{driver}</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>

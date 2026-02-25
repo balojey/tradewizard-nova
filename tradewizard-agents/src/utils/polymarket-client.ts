@@ -104,8 +104,6 @@ export class PolymarketClient {
     this.enhancedEventClient = new EnhancedEventPolymarketClient(config);
     this.eventBriefingGenerator = new EnhancedEventBriefingGenerator({
       keywordExtractionMode: config.keywordExtractionMode || 'event_priority',
-      enableCrossMarketAnalysis: config.enableCrossMarketAnalysis !== false,
-      enableArbitrageDetection: config.enableArbitrageDetection !== false,
     });
   }
 

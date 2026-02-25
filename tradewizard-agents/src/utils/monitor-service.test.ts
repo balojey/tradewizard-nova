@@ -332,7 +332,8 @@ describe('MonitorService', () => {
       await monitor.initialize();
       await (monitor as any).discoverAndAnalyze();
 
-      expect(mockDiscovery.discoverMarkets).toHaveBeenCalledWith(3);
+      // Now uses full quota for discovery (updates disabled)
+      expect(mockDiscovery.discoverMarkets).toHaveBeenCalledWith(5);
       expect(mockAnalyzeMarket).toHaveBeenCalled();
     });
 

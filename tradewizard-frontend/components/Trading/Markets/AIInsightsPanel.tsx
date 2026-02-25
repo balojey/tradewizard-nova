@@ -93,6 +93,11 @@ export default function AIInsightsPanel({
     );
   }
 
+  console.log('[AIInsightsPanel] Recommendation data:', {
+    keyCatalysts: recommendation.explanation.keyCatalysts,
+    failureScenarios: recommendation.explanation.failureScenarios,
+  });
+
   const getActionColor = (action: string) => {
     switch (action) {
       case 'LONG_YES': return 'text-green-400 bg-green-500/20 border-green-500/30';
@@ -309,7 +314,7 @@ export default function AIInsightsPanel({
           {expandedSections.has('catalysts') && (
             <div className="px-4 pb-4 border-t border-white/10 bg-white/5">
               <div className="mt-4 space-y-2">
-                {recommendation.explanation.keyCatalysts.map((catalyst, index) => (
+                {recommendation.explanation.keyCatalysts.map((catalyst: string, index: number) => (
                   <div key={index} className="flex items-start gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
                     <div className="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                       <span className="text-xs font-medium text-green-400">{index + 1}</span>
@@ -348,7 +353,7 @@ export default function AIInsightsPanel({
           {expandedSections.has('risks') && (
             <div className="px-4 pb-4 border-t border-white/10 bg-white/5">
               <div className="mt-4 space-y-2">
-                {recommendation.explanation.failureScenarios.map((risk, index) => (
+                {recommendation.explanation.failureScenarios.map((risk: string, index: number) => (
                   <div key={index} className="flex items-start gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
                     <div className="w-6 h-6 bg-red-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                       <AlertTriangle className="w-3 h-3 text-red-400" />

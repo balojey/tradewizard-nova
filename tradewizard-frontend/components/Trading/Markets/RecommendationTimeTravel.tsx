@@ -440,7 +440,7 @@ function TimelineView({
             Key Catalysts
           </div>
           <div className="space-y-2">
-            {recommendation.explanation.keyCatalysts.map((catalyst, index) => (
+            {recommendation.explanation.keyCatalysts.map((catalyst: string, index: number) => (
               <div key={index} className="text-xs sm:text-sm text-gray-300 flex items-start gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-green-400 mt-2 flex-shrink-0" />
                 <span className="break-words">{catalyst}</span>
@@ -455,7 +455,7 @@ function TimelineView({
             Failure Scenarios
           </div>
           <div className="space-y-2">
-            {recommendation.explanation.failureScenarios.map((risk, index) => (
+            {recommendation.explanation.failureScenarios.map((risk: string, index: number) => (
               <div key={index} className="text-xs sm:text-sm text-gray-300 flex items-start gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-red-400 mt-2 flex-shrink-0" />
                 <span className="break-words">{risk}</span>

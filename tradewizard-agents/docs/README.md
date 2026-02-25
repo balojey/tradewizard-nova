@@ -65,6 +65,11 @@ This directory contains comprehensive documentation for deploying and operating 
 
 ### Additional Documentation
 
+- **[Workflow Service Logging](./WORKFLOW_SERVICE_LOGGING.md)** - Logging documentation for DOA workflow routing
+  - Log message formats
+  - Error message formats
+  - Health check response format
+  - Troubleshooting guides
 - **[E2E Deployment Checklist](./E2E_DEPLOYMENT_CHECKLIST.md)** - End-to-end deployment checklist
 - **[E2E Quick Start](./E2E_QUICK_START.md)** - Quick start for end-to-end testing
 - **[E2E Testing Guide](./E2E_TESTING_GUIDE.md)** - End-to-end testing procedures

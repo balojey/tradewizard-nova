@@ -22,7 +22,6 @@ import {
   createKeywordExtractionNode,
   createMemoryRetrievalNode,
   createAgentNodes,
-  createAdvancedPollingAgentNode,
   createThesisConstructionNode,
   createCrossExaminationNode,
   createConsensusEngineNode,
@@ -63,30 +62,17 @@ export async function createWorkflow(
   existingOpikHandler?: any
 ) {
   // Create data integration layer for external data sources
-  // Filter out 'newsdata' provider as it's handled separately by enhanced agents
-  const legacyExternalDataConfig = {
+  // Note: 'newsdata' provider is handled by autonomous agents, not the legacy data layer
+  const dataLayerConfig = {
     ...config.externalData,
     news: {
       ...config.externalData.news,
-      provider: config.externalData.news.provider === 'newsdata' ? 'none' : config.externalData.news.provider,
+      provider: config.externalData.news.provider === 'newsdata' 
+        ? 'none' as const
+        : config.externalData.news.provider,
     },
   };
-  const dataLayer = createDataIntegrationLayer(legacyExternalDataConfig);
-
-  // Create enhanced agent factory for NewsData.io integration
-  let enhancedAgentFactory;
-  let useEnhancedAgents = false;
-  
-  if (process.env.NEWSDATA_INTEGRATION_ENABLED === 'true') {
-    try {
-      const { createEnhancedAgentFactory } = await import('./utils/enhanced-agent-factory.js');
-      enhancedAgentFactory = createEnhancedAgentFactory(config);
-      useEnhancedAgents = true;
-      console.log('[Workflow] NewsData.io integration enabled - using enhanced agents');
-    } catch (error) {
-      console.warn('[Workflow] Enhanced agent factory not available, using standard agents:', error);
-    }
-  }
+  const dataLayer = createDataIntegrationLayer(dataLayerConfig);
 
   // Create all node functions
   const marketIngestion = createMarketIngestionNode(polymarketClient);
@@ -133,13 +119,8 @@ export async function createWorkflow(
     });
   }
   
-  // Create agents (enhanced or standard based on configuration)
-  let agents;
-  let breakingNewsAgent;
-  let mediaSentimentAgent;
-  
-  // Always use standard agents (enhanced agents removed as part of cleanup)
-  agents = createAgentNodes(config);
+  // Create agents using standard agent nodes
+  const agents = createAgentNodes(config);
   
   const thesisConstruction = createThesisConstructionNode(config);
   const crossExamination = createCrossExaminationNode(config);
@@ -413,16 +394,71 @@ export interface AnalysisResult {
 /**
  * Analyze a prediction market
  *
- * This is the main entry point for the Market Intelligence Engine.
- * It executes the complete workflow for a given market condition ID.
+ * This function routes to either local workflow execution or remote workflow service
+ * based on configuration. The caller doesn't need to know which execution method is used.
+ *
+ * @param conditionId - Polymarket condition ID to analyze
+ * @param config - Engine configuration
+ * @param polymarketClient - Polymarket API client (only used for local execution)
+ * @param supabaseManager - Optional Supabase client manager (only used for local execution)
+ * @param existingOpikHandler - Optional Opik handler (only used for local execution)
+ * @returns Analysis result with recommendation and agent signals
+ */
+export async function analyzeMarket(
+  conditionId: string,
+  config: EngineConfig,
+  polymarketClient: PolymarketClient,
+  supabaseManager?: SupabaseClientManager,
+  existingOpikHandler?: any
+): Promise<AnalysisResult> {
+  // Check if workflow service URL is configured (Requirements 1.2, 1.3, 9.1, 9.2)
+  if (config.workflowService?.url) {
+    console.log(`[Workflow] Using workflow service at ${config.workflowService.url}`);
+    return executeRemoteWorkflow(conditionId, config);
+  }
+
+  console.log('[Workflow] Using local workflow execution');
+  return executeLocalWorkflow(
+    conditionId,
+    config,
+    polymarketClient,
+    supabaseManager,
+    existingOpikHandler
+  );
+}
+
+/**
+ * Execute workflow via remote service
+ *
+ * @param conditionId - Polymarket condition ID to analyze
+ * @param config - Engine configuration
+ * @returns Analysis result from workflow service
+ */
+async function executeRemoteWorkflow(
+  conditionId: string,
+  config: EngineConfig
+): Promise<AnalysisResult> {
+  const { createWorkflowServiceClient } = await import('./utils/workflow-service-client.js');
+  const client = createWorkflowServiceClient(config);
+
+  if (!client) {
+    throw new Error('Workflow service client could not be created');
+  }
+
+  return client.analyzeMarket(conditionId);
+}
+
+/**
+ * Execute workflow locally (existing implementation)
  *
  * @param conditionId - Polymarket condition ID to analyze
  * @param config - Engine configuration
  * @param polymarketClient - Polymarket API client
  * @param supabaseManager - Optional Supabase client manager for PostgreSQL checkpointing
+ * @param existingOpikHandler - Optional Opik handler
  * @returns Analysis result with recommendation and agent signals
  */
-export async function analyzeMarket(
+async function executeLocalWorkflow(
   conditionId: string,
   config: EngineConfig,
   polymarketClient: PolymarketClient,

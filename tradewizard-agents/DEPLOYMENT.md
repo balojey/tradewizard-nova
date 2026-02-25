@@ -1504,6 +1504,558 @@ For issues and questions:
 - Check GitHub issues
 - Contact support team
 
+## Workflow Service Deployment
+
+The TradeWizard backend supports executing market analysis workflows via HTTP requests to a remote service. This enables flexible deployment architectures where workflow execution can be separated from the CLI and Monitor Service.
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│              CLI / Monitor Service                           │
+│                                                              │
+│  Calls: analyzeMarket(conditionId, config, ...)            │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Workflow Execution Router                       │
+│                                                              │
+│  if (config.workflowService.url) {                          │
+│    return executeRemoteWorkflow(...)                        │
+│  } else {                                                    │
+│    return executeLocalWorkflow(...)                         │
+│  }                                                           │
+└────────┬────────────────────────────────────────────┬───────┘
+         │                                            │
+         ▼                                            ▼
+┌──────────────────────┐                  ┌──────────────────────┐
+│  Remote Workflow     │                  │  Local Workflow      │
+│  (HTTP Client)       │                  │  (LangGraph)         │
+│                      │                  │                      │
+│  POST /analyze       │                  │  createWorkflow()    │
+│  Bearer: {token}     │                  │  app.invoke()        │
+│  Body: {conditionId} │                  │                      │
+└──────────────────────┘                  └──────────────────────┘
+```
+
+### Configuration
+
+#### Environment Variables
+
+Add these variables to your `.env` file to enable remote workflow execution:
+
+```bash
+# Remote Workflow Service Configuration
+WORKFLOW_SERVICE_URL=https://your-workflow-service.com/analyze
+DIGITALOCEAN_API_TOKEN=your_api_token_here
+WORKFLOW_SERVICE_TIMEOUT_MS=120000  # Optional, default: 120000 (2 minutes)
+```
+
+**Variable Descriptions:**
+
+- **WORKFLOW_SERVICE_URL**: The HTTP endpoint where workflow execution requests are sent
+  - Format: Must be a valid HTTP/HTTPS URL
+  - When not set: System uses local workflow execution
+  - When set: All analysis requests route to this URL
+
+- **DIGITALOCEAN_API_TOKEN**: Authentication token for workflow service requests
+  - Format: Bearer token sent in Authorization header
+  - Required when `WORKFLOW_SERVICE_URL` is set
+  - Security: Never logged or exposed in error messages
+
+- **WORKFLOW_SERVICE_TIMEOUT_MS**: Request timeout in milliseconds
+  - Default: 120000 (2 minutes)
+  - Recommended: 60000-180000 based on network and workflow complexity
+  - Behavior: Request aborts if timeout is exceeded
+
+#### Example Configurations
+
+**Development (Local Execution)**:
+```bash
+# No workflow service variables needed
+# System automatically uses local execution
+```
+
+**Production (Remote Execution)**:
+```bash
+WORKFLOW_SERVICE_URL=https://workflow.tradewizard.com/analyze
+DIGITALOCEAN_API_TOKEN=dop_v1_abc123...
+WORKFLOW_SERVICE_TIMEOUT_MS=120000
+```
+
+**Staging (Testing Remote Service)**:
+```bash
+WORKFLOW_SERVICE_URL=https://staging-workflow.tradewizard.com/analyze
+DIGITALOCEAN_API_TOKEN=dop_v1_staging_xyz789...
+WORKFLOW_SERVICE_TIMEOUT_MS=180000  # Longer timeout for debugging
+```
+
+### Request/Response Format
+
+#### Request
+
+The workflow client sends HTTP POST requests with the following structure:
+
+```http
+POST /analyze HTTP/1.1
+Host: your-workflow-service.com
+Content-Type: application/json
+Authorization: Bearer dop_v1_abc123...
+
+{
+  "conditionId": "0x1234567890abcdef..."
+}
+```
+
+#### Response
+
+The workflow service must return a JSON response matching this structure:
+
+```json
+{
+  "recommendation": {
+    "marketId": "0x1234567890abcdef...",
+    "action": "LONG_YES",
+    "entryZone": [0.45, 0.50],
+    "targetZone": [0.60, 0.70],
+    "expectedValue": 25.5,
+    "winProbability": 0.65,
+    "liquidityRisk": "medium",
+    "explanation": {
+      "summary": "Strong bullish signal based on polling data...",
+      "coreThesis": "Recent polls show...",
+      "keyCatalysts": ["Poll release", "Debate performance"],
+      "failureScenarios": ["Unexpected news", "Market reversal"]
+    },
+    "metadata": {
+      "consensusProbability": 0.65,
+      "marketProbability": 0.48,
+      "edge": 0.17,
+      "confidenceBand": [0.60, 0.70]
+    }
+  },
+  "agentSignals": [
+    {
+      "agentName": "polling_intelligence",
+      "timestamp": 1704067200000,
+      "confidence": 0.85,
+      "direction": "YES",
+      "fairProbability": 0.67,
+      "keyDrivers": ["Recent poll data", "Historical patterns"],
+      "riskFactors": ["Sample size", "Timing"],
+      "metadata": {}
+    }
+  ],
+  "cost": 0.45
+}
+```
+
+**Response Fields:**
+- `recommendation`: Trade recommendation object (can be null)
+- `agentSignals`: Array of agent analysis results
+- `cost`: Optional analysis cost in USD
+
+### Migration Path from Local to Remote Execution
+
+Follow these steps to migrate from local to remote execution:
+
+#### Step 1: Deploy Workflow Service
+
+Deploy the workflow service to your remote infrastructure (Digital Ocean, AWS, etc.):
+
+```bash
+# Example: Deploy to Digital Ocean App Platform
+# 1. Create a new app from the tradewizard-agents repository
+# 2. Configure environment variables (LLM API keys, Supabase, etc.)
+# 3. Set up HTTP endpoint at /analyze
+# 4. Note the service URL
+```
+
+#### Step 2: Test Workflow Service Independently
+
+Verify the workflow service is working correctly:
+
+```bash
+# Test with curl
+curl -X POST https://your-workflow-service.com/analyze \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your_token" \
+  -d '{"conditionId": "0x1234567890abcdef..."}'
+
+# Should return analysis result JSON
+```
+
+#### Step 3: Configure One Instance
+
+Update `.env` on a single CLI/Monitor instance:
+
+```bash
+# Add to .env
+WORKFLOW_SERVICE_URL=https://your-workflow-service.com/analyze
+DIGITALOCEAN_API_TOKEN=your_token_here
+```
+
+#### Step 4: Test Integration
+
+Run analysis and verify it uses the remote service:
+
+```bash
+# CLI test
+npm run cli -- analyze 0x1234567890abcdef...
+
+# Check logs for:
+# [Workflow] Using workflow service at https://your-workflow-service.com/analyze
+# [WorkflowService] Sending analysis request for 0x1234...
+# [WorkflowService] Analysis completed successfully in XXXXms
+```
+
+#### Step 5: Monitor Performance
+
+Monitor logs and metrics for:
+- Request success rate
+- Response times
+- Error patterns
+- Cost tracking
+
+```bash
+# Check logs
+docker logs tradewizard-monitor | grep WorkflowService
+
+# Check health endpoint
+curl http://localhost:3000/health
+```
+
+#### Step 6: Gradual Rollout
+
+Once verified, roll out to additional instances:
+
+```bash
+# Update .env on each instance
+# Restart services one at a time
+# Monitor for issues before proceeding to next instance
+```
+
+### Rollback Strategy
+
+If issues occur, rollback to local execution is simple and requires no code changes:
+
+#### Quick Rollback (Minimal Downtime)
+
+```bash
+# 1. Remove workflow service configuration
+sed -i '/WORKFLOW_SERVICE_URL/d' .env
+sed -i '/DIGITALOCEAN_API_TOKEN/d' .env
+sed -i '/WORKFLOW_SERVICE_TIMEOUT_MS/d' .env
+
+# 2. Restart service
+docker restart tradewizard-monitor
+# or
+sudo systemctl restart tradewizard-monitor
+# or
+pm2 restart tradewizard-monitor
+
+# 3. Verify local execution
+npm run cli -- analyze 0x1234567890abcdef...
+# Should see: [Workflow] Using local workflow execution
+```
+
+#### Gradual Rollback
+
+```bash
+# Rollback instances one at a time
+# Monitor each instance after rollback
+# Ensure local execution is working correctly
+```
+
+#### Emergency Rollback
+
+```bash
+# If immediate rollback needed across all instances:
+
+# 1. Update configuration management system (Ansible, Chef, etc.)
+# 2. Push configuration without WORKFLOW_SERVICE_URL
+# 3. Restart all services simultaneously
+# 4. Verify health checks pass
+```
+
+**Key Points:**
+- No code deployment needed for rollback
+- Simply remove environment variables and restart
+- System automatically falls back to local execution
+- All existing functionality remains unchanged
+
+### Error Handling
+
+The system handles workflow service errors gracefully with detailed logging:
+
+#### Network Errors
+
+```
+[WorkflowService] Request failed after 2345ms: FetchError: request to https://... failed
+```
+
+**Action**: Check network connectivity, verify service URL is correct
+
+#### Authentication Errors
+
+```
+[WorkflowService] Request failed with status 401
+Authentication failed: Unauthorized. Check DIGITALOCEAN_API_TOKEN.
+```
+
+**Action**: Verify `DIGITALOCEAN_API_TOKEN` is correct and not expired
+
+#### Timeout Errors
+
+```
+[WorkflowService] Request timed out after 120000ms
+```
+
+**Action**: Increase `WORKFLOW_SERVICE_TIMEOUT_MS` or investigate workflow service performance
+
+#### Service Errors
+
+```
+[WorkflowService] Request failed with status 500: Internal Server Error
+```
+
+**Action**: Check workflow service logs, verify service health
+
+#### No Automatic Fallback
+
+**Important**: The system does NOT automatically fall back to local execution when a workflow URL is configured. This is intentional to:
+- Prevent silent failures that mask configuration issues
+- Make deployment issues immediately visible
+- Avoid unexpected behavior differences between environments
+
+If you need to use local execution, explicitly remove `WORKFLOW_SERVICE_URL` from configuration.
+
+### Monitoring and Observability
+
+#### Logging
+
+The system logs all workflow service interactions:
+
+```
+[Workflow] Using workflow service at https://workflow.example.com/analyze
+[WorkflowService] Sending analysis request for 0x1234...
+[WorkflowService] Analysis completed successfully in 45123ms
+```
+
+Error logs include detailed information:
+
+```
+[WorkflowService] Request failed with status 500
+Status: 500
+Status Text: Internal Server Error
+Body: {"error": "Analysis failed", "details": "..."}
+Duration: 2345ms
+```
+
+#### Health Checks
+
+The Monitor Service health check includes workflow service status when configured:
+
+```json
+{
+  "status": "healthy",
+  "workflowService": {
+    "enabled": true,
+    "url": "https://workflow.example.com/analyze",
+    "lastSuccess": "2024-01-15T12:00:00Z",
+    "consecutiveFailures": 0
+  }
+}
+```
+
+#### Metrics to Track
+
+Monitor these metrics for workflow service health:
+
+1. **Request Metrics**:
+   - Request count (success/failure)
+   - Request duration (p50, p95, p99)
+   - Timeout rate
+   - Error rate by status code
+
+2. **Health Metrics**:
+   - Workflow service connectivity status
+   - Last successful request timestamp
+   - Consecutive failure count
+
+3. **Cost Metrics**:
+   - Analysis cost per request
+   - Total cost per day/week/month
+
+### Deployment Scenarios
+
+#### Scenario 1: Single Workflow Service
+
+**Use Case**: Small-scale deployment with one workflow service instance
+
+```
+┌─────────────┐
+│ CLI/Monitor │──┐
+└─────────────┘  │
+                 │
+┌─────────────┐  │    ┌──────────────────┐
+│ CLI/Monitor │──┼───▶│ Workflow Service │
+└─────────────┘  │    └──────────────────┘
+                 │
+┌─────────────┐  │
+│ CLI/Monitor │──┘
+└─────────────┘
+```
+
+**Configuration**:
+- All instances point to same `WORKFLOW_SERVICE_URL`
+- Single workflow service handles all requests
+- Simple to manage, single point of failure
+
+#### Scenario 2: Load-Balanced Workflow Services
+
+**Use Case**: High-availability deployment with multiple workflow service instances
+
+```
+┌─────────────┐
+│ CLI/Monitor │──┐
+└─────────────┘  │
+                 │    ┌──────────────┐    ┌──────────────────┐
+┌─────────────┐  │    │ Load Balancer│───▶│ Workflow Service │
+│ CLI/Monitor │──┼───▶│              │    └──────────────────┘
+└─────────────┘  │    │              │    ┌──────────────────┐
+                 │    │              │───▶│ Workflow Service │
+┌─────────────┐  │    └──────────────┘    └──────────────────┘
+│ CLI/Monitor │──┘                        ┌──────────────────┐
+└─────────────┘                           │ Workflow Service │
+                                          └──────────────────┘
+```
+
+**Configuration**:
+- `WORKFLOW_SERVICE_URL` points to load balancer
+- Multiple workflow service instances for redundancy
+- Automatic failover, higher throughput
+
+#### Scenario 3: Hybrid Deployment
+
+**Use Case**: Some instances use remote execution, others use local
+
+```
+┌─────────────┐                          ┌──────────────────┐
+│ CLI/Monitor │─────────────────────────▶│ Workflow Service │
+│ (Remote)    │                          └──────────────────┘
+└─────────────┘
+
+┌─────────────┐
+│ CLI/Monitor │
+│ (Local)     │
+└─────────────┘
+```
+
+**Configuration**:
+- Remote instances: Set `WORKFLOW_SERVICE_URL`
+- Local instances: No `WORKFLOW_SERVICE_URL`
+- Flexible for testing and gradual migration
+
+### Security Considerations
+
+#### Authentication Token Security
+
+1. **Token Storage**: Store token in environment variable only, never in code
+2. **Token Transmission**: Token sent only in Authorization header over HTTPS
+3. **Token Logging**: Token value never logged or included in error messages
+4. **Token Rotation**: Rotate tokens regularly (every 90 days recommended)
+
+#### HTTPS Enforcement
+
+While the configuration accepts both HTTP and HTTPS URLs:
+- **Development**: HTTP acceptable for local testing
+- **Production**: HTTPS required for security
+- **Recommendation**: Add validation to enforce HTTPS in production
+
+#### Network Security
+
+```bash
+# Configure firewall to allow outbound HTTPS
+sudo ufw allow out 443/tcp
+
+# Restrict inbound connections
+sudo ufw default deny incoming
+```
+
+### Troubleshooting
+
+#### Issue: "Workflow service is unreachable"
+
+**Symptoms**:
+```
+[WorkflowService] Request failed: FetchError: request to https://... failed
+```
+
+**Solutions**:
+1. Verify `WORKFLOW_SERVICE_URL` is correct
+2. Check network connectivity: `curl -I https://your-workflow-service.com`
+3. Verify firewall allows outbound HTTPS
+4. Check DNS resolution: `nslookup your-workflow-service.com`
+
+#### Issue: "Authentication failed"
+
+**Symptoms**:
+```
+[WorkflowService] Request failed with status 401
+Authentication failed. Check DIGITALOCEAN_API_TOKEN.
+```
+
+**Solutions**:
+1. Verify `DIGITALOCEAN_API_TOKEN` is set correctly
+2. Check token hasn't expired
+3. Verify token has correct permissions
+4. Test token with curl:
+   ```bash
+   curl -H "Authorization: Bearer $DIGITALOCEAN_API_TOKEN" \
+        https://your-workflow-service.com/analyze
+   ```
+
+#### Issue: "Request timed out"
+
+**Symptoms**:
+```
+[WorkflowService] Request timed out after 120000ms
+```
+
+**Solutions**:
+1. Increase `WORKFLOW_SERVICE_TIMEOUT_MS` in `.env`
+2. Check workflow service performance
+3. Verify network latency is acceptable
+4. Consider optimizing workflow execution time
+
+#### Issue: "Invalid response structure"
+
+**Symptoms**:
+```
+[WorkflowService] Invalid response: recommendation must be an object or null
+```
+
+**Solutions**:
+1. Verify workflow service returns correct JSON structure
+2. Check workflow service logs for errors
+3. Test workflow service independently
+4. Ensure workflow service version is compatible
+
+### Best Practices
+
+1. **Start with Local Execution**: Test thoroughly with local execution before migrating to remote
+2. **Test Remote Service Independently**: Verify workflow service works correctly before integrating
+3. **Gradual Rollout**: Migrate one instance at a time, monitoring for issues
+4. **Monitor Continuously**: Track request metrics, error rates, and costs
+5. **Have Rollback Plan**: Be prepared to quickly rollback to local execution if needed
+6. **Use HTTPS in Production**: Never use HTTP for production workflow service URLs
+7. **Rotate Tokens Regularly**: Change `DIGITALOCEAN_API_TOKEN` every 90 days
+8. **Set Appropriate Timeouts**: Balance between allowing complex workflows and failing fast
+9. **Log Everything**: Ensure comprehensive logging for troubleshooting
+10. **Test Failure Scenarios**: Verify error handling works correctly
+
 ## Production Deployment
 
 For production deployments, see the comprehensive production deployment guides:

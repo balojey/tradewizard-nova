@@ -33,7 +33,9 @@ The Market Intelligence Engine transforms raw prediction market data from Polyma
 - 🔍 **Full Observability**: Complete tracing and debugging with Opik integration
 - 🎯 **Actionable Recommendations**: Clear trade signals with entry/exit zones and risk assessment
 - 🛡️ **Robust Error Handling**: Graceful degradation and comprehensive error recovery
-- 🔧 **Autonomous News Agents**: AI agents that autonomously fetch and research news data using LangChain tools
+- 🔧 **Autonomous Tool-Calling Agents**: AI agents autonomously fetch news and market data using LangChain tools (ReAct pattern)
+- 📰 **NewsData Integration**: Real-time news intelligence with sentiment analysis and keyword extraction
+- 📈 **Polymarket Tools**: Cross-market analysis, momentum detection, and sentiment shift tracking
 - 🧠 **Agent Memory System**: Closed-loop analysis where agents access and build upon their historical outputs
 
 ## Architecture
@@ -69,7 +71,25 @@ The Market Intelligence Engine is built on **LangGraph**, a framework for buildi
 │                     │                                        │
 │                     ▼                                        │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │ Parallel Nodes: Intelligence Agents                  │  │
+│  │ Parallel Nodes: Intelligence Agents (Autonomous)     │  │
+│  │ ┌────────────────────────────────────────────────┐  │  │
+│  │ │ Breaking News Agent (Autonomous)               │  │  │
+│  │ │ - Autonomously fetches news using tools        │  │  │
+│  │ │ - Tools: latest news, archive, crypto, market  │  │  │
+│  │ │ - Receives own historical signals as context   │  │  │
+│  │ └────────────────────────────────────────────────┘  │  │
+│  │ ┌────────────────────────────────────────────────┐  │  │
+│  │ │ Media Sentiment Agent (Autonomous)             │  │  │
+│  │ │ - Autonomously fetches news with sentiment     │  │  │
+│  │ │ - Tools: sentiment-filtered news queries       │  │  │
+│  │ │ - Receives own historical signals as context   │  │  │
+│  │ └────────────────────────────────────────────────┘  │  │
+│  │ ┌────────────────────────────────────────────────┐  │  │
+│  │ │ Polling Intelligence Agent (Autonomous)        │  │  │
+│  │ │ - Autonomously fetches market data using tools │  │  │
+│  │ │ - Tools: related markets, prices, momentum     │  │  │
+│  │ │ - Receives own historical signals as context   │  │  │
+│  │ └────────────────────────────────────────────────┘  │  │
 │  │ ┌────────────────────────────────────────────────┐  │  │
 │  │ │ Market Microstructure Agent (GPT-4-turbo)      │  │  │
 │  │ │ - Order book analysis, spread, momentum        │  │  │
@@ -380,20 +400,16 @@ MIN_AGENTS_REQUIRED=2            # Minimum agents needed for consensus
 
 ### NewsData Configuration
 
-The autonomous news agents require a NewsData.io API key to fetch news data:
+The autonomous news and polling agents use LangChain tool-calling capabilities to fetch data during analysis:
 
 ```bash
 # .env
 NEWSDATA_API_KEY=your_newsdata_api_key_here
 
-# Optional: Enable autonomous mode for news agents
-BREAKING_NEWS_AGENT_AUTONOMOUS=true
-MEDIA_SENTIMENT_AGENT_AUTONOMOUS=true
-MARKET_MICROSTRUCTURE_AGENT_AUTONOMOUS=true
-
-# Optional: Configure tool usage limits
-BREAKING_NEWS_AGENT_MAX_TOOL_CALLS=5
-BREAKING_NEWS_AGENT_TIMEOUT=45000
+# Tool usage limits (optional, defaults shown)
+MAX_TOOL_CALLS=5              # Maximum tool calls per agent
+AGENT_TIMEOUT_MS=45000        # Agent timeout in milliseconds
+TOOL_CACHE_ENABLED=true       # Enable tool result caching
 ```
 
 **Get a NewsData API key:**
@@ -401,12 +417,20 @@ BREAKING_NEWS_AGENT_TIMEOUT=45000
 2. Copy your API key from the dashboard
 3. Add it to your `.env` file
 
-**Autonomous Mode:**
-- When `autonomous=true`, agents can fetch news data using LangChain tools
-- When `autonomous=false`, agents use pre-fetched data from workflow state
-- Default is `false` for backward compatibility
+**Autonomous Tool-Calling:**
+- Agents autonomously decide which tools to call based on market context
+- Breaking News Agent: Fetches latest news, archive news, crypto news, market news
+- Media Sentiment Agent: Fetches news with sentiment filters for analysis
+- Polling Intelligence Agent: Fetches related markets, historical prices, market momentum
+- Tool results are cached within each analysis session to avoid redundant API calls
+- All tool invocations are logged in the audit trail for debugging
 
-See [Autonomous News Agents Documentation](./docs/AUTONOMOUS_NEWS_AGENTS.md) for complete configuration options.
+**Configuration Options:**
+- `MAX_TOOL_CALLS`: Limits tool calls per agent (default: 5, prevents runaway costs)
+- `AGENT_TIMEOUT_MS`: Maximum execution time per agent (default: 45000ms)
+- `TOOL_CACHE_ENABLED`: Enable/disable tool result caching (default: true)
+
+See [Autonomous News Agents Documentation](./docs/AUTONOMOUS_NEWS_AGENTS.md) for complete details on tool-calling capabilities.
 
 ### Agent Memory System Configuration
 
@@ -445,8 +469,6 @@ MEMORY_RETRY_ATTEMPTS=3
 - Retry logic with exponential backoff for rate limits
 
 See [Agent Memory System Documentation](./src/database/MEMORY_SYSTEM_CONFIG.md) for complete details.
-
-**Quick Start**: See [Memory System Quick Start Guide](./docs/MEMORY_SYSTEM_QUICK_START.md) for 5-minute setup.
 
 ### Human-Readable Timestamp Formatting
 
@@ -496,7 +518,7 @@ setConfig({ timezone: 'America/Los_Angeles' });
 setConfig({ relativeThresholdDays: 14 });
 ```
 
-See [Timestamp Formatting Documentation](./docs/TIMESTAMP_FORMATTING.md) for complete API reference and examples.
+See [Timestamp Formatting Documentation](./src/utils/TIMESTAMP_FORMATTING.md) for complete API reference and examples.
 
 ### Consensus Configuration
 
@@ -505,6 +527,53 @@ See [Timestamp Formatting Documentation](./docs/TIMESTAMP_FORMATTING.md) for com
 MIN_EDGE_THRESHOLD=0.05                # Minimum edge to recommend trade (5%)
 HIGH_DISAGREEMENT_THRESHOLD=0.15       # Disagreement index threshold (15%)
 ```
+
+### Workflow Service Configuration (Remote Execution)
+
+The system supports executing market analysis workflows via HTTP requests to a remote service, enabling deployment flexibility and separation of concerns.
+
+```bash
+# .env
+# Optional: Remote workflow service URL
+WORKFLOW_SERVICE_URL=https://your-workflow-service.com/analyze
+
+# Optional: Authentication token for workflow service
+DIGITALOCEAN_API_TOKEN=your_api_token_here
+
+# Optional: Request timeout in milliseconds (default: 120000 = 2 minutes)
+WORKFLOW_SERVICE_TIMEOUT_MS=120000
+```
+
+**Configuration Modes:**
+
+1. **Local Execution (Default)**: When `WORKFLOW_SERVICE_URL` is not set, workflows execute locally using LangGraph
+2. **Remote Execution**: When `WORKFLOW_SERVICE_URL` is set, all analysis requests are sent to the remote service via HTTP
+
+**How it works:**
+- CLI and Monitor Service automatically route to the configured execution method
+- No code changes needed - just set the environment variable
+- Authentication via Bearer token in Authorization header
+- Graceful error handling with detailed logging
+
+**Benefits:**
+- ✅ Deploy workflow execution separately from CLI/Monitor
+- ✅ Scale workflow processing independently
+- ✅ Centralize LLM API key management
+- ✅ Reduce resource requirements for CLI/Monitor instances
+- ✅ Easy rollback by removing environment variable
+
+**Migration Path:**
+1. Deploy workflow service to remote infrastructure
+2. Test with `WORKFLOW_SERVICE_URL` on one instance
+3. Monitor logs and health metrics
+4. Gradually roll out to more instances
+5. Rollback by removing `WORKFLOW_SERVICE_URL` if needed
+
+**Logging and Monitoring:**
+
+For detailed information about log messages, error formats, and health check responses, see [Workflow Service Logging Documentation](./docs/WORKFLOW_SERVICE_LOGGING.md).
+
+See [Workflow Service Deployment Guide](#workflow-service-deployment) for complete setup instructions.
 
 ## Usage
 
@@ -600,7 +669,8 @@ tradewizard-agents/
 ├── src/
 │   ├── nodes/              # LangGraph node implementations
 │   │   ├── market-ingestion.ts
-│   │   ├── agents.ts       # Intelligence agent nodes
+│   │   ├── memory-retrieval.ts
+│   │   ├── agents.ts       # Intelligence agent nodes (all agents defined here)
 │   │   ├── thesis-construction.ts
 │   │   ├── cross-examination.ts
 │   │   ├── consensus-engine.ts
@@ -609,16 +679,31 @@ tradewizard-agents/
 │   │   ├── types.ts        # TypeScript interfaces
 │   │   ├── schemas.ts      # Zod schemas
 │   │   └── state.ts        # LangGraph state definition
+│   ├── tools/              # LangChain tools for autonomous agents
+│   │   ├── newsdata-tools.ts
+│   │   └── polymarket-tools.ts
+│   ├── database/           # Database layer
+│   │   ├── supabase.ts
+│   │   ├── persistence.ts
+│   │   ├── memory-retrieval.ts
+│   │   └── migrate.ts
 │   ├── utils/              # Utility functions
 │   │   ├── polymarket-client.ts
-│   │   └── audit-logger.ts
+│   │   ├── audit-logger.ts
+│   │   ├── timestamp-formatter.ts
+│   │   └── opik-integration.ts
 │   ├── config/             # Configuration management
 │   │   └── index.ts
 │   ├── schemas/            # Additional Zod schemas
 │   ├── workflow.ts         # LangGraph workflow definition
 │   ├── cli.ts              # CLI interface
+│   ├── cli-monitor.ts      # Monitor service CLI
+│   ├── monitor.ts          # Automated monitoring service
 │   └── index.ts            # Entry point
-├── dist/                   # Compiled JavaScript
+├── scripts/                # Utility scripts
+│   ├── e2e-test.ts
+│   └── run-24h-test.ts
+├── dist/                   # Compiled JavaScript (generated)
 ├── docs/                   # Additional documentation
 ├── .env.example            # Environment variable template
 ├── package.json
@@ -711,7 +796,7 @@ npm test -- --coverage
 
 ### End-to-End Testing
 
-For the Automated Market Monitor service, comprehensive E2E testing is available:
+For the Automated Market Monitor service, E2E testing is available:
 
 ```bash
 # Run E2E test suite once
@@ -720,12 +805,6 @@ npm run test:e2e
 # Run continuous 48-hour monitoring
 npm run test:e2e:continuous
 ```
-
-**E2E Testing Documentation:**
-- **Quick Start**: `docs/E2E_QUICK_START.md` - 15-minute setup and testing
-- **Full Guide**: `docs/E2E_TESTING_GUIDE.md` - Comprehensive 13-test guide
-- **Deployment Checklist**: `docs/E2E_DEPLOYMENT_CHECKLIST.md` - Complete deployment checklist
-- **Test Summary**: `docs/E2E_TEST_SUMMARY.md` - Overview of E2E testing implementation
 
 The E2E tests verify:
 - ✅ Market discovery and analysis
@@ -1037,19 +1116,28 @@ View cost breakdown in Opik:
 
 ### Additional Resources
 
+#### Core Documentation
 - **[CLI Documentation](./CLI.md)** - Complete CLI reference
+- **[Documentation Hub](./docs/README.md)** - Central documentation index
+- **[Deployment Guide](./docs/DEPLOYMENT.md)** - Production deployment instructions
+- **[Runbook](./docs/RUNBOOK.md)** - Operational procedures and troubleshooting
+
+#### Feature Documentation
 - **[Autonomous News Agents](./docs/AUTONOMOUS_NEWS_AGENTS.md)** - Autonomous news intelligence agents with tool-calling capabilities
 - **[Agent Memory System](./src/database/MEMORY_SYSTEM_CONFIG.md)** - Closed-loop analysis with historical context
-- **[Memory System Quick Start](./docs/MEMORY_SYSTEM_QUICK_START.md)** - 5-minute setup guide
-- **[Memory System Examples](./docs/MEMORY_SYSTEM_EXAMPLES.md)** - Practical usage examples and code samples
-- **[Timestamp Formatting](./docs/TIMESTAMP_FORMATTING.md)** - Human-readable timestamp formatting for AI agents
-- **[LLM Provider Setup Guide](./docs/LLM_PROVIDERS.md)** - Setup instructions for OpenAI, Anthropic, Google, and Amazon Nova
-- **[Nova Troubleshooting Guide](./docs/NOVA_TROUBLESHOOTING.md)** - Amazon Nova integration troubleshooting
+- **[Timestamp Formatting](./src/utils/TIMESTAMP_FORMATTING.md)** - Human-readable timestamp formatting for AI agents
+- **[Workflow Service Logging](./docs/WORKFLOW_SERVICE_LOGGING.md)** - Remote workflow execution logging and monitoring
 - **[Database Module](./src/database/README.md)** - Supabase PostgreSQL integration
-- **[Direct Market Discovery Migration](./docs/DIRECT_MARKET_DISCOVERY_MIGRATION.md)** - Migration guide for direct market fetching
-- **[Design Document](./.kiro/specs/market-intelligence-engine/design.md)** - System architecture and design decisions
-- **[Requirements Document](./.kiro/specs/market-intelligence-engine/requirements.md)** - Functional requirements
-- **[Tasks Document](./.kiro/specs/market-intelligence-engine/tasks.md)** - Implementation plan
+
+#### Integration Guides
+- **[LLM Provider Setup Guide](./docs/LLM_PROVIDERS.md)** - Setup instructions for OpenAI, Anthropic, Google, and Amazon Nova
+- **[Opik Integration Guide](./docs/OPIK_GUIDE.md)** - Observability and tracing setup
+- **[External Data Sources](./docs/EXTERNAL_DATA_SOURCES.md)** - NewsData.io and Polymarket API integration
+- **[Autonomous Agents Migration](./docs/AUTONOMOUS_AGENTS_MIGRATION.md)** - Migration guide for autonomous tool-calling agents
+
+#### Advanced Topics
+- **[Advanced Agent League](./docs/ADVANCED_AGENT_LEAGUE.md)** - Advanced multi-agent patterns and strategies
+- **[Examples](./docs/EXAMPLES.md)** - Code examples and usage patterns
 
 ### External Documentation
 

@@ -21,6 +21,35 @@ import {
 } from "lucide-react";
 import Card from "@/components/shared/Card";
 
+// Helper function to parse key drivers from Json type
+function parseKeyDrivers(keyDrivers: any): string[] {
+  if (!keyDrivers) return [];
+  
+  // If it's already an array of strings
+  if (Array.isArray(keyDrivers)) {
+    return keyDrivers.filter(item => typeof item === 'string');
+  }
+  
+  // If it's an object with arrays as values
+  if (typeof keyDrivers === 'object' && !Array.isArray(keyDrivers)) {
+    const allDrivers: string[] = [];
+    Object.entries(keyDrivers).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        // Add category prefix to each driver
+        const categoryDrivers = value
+          .filter(item => typeof item === 'string')
+          .map(item => `${key}: ${item}`);
+        allDrivers.push(...categoryDrivers);
+      } else if (typeof value === 'string') {
+        allDrivers.push(`${key}: ${value}`);
+      }
+    });
+    return allDrivers;
+  }
+  
+  return [];
+}
+
 interface RealAgentDebatePanelProps {
   conditionId: string | null;
   marketQuestion: string;
@@ -436,19 +465,22 @@ function AgentSignalCard({
         <div className="px-4 pb-4 border-t border-white/10 bg-black/20">
           <div className="mt-4 space-y-4">
             {/* Key Drivers */}
-            {signal.keyDrivers && signal.keyDrivers.length > 0 && (
-              <div>
-                <h6 className="font-medium text-sm text-gray-300 mb-2">Key Drivers</h6>
-                <ul className="space-y-1">
-                  {signal.keyDrivers.map((driver: string, index: number) => (
-                    <li key={index} className="text-sm flex items-start gap-2 text-gray-300">
-                      <span className="w-1.5 h-1.5 bg-current rounded-full mt-2 flex-shrink-0" />
-                      {driver}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            {(() => {
+              const parsedDrivers = parseKeyDrivers(signal.keyDrivers);
+              return parsedDrivers.length > 0 && (
+                <div>
+                  <h6 className="font-medium text-sm text-gray-300 mb-2">Key Drivers</h6>
+                  <ul className="space-y-1">
+                    {parsedDrivers.map((driver: string, index: number) => (
+                      <li key={index} className="text-sm flex items-start gap-2 text-gray-300">
+                        <span className="w-1.5 h-1.5 bg-current rounded-full mt-2 flex-shrink-0" />
+                        {driver}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })()}
 
             {/* Metadata */}
             {signal.metadata && Object.keys(signal.metadata).length > 0 && (

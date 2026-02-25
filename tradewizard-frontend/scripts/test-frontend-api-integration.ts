@@ -6,14 +6,14 @@
  * Validates: Requirements 2.1, 8.2, 8.3
  */
 
-interface TestResult {
+interface FrontendTestResult {
   name: string;
   passed: boolean;
   details: string;
   data?: any;
 }
 
-const results: TestResult[] = [];
+const results: FrontendTestResult[] = [];
 
 function logTest(name: string, passed: boolean, details: string, data?: any) {
   results.push({ name, passed, details, data });

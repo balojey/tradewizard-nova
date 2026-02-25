@@ -41,6 +41,35 @@ interface ComparisonAgent {
   metadata: Record<string, any>;
 }
 
+// Helper function to parse key drivers from Json type
+function parseKeyDrivers(keyDrivers: any): string[] {
+  if (!keyDrivers) return [];
+  
+  // If it's already an array of strings
+  if (Array.isArray(keyDrivers)) {
+    return keyDrivers.filter(item => typeof item === 'string');
+  }
+  
+  // If it's an object with arrays as values
+  if (typeof keyDrivers === 'object' && !Array.isArray(keyDrivers)) {
+    const allDrivers: string[] = [];
+    Object.entries(keyDrivers).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        // Add category prefix to each driver
+        const categoryDrivers = value
+          .filter(item => typeof item === 'string')
+          .map(item => `${key}: ${item}`);
+        allDrivers.push(...categoryDrivers);
+      } else if (typeof value === 'string') {
+        allDrivers.push(`${key}: ${value}`);
+      }
+    });
+    return allDrivers;
+  }
+  
+  return [];
+}
+
 export default function AgentOutputComparison({ 
   conditionId, 
   marketQuestion,
@@ -63,21 +92,25 @@ export default function AgentOutputComparison({
   const comparisonAgents: ComparisonAgent[] = useMemo(() => {
     if (!signals) return [];
     
-    return signals.map(signal => ({
-      id: signal.id,
-      name: signal.agentName,
-      type: signal.agentType,
-      fairProbability: signal.fairProbability,
-      confidence: signal.confidence,
-      direction: signal.direction,
-      keyDrivers: signal.keyDrivers,
-      reasoning: {
-        strengths: signal.keyDrivers.slice(0, 3), // Use key drivers as strengths
-        weaknesses: [], // Would be populated from actual agent reasoning
-        assumptions: [] // Would be populated from actual agent assumptions
-      },
-      metadata: signal.metadata
-    }));
+    return signals.map(signal => {
+      const parsedKeyDrivers = parseKeyDrivers(signal.keyDrivers);
+      
+      return {
+        id: signal.id,
+        name: signal.agentName,
+        type: signal.agentType,
+        fairProbability: signal.fairProbability,
+        confidence: signal.confidence,
+        direction: signal.direction,
+        keyDrivers: parsedKeyDrivers,
+        reasoning: {
+          strengths: parsedKeyDrivers.slice(0, 3), // Use first 3 key drivers as strengths
+          weaknesses: [], // Would be populated from actual agent reasoning
+          assumptions: [] // Would be populated from actual agent assumptions
+        },
+        metadata: signal.metadata
+      };
+    });
   }, [signals]);
 
   const selectAgent = (agentId: string, position: 0 | 1) => {

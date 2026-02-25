@@ -266,8 +266,58 @@ function transformHistoricalRecommendation(
   rec: any,
   market: MarketRow
 ): HistoricalRecommendation {
-  const catalysts = rec.catalysts as string[] || [];
-  const risks = rec.risks as string[] || [];
+  // Parse JSON fields - handle nested object structure
+  let catalysts: string[] = [];
+  let risks: string[] = [];
+  
+  if (rec.catalysts) {
+    if (Array.isArray(rec.catalysts)) {
+      catalysts = rec.catalysts as string[];
+    } else if (typeof rec.catalysts === 'object') {
+      const catalystsObj = rec.catalysts as any;
+      if (catalystsObj.catalysts && Array.isArray(catalystsObj.catalysts)) {
+        catalysts = catalystsObj.catalysts;
+      }
+    } else if (typeof rec.catalysts === 'string') {
+      try {
+        const parsed = JSON.parse(rec.catalysts);
+        if (Array.isArray(parsed)) {
+          catalysts = parsed;
+        } else if (parsed.catalysts && Array.isArray(parsed.catalysts)) {
+          catalysts = parsed.catalysts;
+        }
+      } catch {
+        catalysts = [];
+      }
+    }
+  }
+  
+  if (rec.risks) {
+    if (Array.isArray(rec.risks)) {
+      risks = rec.risks as string[];
+    } else if (typeof rec.risks === 'object') {
+      const risksObj = rec.risks as any;
+      if (risksObj.scenarios && Array.isArray(risksObj.scenarios)) {
+        risks = risksObj.scenarios;
+      } else if (risksObj.risks && Array.isArray(risksObj.risks)) {
+        risks = risksObj.risks;
+      }
+    } else if (typeof rec.risks === 'string') {
+      try {
+        const parsed = JSON.parse(rec.risks);
+        if (Array.isArray(parsed)) {
+          risks = parsed;
+        } else if (parsed.scenarios && Array.isArray(parsed.scenarios)) {
+          risks = parsed.scenarios;
+        } else if (parsed.risks && Array.isArray(parsed.risks)) {
+          risks = parsed.risks;
+        }
+      } catch {
+        risks = [];
+      }
+    }
+  }
+  
   const action = rec.direction as 'LONG_YES' | 'LONG_NO' | 'NO_TRADE';
   const agentSignals = Array.isArray(rec.agent_signals) ? rec.agent_signals : [];
 

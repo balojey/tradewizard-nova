@@ -40,6 +40,35 @@ interface AgentConnection {
   reason: string;
 }
 
+// Helper function to parse key drivers from Json type
+function parseKeyDrivers(keyDrivers: any): string[] {
+  if (!keyDrivers) return [];
+  
+  // If it's already an array of strings
+  if (Array.isArray(keyDrivers)) {
+    return keyDrivers.filter(item => typeof item === 'string');
+  }
+  
+  // If it's an object with arrays as values
+  if (typeof keyDrivers === 'object' && !Array.isArray(keyDrivers)) {
+    const allDrivers: string[] = [];
+    Object.entries(keyDrivers).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        // Add category prefix to each driver
+        const categoryDrivers = value
+          .filter(item => typeof item === 'string')
+          .map(item => `${key}: ${item}`);
+        allDrivers.push(...categoryDrivers);
+      } else if (typeof value === 'string') {
+        allDrivers.push(`${key}: ${value}`);
+      }
+    });
+    return allDrivers;
+  }
+  
+  return [];
+}
+
 export default function AgentInteractionNetwork({
   conditionId,
   // marketQuestion,
@@ -79,7 +108,7 @@ export default function AgentInteractionNetwork({
         fairProbability: signal.fairProbability,
         confidence: signal.confidence,
         direction: signal.direction,
-        keyDrivers: signal.keyDrivers
+        keyDrivers: parseKeyDrivers(signal.keyDrivers)
       };
     });
 

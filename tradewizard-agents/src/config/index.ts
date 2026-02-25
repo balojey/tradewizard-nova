@@ -315,6 +315,20 @@ const EngineConfigSchema = z
       // Number of retry attempts for rate limit errors
       retryAttempts: z.number().min(0).max(5).default(3),
     }),
+    // ============================================================================
+    // Workflow Service Configuration (DOA Integration)
+    // ============================================================================
+    workflowService: z.object({
+      // Optional URL for remote workflow service (HTTP/HTTPS only)
+      url: z.string().url().refine(
+        (url) => url.startsWith('http://') || url.startsWith('https://'),
+        { message: 'Workflow service URL must use HTTP or HTTPS protocol' }
+      ).optional(),
+      // Timeout for HTTP requests in milliseconds (default: 2 minutes)
+      timeoutMs: z.number().positive().default(120000),
+      // Optional custom headers for the workflow service
+      headers: z.record(z.string(), z.string()).optional(),
+    }).optional(),
   })
   .refine(
     (config) => {
@@ -685,6 +699,13 @@ export function loadConfig(): EngineConfig {
       queryTimeoutMs: parseInt(process.env.MEMORY_SYSTEM_QUERY_TIMEOUT_MS || '5000', 10),
       retryAttempts: parseInt(process.env.MEMORY_SYSTEM_RETRY_ATTEMPTS || '3', 10),
     },
+    workflowService: process.env.WORKFLOW_SERVICE_URL ? {
+      url: process.env.WORKFLOW_SERVICE_URL,
+      timeoutMs: parseInt(process.env.WORKFLOW_SERVICE_TIMEOUT_MS || '120000', 10),
+      headers: process.env.WORKFLOW_SERVICE_HEADERS 
+        ? JSON.parse(process.env.WORKFLOW_SERVICE_HEADERS)
+        : undefined,
+    } : undefined,
   };
 
   // Validate configuration
@@ -936,6 +957,14 @@ export function createConfig(overrides: Partial<EngineConfig>): EngineConfig {
         ...(overrides.newsAgents?.marketMicrostructureAgent || {}),
       },
     },
+    memorySystem: {
+      ...baseConfig.memorySystem,
+      ...(overrides.memorySystem || {}),
+    },
+    workflowService: overrides.workflowService || baseConfig.workflowService ? {
+      ...baseConfig.workflowService,
+      ...(overrides.workflowService || {}),
+    } : undefined,
   };
 
   // Validate merged configuration
@@ -1174,6 +1203,15 @@ export function getDefaultConfig(): Partial<EngineConfig> {
         cacheEnabled: true,
         fallbackToBasic: true,
       },
+    },
+    memorySystem: {
+      enabled: false,
+      maxSignalsPerAgent: 3,
+      queryTimeoutMs: 5000,
+      retryAttempts: 3,
+    },
+    workflowService: {
+      timeoutMs: 120000,
     },
   };
 }

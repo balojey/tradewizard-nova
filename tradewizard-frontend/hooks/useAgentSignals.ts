@@ -11,7 +11,7 @@ export interface AgentSignal {
   fairProbability: number;
   confidence: number;
   direction: 'LONG_YES' | 'LONG_NO' | 'NO_TRADE';
-  keyDrivers: string[];
+  keyDrivers: any; // Can be string[] or object with string arrays
   metadata: Record<string, any>;
   createdAt: string;
 }
@@ -69,10 +69,18 @@ export function useAgentSignals(
  * Transform database agent signal to frontend format
  */
 function transformAgentSignal(signal: AgentSignalRow): AgentSignal {
-  // Parse JSON fields safely
-  const keyDrivers = Array.isArray(signal.key_drivers) 
-    ? signal.key_drivers as string[]
-    : [];
+  // Parse JSON fields safely - key_drivers can be array or object
+  let keyDrivers: any = null;
+  
+  if (signal.key_drivers) {
+    if (Array.isArray(signal.key_drivers)) {
+      // Already an array of strings
+      keyDrivers = signal.key_drivers;
+    } else if (typeof signal.key_drivers === 'object') {
+      // Object with arrays as values - pass through as-is
+      keyDrivers = signal.key_drivers;
+    }
+  }
   
   const metadata = typeof signal.metadata === 'object' && signal.metadata !== null
     ? signal.metadata as Record<string, any>
