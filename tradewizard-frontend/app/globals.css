@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "../styles/mobile-optimizations.css";
+@import "../styles/mobile-text-readability.css";
 
 :root {
   /* Core Base Colors */
@@ -68,30 +69,45 @@ body::after {
 }
 
 /* Custom Scrollbar Styles */
-/* Custom Scrollbar Styles */
 .scrollbar-custom {
   scrollbar-width: thin;
-  scrollbar-color: rgba(99, 102, 241, 0.6) transparent;
+  scrollbar-color: rgba(99, 102, 241, 0.6) rgba(255, 255, 255, 0.05);
 }
 
 .scrollbar-custom::-webkit-scrollbar {
-  height: 4px; /* Thinner horizontal scrollbar */
-  width: 4px;
+  height: 6px; /* Horizontal scrollbar */
+  width: 6px;  /* Vertical scrollbar */
 }
 
 .scrollbar-custom::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  margin: 2px;
 }
 
 .scrollbar-custom::-webkit-scrollbar-thumb {
-  background: linear-gradient(90deg, rgba(99, 102, 241, 0.5) 0%, rgba(167, 139, 250, 0.5) 100%);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.7) 0%, rgba(167, 139, 250, 0.7) 100%);
   border-radius: 10px;
-  backdrop-filter: blur(4px);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  box-shadow: 0 0 6px rgba(99, 102, 241, 0.4);
+  transition: all 0.2s ease;
 }
 
 .scrollbar-custom::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(90deg, rgba(99, 102, 241, 0.8) 0%, rgba(167, 139, 250, 0.8) 100%);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.9) 0%, rgba(167, 139, 250, 0.9) 100%);
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.6);
   cursor: grab;
+}
+
+.scrollbar-custom::-webkit-scrollbar-thumb:active {
+  cursor: grabbing;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 1) 0%, rgba(167, 139, 250, 1) 100%);
+}
+
+/* Corner where scrollbars meet */
+.scrollbar-custom::-webkit-scrollbar-corner {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 /* Hide scrollbar utility for mobile horizontal scrolling */
@@ -102,4 +118,23 @@ body::after {
 
 .no-scrollbar::-webkit-scrollbar { 
   display: none;  /* Safari and Chrome */
+}
+
+/* Screen Reader Only - Accessibility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Focus visible for keyboard navigation */
+.focus-visible:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }

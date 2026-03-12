@@ -102,6 +102,12 @@ You have access to the following tools to gather news data:
 3. fetchCryptoNews: Get cryptocurrency-related news
 4. fetchMarketNews: Get financial market and company news
 
+CRITICAL TOOL USAGE RULE:
+When using newsdata tools, ALWAYS provide the categories and countries parameters as arrays:
+- CORRECT: categories: ["politics"], countries: ["us"], categories: ["business", "world"], countries: ["us", "uk"]
+- INCORRECT: categories: "politics", countries: "us", categories: "business", countries: "uk"
+Even for a single value, use array format: ["politics"] not "politics", ["us"] not "us"
+
 ANALYSIS STRATEGY:
 Based on the market characteristics, intelligently decide which tools to use:
 
@@ -161,6 +167,12 @@ You have access to the following tools to gather news data:
 3. fetchCryptoNews: Get cryptocurrency-related news
 4. fetchMarketNews: Get financial market and company news
 
+CRITICAL TOOL USAGE RULE:
+When using newsdata tools, ALWAYS provide the categories and countries parameters as arrays:
+- CORRECT: categories: ["politics"], countries: ["us"], categories: ["business", "world"], countries: ["us", "uk"]
+- INCORRECT: categories: "politics", countries: "us", categories: "business", countries: "uk"
+Even for a single value, use array format: ["politics"] not "politics", ["us"] not "us"
+
 ANALYSIS STRATEGY:
 Based on the market characteristics, intelligently decide which tools to use:
 
@@ -218,6 +230,12 @@ AVAILABLE TOOLS:
 You have access to the following tools to gather news data:
 
 1. fetchLatestNews: Get the latest news from the past 48 hours with filtering options
+
+CRITICAL TOOL USAGE RULE:
+When using newsdata tools, ALWAYS provide the categories and countries parameters as arrays:
+- CORRECT: categories: ["politics"], countries: ["us"], categories: ["business", "world"], countries: ["us", "uk"]
+- INCORRECT: categories: "politics", countries: "us", categories: "business", countries: "uk"
+Even for a single value, use array format: ["politics"] not "politics", ["us"] not "us"
 2. fetchArchiveNews: Get historical news with date range filtering
 3. fetchCryptoNews: Get cryptocurrency-related news
 4. fetchMarketNews: Get financial market and company news
@@ -478,9 +496,15 @@ function createAutonomousNewsAgentNode(
 
       // Step 7: Prepare agent input with market data and keywords (Requirement 6.3, 7.3, 8.3)
       // Import formatting utilities for human-readable timestamps (Requirements 6.1, 6.2, 8.3)
-      const { formatMarketBriefingForAgent, formatExternalDataForAgent } = await import('../utils/agent-context-formatter.js');
+      const { formatMarketBriefingForAgent, formatExternalDataForAgent, extractWebResearchContext } = await import('../utils/agent-context-formatter.js');
       
-      const marketContext = formatMarketBriefingForAgent(state.mbd);
+      // Extract web research context (CRITICAL: Provides comprehensive external research)
+      const webResearchContext = extractWebResearchContext(state.agentSignals);
+      if (webResearchContext) {
+        console.log(`[${agentName}] Including web research context (${webResearchContext.length} chars)`);
+      }
+      
+      const marketContext = formatMarketBriefingForAgent(state.mbd, webResearchContext);
       const externalDataContext = state.externalData 
         ? formatExternalDataForAgent(state.externalData)
         : '';

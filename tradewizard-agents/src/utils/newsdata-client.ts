@@ -36,6 +36,7 @@ export interface NewsDataConfig {
   timeout?: number;
   retryAttempts?: number;
   retryDelay?: number;
+  isFreeTier?: boolean; // Whether using free tier plan (excludes size/timeframe params)
   
   // Rate limiting configuration
   rateLimiting: {
@@ -202,6 +203,19 @@ export interface NewsDataResponse {
 }
 
 // ============================================================================
+// Key State Management Types
+// ============================================================================
+
+interface KeyState {
+  key: string;                    // Full API key
+  keyId: string;                  // First 8 chars for logging
+  isRateLimited: boolean;         // Currently rate-limited?
+  rateLimitExpiry: Date | null;   // When rate limit expires
+  totalRequests: number;          // Lifetime request count
+  lastUsed: Date | null;          // Last request timestamp
+}
+
+// ============================================================================
 // Error Types
 // ============================================================================
 
@@ -289,6 +303,11 @@ export class NewsDataClient {
   private fallbackManager?: NewsDataFallbackManager;
   private performanceMonitor?: NewsDataPerformanceMonitor;
   
+  // Multi-key rotation properties
+  private apiKeys: string[];
+  private keyStates: Map<string, KeyState>;
+  private currentKeyIndex: number;
+  
   constructor(
     config: NewsDataConfig, 
     observabilityLogger?: AdvancedObservabilityLogger,
@@ -301,10 +320,34 @@ export class NewsDataClient {
     usageTracker?: NewsDataAgentUsageTracker,
     performanceMonitor?: NewsDataPerformanceMonitor
   ) {
-    // Validate required configuration
-    if (!config.apiKey) {
-      throw new NewsDataValidationError('API key is required');
+    // Parse comma-separated API keys
+    const apiKeyString = config.apiKey || '';
+    this.apiKeys = apiKeyString
+      .split(',')
+      .map(key => key.trim())
+      .filter(key => key.length > 0);
+    
+    // Validate that at least one valid key is provided
+    if (this.apiKeys.length === 0) {
+      throw new NewsDataValidationError('At least one API key must be provided');
     }
+    
+    // Initialize key state management
+    this.keyStates = new Map();
+    for (const key of this.apiKeys) {
+      const keyId = this.getKeyId(key);
+      this.keyStates.set(keyId, {
+        key,
+        keyId,
+        isRateLimited: false,
+        rateLimitExpiry: null,
+        totalRequests: 0,
+        lastUsed: null
+      });
+    }
+    
+    // Initialize current key index
+    this.currentKeyIndex = 0;
     
     // Merge with defaults
     this.config = {
@@ -341,10 +384,17 @@ export class NewsDataClient {
     // Log client initialization
     console.log('[NewsDataClient] Initialized with configuration:', {
       baseUrl: this.config.baseUrl,
+      apiKeyCount: this.apiKeys.length,
+      isFreeTier: this.config.isFreeTier || false,
       rateLimiting: this.config.rateLimiting,
       cache: this.config.cache,
       circuitBreaker: this.config.circuitBreaker,
     });
+    
+    // Log free tier detection
+    if (this.config.isFreeTier) {
+      console.log('[NewsDataClient] Free tier detected, excluding size and timeframe parameters');
+    }
   }
   
   /**
@@ -352,6 +402,13 @@ export class NewsDataClient {
    */
   getConfig(): NewsDataConfig {
     return { ...this.config };
+  }
+  
+  /**
+   * Get key identifier (first 8 characters) for logging
+   */
+  private getKeyId(key: string): string {
+    return key.length >= 8 ? key.substring(0, 8) : key;
   }
   
   /**
@@ -419,9 +476,14 @@ export class NewsDataClient {
     // Add API key
     url.searchParams.set('apikey', this.config.apiKey);
     
-    // Add other parameters
+    // Add other parameters, excluding size and timeframe for free tier
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
+        // Skip size and timeframe parameters for free tier
+        if (this.config.isFreeTier && (key === 'size' || key === 'timeframe')) {
+          return;
+        }
+        
         if (Array.isArray(value)) {
           url.searchParams.set(key, value.join(','));
         } else {
@@ -637,14 +699,66 @@ export class NewsDataClient {
     
     for (let attempt = 1; attempt <= (this.config.retryAttempts || 3); attempt++) {
       try {
-        console.log(`[NewsDataClient] Making request (attempt ${attempt}): ${url}`);
+        // Get current API key and update usage statistics
+        const currentKey = this.apiKeys[this.currentKeyIndex];
+        const currentKeyId = this.getKeyId(currentKey);
+        const state = this.keyStates.get(currentKeyId)!;
         
-        const response = await fetch(url, {
+        // Update usage statistics before each request
+        state.totalRequests++;
+        state.lastUsed = new Date();
+        
+        // Update URL with current key
+        const urlWithKey = this.updateUrlApiKey(url, currentKey);
+        
+        console.log(`[NewsDataClient] Making request (attempt ${attempt}): ${urlWithKey.replace(/apikey=[^&]+/, 'apikey=***')}`);
+        
+        const response = await fetch(urlWithKey, {
           ...this.getHttpConfig(),
           method: 'GET',
         });
         
         const duration = Date.now() - startTime;
+        
+        // Handle rate limiting with rotation BEFORE other error handling
+        if (response.status === 429 && this.isRateLimitError(response)) {
+          const retryAfter = this.extractRetryAfter(response);
+          
+          // Prepare request context for logging
+          const requestContext = {
+            endpoint,
+            agentName,
+            params,
+          };
+          
+          // Attempt rotation
+          const nextKey = this.rotateApiKey(retryAfter, requestContext);
+          
+          if (nextKey === null) {
+            // All keys exhausted - graceful degradation
+            console.warn('[NewsDataClient] All API keys exhausted, returning empty result set');
+            
+            // Log graceful degradation
+            this.newsDataLogger.logKeyRotation({
+              timestamp: Date.now(),
+              eventType: 'graceful_degradation',
+              endpoint,
+              agentName,
+              parameters: params,
+              message: 'Returning empty result set due to all keys exhausted',
+            });
+            
+            return {
+              status: 'success',
+              totalResults: 0,
+              results: []
+            };
+          }
+          
+          // Retry with new key (don't count as retry attempt)
+          // Continue to next iteration of the loop
+          continue;
+        }
         
         // Handle HTTP errors
         if (!response.ok) {
@@ -702,13 +816,15 @@ export class NewsDataClient {
               error = new NewsDataValidationError('Unprocessable entity - semantic error in request');
               break;
             case 429:
+              // This case should not be reached due to early rate limit handling above,
+              // but kept for completeness
               error = new NewsDataRateLimitError(errorData.message || 'Too many requests - rate limit exceeded');
               // Handle rate limit specifically
               await this.errorHandler.handleRateLimitExceeded({
                 requestsInWindow: 0, // TODO: Get from rate limiter
                 windowSizeMs: 15 * 60 * 1000, // 15 minutes
                 limitExceeded: true,
-                retryAfter: this.extractRetryAfter(response),
+                retryAfter: this.extractRetryAfter(response) * 1000, // Convert seconds to milliseconds
               }, errorContext);
               break;
             case 500:
@@ -871,15 +987,223 @@ export class NewsDataClient {
   }
 
   /**
-   * Extract retry-after header from response
+   * Update URL with a specific API key
+   * @param url - Original URL string
+   * @param apiKey - API key to inject
+   * @returns Updated URL string with new API key
    */
-  private extractRetryAfter(response: Response): number | undefined {
-    const retryAfter = response.headers.get('retry-after');
-    if (retryAfter) {
-      const seconds = parseInt(retryAfter, 10);
-      return isNaN(seconds) ? undefined : seconds * 1000; // Convert to milliseconds
+  private updateUrlApiKey(url: string, apiKey: string): string {
+    const urlObj = new URL(url);
+    urlObj.searchParams.set('apikey', apiKey);
+    return urlObj.toString();
+  }
+
+  /**
+   * Check if response indicates a rate limit error (vs quota exceeded)
+   * @param response - HTTP response object
+   * @returns true if this is a rate limit error (temporary), false otherwise
+   */
+  private isRateLimitError(response: Response): boolean {
+    // Only 429 status codes can be rate limits
+    if (response.status !== 429) {
+      return false;
     }
-    return undefined;
+    
+    // All 429 responses are treated as rate limits by default
+    // The distinction between rate limit (temporary) and quota exceeded (daily limit)
+    // would require parsing the response body, but since the body may already be consumed,
+    // we treat all 429s as rate limits to trigger rotation
+    return true;
+  }
+
+  /**
+   * Extract retry-after value from response header
+   * @param response - HTTP response object
+   * @returns Retry-after duration in seconds, defaults to 900 (15 minutes) if not present
+   */
+  private extractRetryAfter(response: Response): number {
+    const retryAfter = response.headers.get('retry-after');
+    
+    if (retryAfter) {
+      // Try parsing as integer (seconds)
+      const seconds = parseInt(retryAfter, 10);
+      if (!isNaN(seconds)) {
+        return seconds;
+      }
+      
+      // Try parsing as HTTP date format
+      try {
+        const retryDate = new Date(retryAfter);
+        if (!isNaN(retryDate.getTime())) {
+          const now = new Date();
+          const diffSeconds = Math.max(0, Math.floor((retryDate.getTime() - now.getTime()) / 1000));
+          return diffSeconds;
+        }
+      } catch {
+        // Ignore parsing errors
+      }
+    }
+    
+    // Default to 15 minutes (900 seconds) if header missing or unparseable
+    return 900;
+  }
+
+  /**
+   * Rotate to next available API key when rate limit is detected
+   * @param retryAfterSeconds - How long current key should be marked unavailable
+   * @param requestContext - Optional request context for logging
+   * @returns Next available API key, or null if all keys exhausted
+   */
+  private rotateApiKey(retryAfterSeconds: number, requestContext?: {
+    endpoint?: string;
+    agentName?: string;
+    params?: Record<string, any>;
+  }): string | null {
+    const currentKey = this.apiKeys[this.currentKeyIndex];
+    const currentKeyId = this.getKeyId(currentKey);
+    
+    // Mark current key as rate-limited
+    const expiryTime = new Date(Date.now() + retryAfterSeconds * 1000);
+    const state = this.keyStates.get(currentKeyId)!;
+    state.isRateLimited = true;
+    state.rateLimitExpiry = expiryTime;
+    
+    // Log rate limit detection with context (only if multiple keys configured)
+    if (this.apiKeys.length > 1) {
+      const contextInfo = requestContext ? {
+        endpoint: requestContext.endpoint,
+        agentName: requestContext.agentName,
+        parameters: requestContext.params,
+      } : {};
+      
+      console.warn(
+        `[NewsDataClient] Rate limit detected for key ${currentKeyId}, ` +
+        `marked unavailable until ${expiryTime.toISOString()}`,
+        contextInfo
+      );
+      
+      // Log to observability system
+      this.newsDataLogger.logKeyRotation({
+        timestamp: Date.now(),
+        eventType: 'rate_limit_detected',
+        keyId: currentKeyId,
+        expiryTime: expiryTime.toISOString(),
+        retryAfterSeconds,
+        ...contextInfo,
+      });
+    }
+    
+    // Find next available key
+    const availableKeys = this.getAvailableKeys();
+    
+    if (availableKeys.length === 0) {
+      // All keys exhausted
+      const earliestExpiry = Array.from(this.keyStates.values())
+        .filter(s => s.rateLimitExpiry)
+        .map(s => s.rateLimitExpiry!)
+        .sort((a, b) => a.getTime() - b.getTime())[0];
+      
+      const contextInfo = requestContext ? {
+        endpoint: requestContext.endpoint,
+        agentName: requestContext.agentName,
+        parameters: requestContext.params,
+      } : {};
+      
+      console.error(
+        `[NewsDataClient] All API keys exhausted. Next available: ${earliestExpiry.toISOString()}`,
+        contextInfo
+      );
+      
+      // Log to observability system
+      this.newsDataLogger.logKeyRotation({
+        timestamp: Date.now(),
+        eventType: 'all_keys_exhausted',
+        earliestExpiry: earliestExpiry.toISOString(),
+        totalKeys: this.apiKeys.length,
+        ...contextInfo,
+      });
+      
+      return null;
+    }
+    
+    // Select least recently used key
+    const nextKeyId = availableKeys[0];
+    const nextKey = this.keyStates.get(nextKeyId)!.key;
+    
+    // Update index
+    this.currentKeyIndex = this.apiKeys.indexOf(nextKey);
+    
+    // Log rotation (only if multiple keys)
+    if (this.apiKeys.length > 1) {
+      const contextInfo = requestContext ? {
+        endpoint: requestContext.endpoint,
+        agentName: requestContext.agentName,
+        parameters: requestContext.params,
+      } : {};
+      
+      console.info(
+        `[NewsDataClient] Rotated API key: ${currentKeyId} -> ${nextKeyId}`,
+        contextInfo
+      );
+      
+      // Log to observability system
+      this.newsDataLogger.logKeyRotation({
+        timestamp: Date.now(),
+        eventType: 'key_rotated',
+        oldKeyId: currentKeyId,
+        newKeyId: nextKeyId,
+        reason: 'rate_limit',
+        ...contextInfo,
+      });
+    }
+    
+    return nextKey;
+  }
+
+  /**
+   * Get list of available key IDs, sorted by least recently used
+   * Auto-expires rate-limited keys whose expiry time has passed
+   * @returns Array of available key IDs
+   */
+  private getAvailableKeys(): string[] {
+    const now = new Date();
+    const available: string[] = [];
+    
+    for (const [keyId, state] of this.keyStates.entries()) {
+      // Auto-expire if time has passed
+      if (state.isRateLimited && state.rateLimitExpiry) {
+        if (now >= state.rateLimitExpiry) {
+          state.isRateLimited = false;
+          state.rateLimitExpiry = null;
+          
+          // Log key availability (only if multiple keys configured)
+          if (this.apiKeys.length > 1) {
+            console.info(`[NewsDataClient] Key ${keyId} rate limit expired, now available`);
+            
+            // Log to observability system
+            this.newsDataLogger.logKeyRotation({
+              timestamp: Date.now(),
+              eventType: 'key_available',
+              keyId,
+              message: 'Rate limit expired, key now available',
+            });
+          }
+        }
+      }
+      
+      if (!state.isRateLimited) {
+        available.push(keyId);
+      }
+    }
+    
+    // Sort by last used (null sorts first, then oldest first)
+    available.sort((a, b) => {
+      const aTime = this.keyStates.get(a)!.lastUsed?.getTime() ?? 0;
+      const bTime = this.keyStates.get(b)!.lastUsed?.getTime() ?? 0;
+      return aTime - bTime;
+    });
+    
+    return available;
   }
 
   /**

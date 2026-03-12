@@ -1,3 +1,7 @@
+---
+inclusion: always
+---
+
 # TradeWizard Product Overview
 
 TradeWizard is an AI-powered prediction trading platform that provides intelligent analysis and trading recommendations for real-world political and economic outcomes on Polymarket.
@@ -40,3 +44,38 @@ SaaS subscription tiers for AI trading intelligence:
 - Starter: Basic market insights and probability analysis
 - Pro: Full strategy recommendations and risk modeling
 - Elite: Advanced agents and early signal detection
+
+## Product Development Principles
+
+### User-Centric Design
+- Prioritize clarity and explainability in all AI outputs
+- Ensure trading recommendations include reasoning and risk assessment
+- Provide actionable insights, not just data
+- Design for both power users and newcomers to prediction markets
+
+### Data Integrity
+- All market data must be sourced from Polymarket APIs
+- Maintain audit trails for all analysis and recommendations
+- Validate all external data (news, polling) before use
+- Store analysis history for transparency and learning
+
+### Performance & Reliability
+- Real-time market data updates via Supabase subscriptions
+- Graceful degradation when external APIs are unavailable
+- Consistent response times for trading recommendations
+- Robust error handling with user-friendly messaging
+
+### Security & Compliance
+- Secure wallet authentication via Magic Link
+- No storage of private keys or sensitive credentials
+- Compliance with Polymarket's terms and regulations
+- Rate limiting on external API calls to prevent abuse
+
+## Feature Prioritization
+
+When evaluating new features, consider:
+1. **Impact on trading decisions**: Does it improve recommendation quality?
+2. **User experience**: Is it intuitive and accessible?
+3. **Data reliability**: Can we source and validate the data consistently?
+4. **System scalability**: Can it handle growth without degradation?
+5. **Regulatory compliance**: Does it align with market regulations?

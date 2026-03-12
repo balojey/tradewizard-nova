@@ -1,3 +1,7 @@
+---
+inclusion: always
+---
+
 # TradeWizard Project Structure
 
 ## Repository Organization
@@ -18,7 +22,7 @@ TradeWizard is organized as a monorepo with two main applications and shared doc
 
 ```
 src/
-├── nodes/              # LangGraph node implementations
+├── nodes/              # LangGraph node implementations (workflow stages)
 │   ├── market-ingestion.ts      # Polymarket data ingestion
 │   ├── agents.ts                # Multi-agent analysis nodes
 │   ├── thesis-construction.ts   # Bull/bear thesis generation
@@ -26,8 +30,8 @@ src/
 │   ├── consensus-engine.ts      # Probability consensus
 │   └── recommendation-generation.ts # Final trade recommendations
 ├── models/             # Data models and type definitions
-│   ├── types.ts               # TypeScript interfaces
-│   ├── schemas.ts             # Zod validation schemas
+│   ├── types.ts               # TypeScript interfaces (strict mode, no any)
+│   ├── schemas.ts             # Zod validation schemas for runtime safety
 │   └── state.ts               # LangGraph state management
 ├── utils/              # Utility functions and integrations
 │   ├── polymarket-client.ts   # Polymarket API wrapper
@@ -35,6 +39,7 @@ src/
 │   ├── audit-logger.ts        # Audit trail logging
 │   └── enhanced-*.ts          # Enhanced feature implementations
 ├── config/             # Configuration management
+│   └── index.ts               # Centralized config loading
 ├── database/           # Database utilities and migrations
 │   ├── persistence.ts         # Data persistence layer
 │   ├── supabase-client.ts     # Supabase integration
@@ -45,10 +50,16 @@ src/
 └── index.ts           # Application entry point
 ```
 
+**Key Patterns**:
+- Nodes are pure functions that transform state
+- All external API calls go through utils/ wrappers
+- Database operations use persistence layer
+- Configuration is centralized and validated with Zod
+
 ### Supporting Directories
 
 ```
-scripts/               # Utility scripts
+scripts/               # Utility scripts (not part of main app)
 ├── e2e-test.ts       # End-to-end testing
 ├── run-24h-test.ts   # Long-running tests
 └── migrate-news-api.ts # Data migration scripts
@@ -59,9 +70,20 @@ docs/                 # Backend-specific documentation
 └── *.md             # Various technical guides
 
 supabase/            # Supabase configuration
-├── migrations/      # Database migrations
+├── migrations/      # Database migrations (SQL)
 └── config.toml      # Supabase project config
+
+__tests__/           # Test files (mirrors src/ structure)
+├── nodes/           # Node tests
+├── utils/           # Utility tests
+└── *.integration.test.ts # Integration tests
 ```
+
+**Testing Strategy**:
+- Unit tests co-located with source files
+- Property-based tests use fast-check for correctness properties
+- Integration tests verify multi-component workflows
+- E2E tests in scripts/ for full system validation
 
 ## Frontend Structure (tradewizard-frontend/)
 
@@ -69,16 +91,22 @@ supabase/            # Supabase configuration
 
 ```
 app/
-├── api/                    # API routes
+├── api/                    # API routes (server-side)
 │   ├── polymarket/        # Polymarket proxy endpoints
 │   └── tradewizard/       # TradeWizard-specific APIs
-├── market/[slug]/         # Individual market pages
+├── market/[slug]/         # Individual market pages (dynamic routes)
 ├── performance/           # Performance analytics
 ├── positions/             # User positions
 ├── orders/               # Order management
 ├── wallet/               # Wallet management
+├── layout.tsx            # Root layout with providers
 └── page.tsx              # Homepage
 ```
+
+**Routing Conventions**:
+- Dynamic routes use `[slug]` for market IDs
+- API routes handle server-side logic and external API calls
+- Each route has its own layout.tsx for local providers if needed
 
 ### Component Architecture
 
@@ -96,37 +124,56 @@ components/
 ├── Performance/          # Performance analytics components
 ├── Header/              # Navigation and wallet info
 ├── TradingSession/      # Trading session management
-└── shared/              # Reusable UI components
+└── shared/              # Reusable UI components (exported via index.ts)
     ├── Card.tsx         # Base card component
     ├── Badge.tsx        # Status badges
     ├── LoadingState.tsx # Loading indicators
-    └── ErrorState.tsx   # Error handling UI
+    ├── ErrorState.tsx   # Error handling UI
+    └── index.ts         # Barrel export
 ```
+
+**Component Patterns**:
+- Feature components in feature directories (Trading/, Performance/)
+- Shared components in shared/ with barrel exports
+- Props use TypeScript interfaces (no inline types)
+- Use Tailwind CSS 4 for styling
+- Framer Motion for animations
 
 ### Supporting Directories
 
 ```
-hooks/                   # Custom React hooks
+hooks/                   # Custom React hooks (use* prefix)
 ├── useTradeRecommendation.ts  # AI recommendation fetching
 ├── useMarkets.ts             # Market data management
 ├── useTradingSession.ts      # Trading session orchestration
-└── useClobClient.ts          # Polymarket CLOB integration
+├── useClobClient.ts          # Polymarket CLOB integration
+└── index.ts                  # Barrel export
 
-lib/                    # Utility libraries
+lib/                    # Utility libraries (non-React)
 ├── supabase.ts        # Supabase client configuration
 ├── magic.ts           # Magic Link authentication
-└── database.types.ts  # Auto-generated DB types
+└── database.types.ts  # Auto-generated DB types from Supabase
 
 providers/             # React context providers
 ├── WalletProvider.tsx # Wallet state management
 ├── TradingProvider.tsx # Trading session context
-└── QueryProvider.tsx  # React Query configuration
+├── QueryProvider.tsx  # React Query configuration
+└── index.ts           # Barrel export
 
 utils/                 # Pure utility functions
 ├── formatting.ts      # Data formatting helpers
-├── validation.ts      # Input validation
+├── validation.ts      # Input validation (Zod schemas)
 └── marketFilters.ts   # Market filtering logic
+
+__tests__/             # Component and hook tests
+└── [feature]/         # Tests mirror component structure
 ```
+
+**Frontend Patterns**:
+- Hooks use React Query for server state management
+- Providers wrap app in layout.tsx
+- Utils are pure functions with no side effects
+- Validation uses Zod schemas (shared with backend)
 
 ## Shared Resources
 
@@ -163,12 +210,16 @@ docs/
 - **Test files**: `*.test.ts` for unit tests, `*.property.test.ts` for property-based tests
 - **Integration tests**: `*.integration.test.ts`, `*.e2e.test.ts`
 - **Configuration**: `*.config.ts`, `*.config.js`
+- **Utilities**: `*-client.ts`, `*-logger.ts`, `*-service.ts` for clarity
 
 ### Frontend (React/Next.js)
 - **PascalCase** for components: `MarketCard.tsx`, `AIInsightsPanel.tsx`
 - **camelCase** for hooks: `useTradeRecommendation.ts`, `useMarkets.ts`
 - **kebab-case** for utilities: `market-filters.ts`, `formatting.ts`
-- **Route files**: `page.tsx`, `layout.tsx`, `route.ts`
+- **Route files**: `page.tsx`, `layout.tsx`, `route.ts` (Next.js convention)
+- **Context providers**: `*Provider.tsx` (PascalCase)
+
+**Consistency Rule**: File names should clearly indicate their purpose and type
 
 ## Import/Export Patterns
 

@@ -171,6 +171,12 @@ export default function AIInsightsPanel({
 
         {expandedSections.has('overview') && (
           <div className="px-4 pb-4 border-t border-white/10 bg-white/5">
+            {/* Trade Summary */}
+            <div className="mt-4 p-3 bg-white/5 rounded-lg border border-white/10">
+              <h4 className="font-medium text-sm text-gray-300 mb-2">Trade Summary</h4>
+              <p className="text-sm leading-relaxed text-gray-300">{recommendation.explanation.summary}</p>
+            </div>
+
             <div className="grid grid-cols-2 gap-4 mt-4">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -264,15 +270,15 @@ export default function AIInsightsPanel({
         {expandedSections.has('thesis') && (
           <div className="px-4 pb-4 border-t border-white/10 bg-white/5">
             <div className="mt-4 space-y-4">
-              <div>
-                <h4 className="font-medium text-sm text-gray-300 mb-2">Summary</h4>
-                <p className="text-sm leading-relaxed text-gray-300">{recommendation.explanation.summary}</p>
-              </div>
-              
-              {recommendation.explanation.coreThesis !== recommendation.explanation.summary && (
+              {recommendation.explanation.coreThesis && 
+               recommendation.explanation.coreThesis !== recommendation.explanation.summary && 
+               recommendation.explanation.coreThesis !== 'No detailed thesis available' ? (
                 <div>
-                  <h4 className="font-medium text-sm text-gray-300 mb-2">Detailed Analysis</h4>
                   <p className="text-sm leading-relaxed text-gray-300">{recommendation.explanation.coreThesis}</p>
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-sm text-gray-400">Detailed thesis matches the trade summary above.</p>
                 </div>
               )}
 

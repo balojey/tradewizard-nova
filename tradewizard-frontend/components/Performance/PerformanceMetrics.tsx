@@ -46,28 +46,28 @@ export default function PerformanceMetrics({ data }: PerformanceMetricsProps) {
             <MetricBox
               icon={TrendingUp}
               label="Average ROI"
-              value={`${summary.avg_roi >= 0 ? "+" : ""}${summary.avg_roi.toFixed(2)}%`}
+              value={summary.avg_roi != null ? `${summary.avg_roi >= 0 ? "+" : ""}${summary.avg_roi.toFixed(2)}%` : "N/A"}
               subtext="Per recommendation"
               color="blue"
             />
             <MetricBox
               icon={Target}
               label="Edge Capture"
-              value={`${summary.avg_edge_captured >= 0 ? "+" : ""}${(summary.avg_edge_captured * 100).toFixed(1)}%`}
+              value={summary.avg_edge_captured != null ? `${summary.avg_edge_captured >= 0 ? "+" : ""}${(summary.avg_edge_captured * 100).toFixed(1)}%` : "N/A"}
               subtext="Theoretical advantage"
               color="purple"
             />
             <MetricBox
               icon={DollarSign}
               label="Avg Win"
-              value={`+${summary.avg_winning_roi?.toFixed(1) || 0}%`}
+              value={summary.avg_winning_roi != null ? `+${summary.avg_winning_roi.toFixed(1)}%` : "N/A"}
               subtext="On winning trades"
               color="emerald"
             />
             <MetricBox
               icon={DollarSign}
               label="Avg Loss"
-              value={`${summary.avg_losing_roi?.toFixed(1) || 0}%`}
+              value={summary.avg_losing_roi != null ? `${summary.avg_losing_roi.toFixed(1)}%` : "N/A"}
               subtext="On losing trades"
               color="red"
             />
@@ -102,7 +102,7 @@ export default function PerformanceMetrics({ data }: PerformanceMetricsProps) {
                   </div>
                   <div className="text-sm text-gray-400 flex items-center gap-2">
                     <span className={conf.win_rate_pct > 50 ? "text-emerald-400" : "text-gray-400"}>
-                      {conf.win_rate_pct.toFixed(1)}% Win Rate
+                      {conf.win_rate_pct != null ? conf.win_rate_pct.toFixed(1) : "0.0"}% Win Rate
                     </span>
                   </div>
                 </div>
@@ -110,16 +110,16 @@ export default function PerformanceMetrics({ data }: PerformanceMetricsProps) {
 
               <div className="flex items-center gap-8 border-t md:border-t-0 border-white/10 pt-4 md:pt-0">
                 <div className="text-right">
-                  <div className={`text-xl font-bold font-mono ${conf.avg_roi >= 0 ? "text-emerald-400" : "text-red-400"
+                  <div className={`text-xl font-bold font-mono ${conf.avg_roi != null && conf.avg_roi >= 0 ? "text-emerald-400" : "text-red-400"
                     }`}>
-                    {conf.avg_roi >= 0 ? "+" : ""}{conf.avg_roi.toFixed(2)}%
+                    {conf.avg_roi != null ? `${conf.avg_roi >= 0 ? "+" : ""}${conf.avg_roi.toFixed(2)}%` : "N/A"}
                   </div>
                   <div className="text-xs text-gray-500 font-medium uppercase tracking-wider">Avg ROI</div>
                 </div>
 
                 <div className="text-right pl-8 border-l border-white/10">
                   <div className="text-xl font-bold font-mono text-blue-400">
-                    {(conf.avg_edge_captured * 100).toFixed(1)}%
+                    {conf.avg_edge_captured != null ? `${(conf.avg_edge_captured * 100).toFixed(1)}%` : "N/A"}
                   </div>
                   <div className="text-xs text-gray-500 font-medium uppercase tracking-wider">Edge</div>
                 </div>

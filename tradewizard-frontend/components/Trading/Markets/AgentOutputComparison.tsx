@@ -350,7 +350,7 @@ export default function AgentOutputComparison({
               <h4 className="font-medium text-gray-300 mb-3 text-sm sm:text-base">
                 Select Agent {position + 1}
               </h4>
-              <div className="space-y-2 max-h-32 sm:max-h-40 overflow-y-auto">
+              <div className="space-y-2 max-h-32 sm:max-h-40 overflow-y-auto scrollbar-custom pr-2">
                 {comparisonAgents.map(agent => {
                   const AgentIcon = getAgentIcon(agent.type);
                   const isSelected = selectedAgents[position] === agent.id;

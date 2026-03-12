@@ -70,7 +70,7 @@ function transformRecommendation(rec: RecommendationWithMarket): TradeRecommenda
     liquidityRisk,
     explanation: {
       summary: rec.explanation || 'No explanation available',
-      coreThesis: rec.explanation || 'No thesis available',
+      coreThesis: rec.core_thesis || 'No detailed thesis available',
       keyCatalysts: catalysts,
       failureScenarios: risks,
     },

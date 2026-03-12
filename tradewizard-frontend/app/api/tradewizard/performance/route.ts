@@ -1,19 +1,119 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { CLOB_API_URL } from "@/constants/api";
+
+/**
+ * Fetch market details from Polymarket CLOB API using condition_id
+ */
+async function fetchMarketDetailsByConditionId(conditionId: string): Promise<any | null> {
+  try {
+    const response = await fetch(
+      `${CLOB_API_URL}/markets/${conditionId}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        next: { revalidate: 300 }, // Cache for 5 minutes
+      }
+    );
+
+    if (!response.ok) {
+      console.warn(`Failed to fetch market details for condition ${conditionId}: ${response.status}`);
+      return null;
+    }
+
+    const market = await response.json();
+    return market;
+  } catch (error) {
+    console.warn(`Error fetching market details for condition ${conditionId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Enrich closed markets with Polymarket details (slug, etc.)
+ * Fetches market details from CLOB API for each market using condition_id
+ */
+async function enrichMarketsWithPolymarketDetails(markets: any[]): Promise<any[]> {
+  const enrichedMarkets = await Promise.all(
+    markets.map(async (market) => {
+      if (!market.condition_id) {
+        console.warn(`Market ${market.market_id} missing condition_id`);
+        return market;
+      }
+
+      const polymarketDetails = await fetchMarketDetailsByConditionId(market.condition_id);
+      
+      if (polymarketDetails) {
+        return {
+          ...market,
+          slug: polymarketDetails.market_slug || polymarketDetails.slug,
+          polymarket_question: polymarketDetails.question,
+          outcomes: polymarketDetails.outcomes,
+          clob_token_ids: polymarketDetails.clob_token_ids,
+          end_date: polymarketDetails.end_date_iso,
+          image: polymarketDetails.image,
+        };
+      }
+
+      // Fallback: if CLOB API fails, return market without enrichment
+      console.warn(`Could not enrich market ${market.market_id} with Polymarket details`);
+      return market;
+    })
+  );
+
+  return enrichedMarkets;
+}
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const timeframe = searchParams.get("timeframe") || "all"; // all, 30d, 90d, 1y
   const category = searchParams.get("category") || "all";
   const confidence = searchParams.get("confidence") || "all";
-  const limit = parseInt(searchParams.get("limit") || "50");
+  const limit = parseInt(searchParams.get("limit") || "20");
+  const offset = parseInt(searchParams.get("offset") || "0");
 
   try {
+    // Ensure recommendation outcomes are calculated for all resolved markets
+    // This handles cases where markets were resolved but outcomes weren't calculated
+    const { error: updateError } = await supabase.rpc("update_recommendation_outcomes");
+    if (updateError) {
+      console.warn("Warning: Failed to update recommendation outcomes:", updateError);
+      // Don't fail the request, just log the warning
+    }
+    // First, get total count for pagination
+    let countQuery = supabase
+      .from("v_closed_markets_performance")
+      .select("*", { count: "exact", head: true });
+
+    // Apply same filters to count query
+    if (timeframe !== "all") {
+      const daysAgo = timeframe === "30d" ? 30 : timeframe === "90d" ? 90 : 365;
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
+      countQuery = countQuery.gte("resolution_date", cutoffDate.toISOString());
+    }
+
+    if (category !== "all") {
+      countQuery = countQuery.eq("event_type", category);
+    }
+
+    if (confidence !== "all") {
+      countQuery = countQuery.eq("confidence", confidence);
+    }
+
+    const { count: totalCount, error: countError } = await countQuery;
+
+    if (countError) {
+      console.error("Error fetching count:", countError);
+    }
+
     // Build the base query for closed markets with performance data
+    // Note: We don't filter by recommendation_was_correct to show all resolved markets
+    // even if outcome calculation hasn't run yet
     let query = supabase
       .from("v_closed_markets_performance")
       .select("*")
-      .not("recommendation_was_correct", "is", null)
       .order("resolution_date", { ascending: false });
 
     // Apply timeframe filter
@@ -34,8 +134,8 @@ export async function GET(request: NextRequest) {
       query = query.eq("confidence", confidence);
     }
 
-    // Apply limit
-    query = query.limit(limit);
+    // Apply pagination
+    query = query.range(offset, offset + limit - 1);
 
     const { data: closedMarkets, error: marketsError } = await query;
 
@@ -45,6 +145,13 @@ export async function GET(request: NextRequest) {
         { error: "Failed to fetch closed markets performance data" },
         { status: 500 }
       );
+    }
+
+    // Enrich markets with Polymarket details (slug, etc.) from CLOB API
+    let enrichedMarkets = closedMarkets || [];
+    if (enrichedMarkets.length > 0) {
+      console.log(`Enriching ${enrichedMarkets.length} markets with Polymarket details...`);
+      enrichedMarkets = await enrichMarketsWithPolymarketDetails(enrichedMarkets);
     }
 
     // Fetch performance summary
@@ -99,10 +206,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate additional metrics from the closed markets data
-    const metrics = calculatePerformanceMetrics(closedMarkets || []);
+    const metrics = calculatePerformanceMetrics(enrichedMarkets);
 
     return NextResponse.json({
-      closedMarkets: closedMarkets || [],
+      closedMarkets: enrichedMarkets,
       summary: performanceSummary || null,
       performanceByConfidence: performanceByConfidence || [],
       performanceByAgent: performanceByAgent || [],
@@ -114,6 +221,12 @@ export async function GET(request: NextRequest) {
         category,
         confidence,
         limit,
+      },
+      pagination: {
+        total: totalCount || 0,
+        offset,
+        limit,
+        hasMore: totalCount ? offset + limit < totalCount : false,
       },
     });
   } catch (error) {

@@ -21,18 +21,19 @@ import AIInsightsPanel from "@/components/Trading/Markets/AIInsightsPanel";
 import RealAgentDebatePanel from "@/components/Trading/Markets/RealAgentDebatePanel";
 import AgentWorkflowDiagram from "@/components/Trading/Markets/AgentWorkflowDiagram";
 import AgentInteractionNetwork from "@/components/Trading/Markets/AgentInteractionNetwork";
-import ConsensusFormationTimeline from "@/components/Trading/Markets/ConsensusFormationTimeline";
 import AgentOutputComparison from "@/components/Trading/Markets/AgentOutputComparison";
 import QuickTradeService from "@/components/Trading/QuickTradeService";
 import RecommendationHistory from "@/components/Trading/Markets/RecommendationHistory";
 import RecommendationTimeTravel from "@/components/Trading/Markets/RecommendationTimeTravel";
 import PriceHistoryChart from "@/components/Trading/Markets/PriceHistoryChart";
+import PerformanceTab from "@/components/Trading/Markets/PerformanceTab";
+import TabNavigation, { Tab } from "@/components/shared/TabNavigation";
 
 interface MarketDetailsProps {
     market: PolymarketMarket;
 }
 
-type TabType = 'overview' | 'ai-insights' | 'debate' | 'data-flow' | 'chart' | 'time-travel';
+type TabType = 'overview' | 'ai-insights' | 'debate' | 'data-flow' | 'chart' | 'time-travel' | 'performance';
 
 export default function MarketDetails({ market }: MarketDetailsProps) {
     const { clobClient, isGeoblocked, safeAddress } = useTrading();
@@ -60,7 +61,10 @@ export default function MarketDetails({ market }: MarketDetailsProps) {
     const isClosed = market.closed;
     const isActive = market.active && !market.closed;
     const isEndingSoon = isActive && isMarketEndingSoon(market);
-    const disabled = isGeoblocked || !clobClient;
+    const disabled = isGeoblocked || !clobClient || isClosed; // Disable trading for closed markets
+
+    // Check if market has recommendations for Performance tab
+    const hasRecommendations = recommendationCount > 0;
 
     const outcomes = market.outcomes ? JSON.parse(market.outcomes) : [];
     const tokenIds = market.clobTokenIds ? JSON.parse(market.clobTokenIds) : [];
@@ -119,13 +123,16 @@ export default function MarketDetails({ market }: MarketDetailsProps) {
 
     const displayToken = getDisplayTokenInfo();
 
-    const tabs = [
-        { id: 'overview' as TabType, label: 'Overview', icon: BarChart3 },
-        { id: 'ai-insights' as TabType, label: 'AI Insights', icon: Brain },
-        { id: 'chart' as TabType, label: 'Price Chart', icon: TrendingUp },
-        { id: 'debate' as TabType, label: 'Agent Debate', icon: Users },
-        { id: 'data-flow' as TabType, label: 'Data Flow', icon: Activity },
-        ...(shouldShowTimeTravel ? [{ id: 'time-travel' as TabType, label: `Time Travel (${recommendationCount})`, icon: Clock }] : []),
+    // Build tabs array dynamically based on market state
+    const tabs: Tab[] = [
+        { id: 'overview', label: 'Overview', icon: BarChart3 },
+        { id: 'ai-insights', label: 'AI Insights', icon: Brain },
+        { id: 'chart', label: 'Price Chart', icon: TrendingUp },
+        { id: 'debate', label: 'Agent Debate', icon: Users },
+        { id: 'data-flow', label: 'Data Flow', icon: Activity },
+        ...(shouldShowTimeTravel ? [{ id: 'time-travel' as const, label: `Time Travel (${recommendationCount})`, icon: Clock }] : []),
+        // Add Performance tab for any market with recommendations (not just closed markets)
+        ...(hasRecommendations ? [{ id: 'performance' as const, label: 'Performance', icon: TrendingUp }] : []),
     ];
 
     const handleOutcomeClick = (
@@ -204,9 +211,16 @@ export default function MarketDetails({ market }: MarketDetailsProps) {
                                         )}
 
                                         {isClosed && (
-                                            <div className="px-2 sm:px-3 py-1 bg-gray-800 text-gray-400 text-xs font-semibold rounded-full border border-gray-700">
-                                                Market Closed
-                                            </div>
+                                            <>
+                                                <div className="px-2 sm:px-3 py-1 bg-gray-800 text-gray-400 text-xs font-semibold rounded-full border border-gray-700">
+                                                    Market Closed
+                                                </div>
+                                                {market.winningOutcome && (
+                                                    <div className="px-2 sm:px-3 py-1 bg-indigo-500/20 text-indigo-300 text-xs font-semibold rounded-full border border-indigo-500/30">
+                                                        Resolved: {market.winningOutcome}
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
 
                                         {negRisk && (
@@ -277,36 +291,11 @@ export default function MarketDetails({ market }: MarketDetailsProps) {
 
                     {/* Content Tabs - Responsive */}
                     <div className="space-y-4 sm:space-y-6">
-                        <div className="border-b border-white/10">
-                            <div className="flex overflow-x-auto no-scrollbar gap-4 sm:gap-6 pb-1">
-                                {tabs.map((tab) => {
-                                    const Icon = tab.icon;
-                                    const isActive = activeTab === tab.id;
-                                    return (
-                                        <button
-                                            key={tab.id}
-                                            onClick={() => setActiveTab(tab.id)}
-                                            className={`
-                                                group relative flex items-center gap-2 pb-3 sm:pb-4 text-sm font-medium transition-all whitespace-nowrap
-                                                ${isActive ? 'text-white' : 'text-gray-500 hover:text-gray-300'}
-                                            `}
-                                        >
-                                            <div className={`
-                                                p-1 sm:p-1.5 rounded-lg transition-colors
-                                                ${isActive ? 'bg-white/10 text-indigo-400' : 'bg-transparent group-hover:bg-white/5'}
-                                            `}>
-                                                <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                            </div>
-                                            <span className="text-xs sm:text-sm">{tab.label}</span>
-
-                                            {isActive && (
-                                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
-                                            )}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
+                        <TabNavigation
+                            tabs={tabs}
+                            activeTab={activeTab}
+                            onTabChange={(tabId) => setActiveTab(tabId as TabType)}
+                        />
 
                         <div className="min-h-[300px] sm:min-h-[400px]">
                             {activeTab === 'overview' && (
@@ -388,7 +377,7 @@ export default function MarketDetails({ market }: MarketDetailsProps) {
                             )}
 
                             {activeTab === 'data-flow' && (
-                                <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                                <div className="space-y-6 sm:space-y-8 animate-in fade-in-from-bottom-2 duration-500">
                                     <AgentWorkflowDiagram
                                         conditionId={market.conditionId || null}
                                         marketQuestion={market.question}
@@ -396,10 +385,6 @@ export default function MarketDetails({ market }: MarketDetailsProps) {
                                     <AgentInteractionNetwork
                                         conditionId={market.conditionId || null}
                                         marketQuestion={market.question}
-                                        recommendationId={recommendation?.id || null}
-                                    />
-                                    <ConsensusFormationTimeline
-                                        conditionId={market.conditionId || null}
                                         recommendationId={recommendation?.id || null}
                                     />
                                     <AgentOutputComparison
@@ -417,6 +402,17 @@ export default function MarketDetails({ market }: MarketDetailsProps) {
                                         currentMarketPrice={displayToken.price}
                                         yesPrice={yesPrice}
                                         noPrice={noPrice}
+                                    />
+                                </div>
+                            )}
+
+                            {activeTab === 'performance' && hasRecommendations && (
+                                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+                                    <PerformanceTab
+                                        marketId={market.conditionId || ''}
+                                        conditionId={market.conditionId || ''}
+                                        resolvedOutcome={market.winningOutcome || 'Unknown'}
+                                        resolutionDate={market.resolvedAt || market.endDate || new Date().toISOString()}
                                     />
                                 </div>
                             )}
@@ -462,10 +458,23 @@ export default function MarketDetails({ market }: MarketDetailsProps) {
                                 {yesIndex !== -1 && (
                                     <div className="flex items-center gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-white/5 rounded-full border border-white/10">
                                         <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
-                                        <span className="text-xs font-medium text-gray-400">Live</span>
+                                        <span className="text-xs font-medium text-gray-400">{isActive ? 'Live' : 'Closed'}</span>
                                     </div>
                                 )}
                             </div>
+
+                            {isClosed && (
+                                <div className="mb-6 p-4 bg-gray-800/50 border border-gray-700 rounded-lg">
+                                    <div className="flex items-center gap-2 text-gray-400 mb-2">
+                                        <Info className="w-4 h-4" />
+                                        <span className="font-medium text-sm">Trading Disabled</span>
+                                    </div>
+                                    <p className="text-xs text-gray-500">
+                                        This market has been resolved and is no longer accepting trades.
+                                        {market.winningOutcome && ` Final outcome: ${market.winningOutcome}`}
+                                    </p>
+                                </div>
+                            )}
 
                             <OutcomeButtons
                                 outcomes={outcomes}

@@ -136,11 +136,18 @@ export default function QuickTradeService({
                     {/* Visual Range Slider */}
                     <div className="space-y-4">
                         <div className="flex justify-between text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <span>Stop-Loss</span>
                             <span>Entry Zone</span>
                             <span>Profit Target</span>
                         </div>
 
                         <div className="relative h-2 bg-gray-800 rounded-full w-full">
+                            {/* Stop-Loss Marker */}
+                            <div
+                                className="absolute h-4 w-0.5 top-1/2 -translate-y-1/2 bg-red-500 rounded-full opacity-80"
+                                style={{ left: `${getPercentPos(recommendation.stopLoss)}%` }}
+                            />
+                            
                             {/* Entry Range Bar */}
                             <div
                                 className="absolute h-full bg-green-500/30 rounded-full"
@@ -175,6 +182,7 @@ export default function QuickTradeService({
                         </div>
 
                         <div className="flex justify-between text-xs font-mono">
+                            <span className="text-red-500">{(recommendation.stopLoss * 100).toFixed(1)}¢</span>
                             <span className="text-green-500">{(entryZone.price * 100).toFixed(1)}¢</span>
                             <span className="text-purple-500">{(targetZone.price * 100).toFixed(1)}¢</span>
                         </div>
@@ -269,7 +277,7 @@ export default function QuickTradeService({
                                 />
                             </div>
                             <label htmlFor="auto-target" className="text-xs text-gray-400 select-none cursor-pointer">
-                                Auto-create <span className="text-purple-400 font-semibold">Exit Plan</span> (Submit sell target after buy)
+                                Auto-create <span className="text-purple-400 font-semibold">Exit Plan</span> (Target @ {(targetZone.price * 100).toFixed(1)}¢ + Stop-Loss @ {(recommendation.stopLoss * 100).toFixed(1)}¢)
                             </label>
                         </div>
                     )}
@@ -302,6 +310,7 @@ export default function QuickTradeService({
                         recommendedPrice: getZone(selectedZone)?.price || currentPrice,
                         entryZone: recommendation.entryZone,
                         targetZone: recommendation.targetZone,
+                        stopLoss: recommendation.stopLoss,
                         autoCreateTarget: selectedZone !== 'target' ? autoCreateTarget : false,
                         preferredOrderType: preferredOrderType,
                     }}

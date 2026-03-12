@@ -724,6 +724,7 @@ export interface TradeRecommendation {
   action: TradeAction;
   entryZone: [number, number]; // [min, max] price
   targetZone: [number, number];
+  stopLoss: number; // Stop-loss price below entry zone for risk management
   expectedValue: number; // In dollars per $100 invested
   winProbability: number;
   liquidityRisk: LiquidityRisk;
@@ -757,4 +758,53 @@ export interface AuditTrail {
     data: unknown;
     errors?: unknown[];
   }>;
+}
+
+// ============================================================================
+// Serper API Types (Web Research Agent)
+// ============================================================================
+
+/**
+ * Serper search result
+ */
+export interface SerperSearchResult {
+  title: string;
+  link: string;
+  snippet: string;
+  date?: string;
+  position: number;
+}
+
+/**
+ * Serper scrape result
+ */
+export interface SerperScrapeResult {
+  url: string;
+  title?: string;
+  text?: string;
+  metadata?: {
+    description?: string;
+    keywords?: string;
+    author?: string;
+    publishedDate?: string;
+  };
+}
+
+/**
+ * Web Research configuration
+ */
+export interface WebResearchConfig {
+  enabled: boolean;
+  maxToolCalls: number;
+  timeout: number;
+}
+
+/**
+ * Serper API configuration
+ */
+export interface SerperConfig {
+  apiKey: string;
+  searchUrl?: string;
+  scrapeUrl?: string;
+  timeout?: number;
 }

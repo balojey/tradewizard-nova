@@ -161,11 +161,14 @@ export async function dynamicAgentSelectionNode(
  *
  * Different market types benefit from different agent specializations:
  * - Election: Polling, sentiment, narrative agents
- * - Court: Event intelligence, historical pattern agents
- * - Policy: Event intelligence, sentiment, catalyst agents
- * - Economic: Event intelligence, historical pattern agents
- * - Geopolitical: Event intelligence, sentiment, catalyst agents
+ * - Court: Event intelligence, polling, historical pattern agents
+ * - Policy: Event intelligence, polling, sentiment, catalyst agents
+ * - Economic: Event intelligence, polling, historical pattern agents
+ * - Geopolitical: Event intelligence, polling, sentiment, catalyst agents
  * - Other: All available agents
+ *
+ * Note: Polling intelligence is valuable for all market types as it provides
+ * insights into public opinion, statistical patterns, and historical trends.
  *
  * @param eventType - Market event type
  * @returns Array of agent names appropriate for this market type
@@ -189,9 +192,10 @@ function selectAgentsByMarketType(eventType: EventType): string[] {
       break;
 
     case 'policy':
-      // Policy markets benefit from event intelligence, sentiment, and catalysts
+      // Policy markets benefit from event intelligence, polling, sentiment, and catalysts
       agents.push(
         ...EVENT_INTELLIGENCE_AGENTS,
+        ...POLLING_STATISTICAL_AGENTS,
         ...SENTIMENT_NARRATIVE_AGENTS,
         ...EVENT_SCENARIO_AGENTS
       );
@@ -203,9 +207,10 @@ function selectAgentsByMarketType(eventType: EventType): string[] {
       break;
 
     case 'geopolitical':
-      // Geopolitical markets benefit from event intelligence, sentiment, and catalysts
+      // Geopolitical markets benefit from event intelligence, polling, sentiment, and catalysts
       agents.push(
         ...EVENT_INTELLIGENCE_AGENTS,
+        ...POLLING_STATISTICAL_AGENTS,
         ...SENTIMENT_NARRATIVE_AGENTS,
         ...EVENT_SCENARIO_AGENTS
       );
@@ -327,8 +332,10 @@ async function filterByDataAvailability(
       }
     }
 
-    // Polling agents require polling data
-    if (agent === 'polling_intelligence') {
+    // Polling intelligence agent is autonomous and fetches its own data
+    // No longer filtered by external polling data availability
+    // (kept for historical_pattern which may still need pre-fetched data)
+    if (agent === 'historical_pattern') {
       if (!pollingAvailable) {
         shouldInclude = false;
       }

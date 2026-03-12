@@ -200,6 +200,20 @@ export default function TradeRecommendation({ market, className = "" }: TradeRec
           </div>
         </div>
 
+        {/* Core Thesis - Prominently displayed */}
+        {recommendation.explanation.coreThesis && 
+         recommendation.explanation.coreThesis !== 'No detailed thesis available' && (
+          <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+            <div className="flex items-center gap-2 mb-2">
+              <Target className="w-4 h-4 text-blue-600" />
+              <h4 className="font-semibold text-blue-900">Core Thesis</h4>
+            </div>
+            <p className="text-sm text-blue-900 leading-relaxed">
+              {recommendation.explanation.coreThesis}
+            </p>
+          </div>
+        )}
+
         {/* Key Metrics */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatDisplay
@@ -298,14 +312,6 @@ export default function TradeRecommendation({ market, className = "" }: TradeRec
           
           {showDetails && (
             <div className="mt-4 space-y-4">
-              {/* Core Thesis */}
-              <div>
-                <h4 className="font-medium text-gray-900 mb-2">Core Thesis</h4>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  {recommendation.explanation.coreThesis}
-                </p>
-              </div>
-
               {/* Key Catalysts */}
               {recommendation.explanation.keyCatalysts.length > 0 && (
                 <div>

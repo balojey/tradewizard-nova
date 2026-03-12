@@ -1,3 +1,0 @@
-agent_environment: main
-agent_name: tradewizard-agent
-entrypoint_file: main.py

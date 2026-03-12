@@ -50,6 +50,7 @@ type OrderPlacementModalProps = {
     recommendedPrice: number;
     entryZone: [number, number];
     targetZone: [number, number];
+    stopLoss: number;
     autoCreateTarget?: boolean;
     preferredOrderType?: 'market' | 'limit';
   };
@@ -239,9 +240,13 @@ export default function OrderPlacementModal({
         // Calculate target price (midpoint of target zone)
         const targetPrice = (quickTradeMode.targetZone[0] + quickTradeMode.targetZone[1]) / 2;
         
+        // Calculate stop-loss price (from recommendation)
+        const stopLossPrice = quickTradeMode.stopLoss || (quickTradeMode.entryZone[0] - 0.03);
+        
         // Small delay to ensure first order is processed
         setTimeout(async () => {
           try {
+            // Create target sell order (take profit)
             await submitOrder({
               tokenId,
               size: sizeNum,
@@ -250,6 +255,24 @@ export default function OrderPlacementModal({
               negRisk,
               isMarketOrder: false, // Always limit order for targets
             });
+            
+            // Create stop-loss sell order (risk management)
+            // Additional delay to avoid rate limiting
+            setTimeout(async () => {
+              try {
+                await submitOrder({
+                  tokenId,
+                  size: sizeNum,
+                  price: Math.max(0.01, stopLossPrice), // Ensure minimum price
+                  side: "SELL",
+                  negRisk,
+                  isMarketOrder: false, // Limit order at stop-loss price
+                });
+              } catch (stopLossError) {
+                console.warn("Failed to create stop-loss order:", stopLossError);
+                // Don't show error to user as main order succeeded
+              }
+            }, 500);
           } catch (targetError) {
             console.warn("Failed to create auto-target order:", targetError);
             // Don't show error to user as main order succeeded

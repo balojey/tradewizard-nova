@@ -209,7 +209,9 @@ export class DatabasePersistenceImpl implements DatabasePersistence {
         entry_zone_max: recommendation.entryZone[1],
         target_zone_min: recommendation.targetZone[0],
         target_zone_max: recommendation.targetZone[1],
+        stop_loss: recommendation.stopLoss,
         explanation: recommendation.explanation.summary,
+        core_thesis: recommendation.explanation.coreThesis,
         catalysts: recommendation.explanation.keyCatalysts,
         risks: recommendation.explanation.failureScenarios,
       };
@@ -428,6 +430,7 @@ export class DatabasePersistenceImpl implements DatabasePersistence {
         action: data.direction as 'LONG_YES' | 'LONG_NO' | 'NO_TRADE',
         entryZone: [data.entry_zone_min || 0, data.entry_zone_max || 0],
         targetZone: [data.target_zone_min || 0, data.target_zone_max || 0],
+        stopLoss: data.stop_loss || Math.max(0.01, (data.entry_zone_min || 0) - 0.03),
         expectedValue: data.expected_value || 0,
         winProbability: data.fair_probability || 0,
         liquidityRisk: 'medium', // Default value, not stored in DB

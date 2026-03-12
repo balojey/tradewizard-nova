@@ -37,6 +37,56 @@ export function isTimestampFormattingEnabled(): boolean {
 }
 
 /**
+ * Extract comprehensive web research document from agent signals
+ * 
+ * Searches through agent signals for the web_research agent's signal
+ * and extracts the researchSummary from its metadata.
+ * 
+ * @param agentSignals - Array of agent signals from state
+ * @returns Comprehensive research document string, or null if not available
+ * 
+ * @example
+ * const signals = [{
+ *   agentName: 'web_research',
+ *   metadata: {
+ *     researchSummary: 'Comprehensive research document...'
+ *   }
+ * }];
+ * 
+ * const research = extractWebResearchContext(signals);
+ * // Returns: 'Comprehensive research document...'
+ */
+export function extractWebResearchContext(
+  agentSignals: Readonly<AgentSignal[]> | undefined
+): string | null {
+  if (!agentSignals || agentSignals.length === 0) {
+    return null;
+  }
+  
+  // Find web research signal
+  const webResearchSignal = agentSignals.find(
+    signal => signal.agentName === 'web_research'
+  );
+  
+  if (!webResearchSignal || !webResearchSignal.metadata) {
+    return null;
+  }
+  
+  // Extract research_summary from metadata
+  const researchSummary = webResearchSignal.metadata.researchSummary;
+  
+  // Validate that it's a substantial string
+  if (
+    typeof researchSummary === 'string' &&
+    researchSummary.length > 50
+  ) {
+    return researchSummary;
+  }
+  
+  return null;
+}
+
+/**
  * Format Market Briefing Document for agent consumption
  * Converts all timestamps to human-readable format
  * 
@@ -57,8 +107,10 @@ export function isTimestampFormattingEnabled(): boolean {
  * - Primary risk factors
  * - Top opportunities
  * - Market position
+ * - Web research context (if available) - CRITICAL for comprehensive external context
  * 
  * @param mbd - Market Briefing Document from state (readonly)
+ * @param webResearchContext - Optional comprehensive web research document
  * @returns Formatted string for LLM prompt with human-readable timestamps
  * 
  * @example
@@ -71,7 +123,8 @@ export function isTimestampFormattingEnabled(): boolean {
  *   // ... other fields
  * };
  * 
- * const formatted = formatMarketBriefingForAgent(mbd);
+ * const webResearch = "Comprehensive research document...";
+ * const formatted = formatMarketBriefingForAgent(mbd, webResearch);
  * // Returns multi-line string:
  * // === MARKET OVERVIEW ===
  * // Question: Will Biden win the 2024 election?
@@ -79,9 +132,12 @@ export function isTimestampFormattingEnabled(): boolean {
  * // ...
  * // Market Expires: January 20, 2025 at 11:59 PM EST
  * // ...
+ * // === WEB RESEARCH CONTEXT ===
+ * // Comprehensive research document...
  */
 export function formatMarketBriefingForAgent(
-  mbd: Readonly<MarketBriefingDocument>
+  mbd: Readonly<MarketBriefingDocument>,
+  webResearchContext?: string | null
 ): string {
   const lines: string[] = [];
   
@@ -186,6 +242,22 @@ export function formatMarketBriefingForAgent(
     lines.push(`Liquidity Rank: #${mbd.metadata.marketPosition.liquidityRank}`);
     lines.push(`Competitive Score: ${mbd.metadata.marketPosition.competitiveScore.toFixed(2)}`);
     lines.push(`Dominant Market: ${mbd.metadata.marketPosition.isDominantMarket ? 'Yes' : 'No'}`);
+    lines.push('');
+  }
+  
+  // Web Research Context (CRITICAL: Provides comprehensive external research)
+  if (webResearchContext) {
+    lines.push('=== WEB RESEARCH CONTEXT ===');
+    lines.push('');
+    lines.push('The following comprehensive research document was gathered from web sources to provide');
+    lines.push('detailed background, current status, and recent developments related to this market:');
+    lines.push('');
+    lines.push('---');
+    lines.push(webResearchContext);
+    lines.push('---');
+    lines.push('');
+    lines.push('**IMPORTANT**: Use this web research context to inform your analysis. It contains');
+    lines.push('factual information from authoritative sources that should guide your assessment.');
     lines.push('');
   }
   
@@ -460,9 +532,15 @@ export function formatMarketContextForAgent(
 ): string {
   const sections: string[] = [];
   
-  // Market Briefing Document
+  // Extract web research context (CRITICAL: Provides comprehensive external research)
+  const webResearchContext = extractWebResearchContext(state.agentSignals);
+  if (webResearchContext) {
+    console.log(`[${agentName}] Including web research context (${webResearchContext.length} chars)`);
+  }
+  
+  // Market Briefing Document with web research context
   if (state.mbd) {
-    sections.push(formatMarketBriefingForAgent(state.mbd));
+    sections.push(formatMarketBriefingForAgent(state.mbd, webResearchContext));
   }
   
   // External Data

@@ -310,6 +310,7 @@ export type Database = {
         Row: {
           catalysts: Json | null
           confidence: string
+          core_thesis: string | null
           created_at: string | null
           direction: string
           entry_zone_max: number | null
@@ -321,6 +322,7 @@ export type Database = {
           market_edge: number | null
           market_id: string | null
           risks: Json | null
+          stop_loss: number | null
           target_zone_max: number | null
           target_zone_min: number | null
           updated_at: string | null
@@ -328,6 +330,7 @@ export type Database = {
         Insert: {
           catalysts?: Json | null
           confidence: string
+          core_thesis?: string | null
           created_at?: string | null
           direction: string
           entry_zone_max?: number | null
@@ -339,6 +342,7 @@ export type Database = {
           market_edge?: number | null
           market_id?: string | null
           risks?: Json | null
+          stop_loss?: number | null
           target_zone_max?: number | null
           target_zone_min?: number | null
           updated_at?: string | null
@@ -346,6 +350,7 @@ export type Database = {
         Update: {
           catalysts?: Json | null
           confidence?: string
+          core_thesis?: string | null
           created_at?: string | null
           direction?: string
           entry_zone_max?: number | null
@@ -357,6 +362,7 @@ export type Database = {
           market_edge?: number | null
           market_id?: string | null
           risks?: Json | null
+          stop_loss?: number | null
           target_zone_max?: number | null
           target_zone_min?: number | null
           updated_at?: string | null

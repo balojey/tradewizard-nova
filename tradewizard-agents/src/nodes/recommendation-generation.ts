@@ -93,6 +93,37 @@ function calculateEntryZone(
 }
 
 /**
+ * Calculate stop-loss zone (below entry zone for risk management)
+ *
+ * @param entryZone - Entry zone [min, max]
+ * @param liquidityScore - Liquidity score (0-10)
+ * @returns Stop-loss price (below entry zone minimum)
+ */
+function calculateStopLoss(
+  entryZone: [number, number],
+  liquidityScore: number
+): number {
+  const entryMin = entryZone[0];
+  
+  // Base stop-loss: 3% below entry minimum
+  let stopLossDistance = 0.03;
+  
+  // Adjust for liquidity (lower liquidity = tighter stop-loss to limit slippage)
+  if (liquidityScore < 4.0) {
+    stopLossDistance = 0.025; // 2.5% for low liquidity
+  } else if (liquidityScore < 7.0) {
+    stopLossDistance = 0.03; // 3% for medium liquidity
+  } else {
+    stopLossDistance = 0.035; // 3.5% for high liquidity
+  }
+  
+  const stopLoss = entryMin - stopLossDistance;
+  
+  // Bound to [0.01, entry minimum)
+  return Math.max(0.01, Math.min(entryMin - 0.01, stopLoss));
+}
+
+/**
  * Calculate target zone (consensus probability ± confidence band)
  *
  * @param confidenceBand - Confidence band [lower, upper]
@@ -375,6 +406,7 @@ export function createRecommendationGenerationNode(
           action: 'NO_TRADE',
           entryZone: [0, 0],
           targetZone: [0, 0],
+          stopLoss: 0,
           expectedValue: 0,
           winProbability: 0,
           liquidityRisk: determineLiquidityRisk(mbd.liquidityScore),
@@ -430,6 +462,7 @@ export function createRecommendationGenerationNode(
           action: 'NO_TRADE',
           entryZone: [0, 0],
           targetZone: [0, 0],
+          stopLoss: 0,
           expectedValue,
           winProbability: direction === 'LONG_YES' ? consensusProbability : 1 - consensusProbability,
           liquidityRisk: determineLiquidityRisk(mbd.liquidityScore),
@@ -472,6 +505,9 @@ export function createRecommendationGenerationNode(
         consensus.confidenceBand,
         direction
       );
+      
+      // Calculate stop-loss price
+      const stopLoss = calculateStopLoss(entryZone, mbd.liquidityScore);
 
       // Determine liquidity risk
       const liquidityRisk = determineLiquidityRisk(mbd.liquidityScore);
@@ -507,6 +543,7 @@ export function createRecommendationGenerationNode(
         action: direction,
         entryZone,
         targetZone,
+        stopLoss,
         expectedValue,
         winProbability,
         liquidityRisk,
@@ -534,6 +571,7 @@ export function createRecommendationGenerationNode(
               liquidityRisk,
               entryZone,
               targetZone,
+              stopLoss,
               riskPhilosophyIncluded: !!state.riskPhilosophySignals,
               riskPhilosophyAgents: state.riskPhilosophySignals ? Object.keys(state.riskPhilosophySignals).filter(k => state.riskPhilosophySignals![k as keyof typeof state.riskPhilosophySignals]) : [],
               duration: Date.now() - startTime,

@@ -48,6 +48,7 @@ export class NewsDataIntegrationWrapper extends DataIntegrationLayer {
     // Create NewsData client from configuration
     const newsDataClient = createNewsDataClient({
       apiKey: process.env.NEWSDATA_API_KEY || '',
+      isFreeTier: process.env.NEWSDATA_FREE_TIER === 'true',
       rateLimiting: {
         requestsPerWindow: 100, // Default NewsData.io limit
         windowSizeMs: 15 * 60 * 1000, // 15 minutes

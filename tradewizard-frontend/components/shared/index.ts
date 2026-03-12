@@ -5,3 +5,6 @@ export * from "./EmptyState";
 export * from "./Badge";
 export * from "./StatDisplay";
 export * from "./InfoTooltip";
+export { default as TabNavigation } from "./TabNavigation";
+export type { Tab } from "./TabNavigation";
+export { default as ErrorBoundary } from "./ErrorBoundary";

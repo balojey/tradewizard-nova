@@ -241,6 +241,19 @@ const EngineConfigSchema = z
         maxRequestsPerHour: z.number().positive().default(10),
       }).optional(),
     }).optional(),
+    // Serper API configuration for web research
+    serper: z.object({
+      apiKey: z.string(),
+      searchUrl: z.string().url().default('https://google.serper.dev/search'),
+      scrapeUrl: z.string().url().default('https://scrape.serper.dev'),
+      timeout: z.number().positive().default(30000),
+    }).optional(),
+    // Web Research Agent configuration
+    webResearch: z.object({
+      enabled: z.boolean().default(true),
+      maxToolCalls: z.number().positive().default(8),
+      timeout: z.number().positive().default(60000),
+    }).optional(),
     signalFusion: z.object({
       baseWeights: z.record(z.string(), z.number()).default({
         'market_microstructure': 1.0,
@@ -658,6 +671,17 @@ export function loadConfig(): EngineConfig {
         maxRequestsPerHour: parseInt(process.env.NEWSDATA_AGENT_TOOLS_MAX_REQUESTS_PER_HOUR || '10', 10),
       },
     } : undefined,
+    serper: process.env.SERPER_API_KEY ? {
+      apiKey: process.env.SERPER_API_KEY,
+      searchUrl: process.env.SERPER_SEARCH_URL || 'https://google.serper.dev/search',
+      scrapeUrl: process.env.SERPER_SCRAPE_URL || 'https://scrape.serper.dev',
+      timeout: parseInt(process.env.SERPER_TIMEOUT || '30000', 10),
+    } : undefined,
+    webResearch: {
+      enabled: process.env.WEB_RESEARCH_ENABLED !== 'false',
+      maxToolCalls: parseInt(process.env.WEB_RESEARCH_MAX_TOOL_CALLS || '8', 10),
+      timeout: parseInt(process.env.WEB_RESEARCH_TIMEOUT || '60000', 10),
+    },
     signalFusion: {
       baseWeights: process.env.SIGNAL_FUSION_BASE_WEIGHTS
         ? JSON.parse(process.env.SIGNAL_FUSION_BASE_WEIGHTS)

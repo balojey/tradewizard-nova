@@ -42,6 +42,7 @@ import {
   createAutonomousMediaSentimentAgentNode,
   createAutonomousMarketMicrostructureAgentNode,
 } from './nodes/index.js';
+import { createWebResearchAgentNode } from './nodes/web-research-agent.js';
 
 /**
  * Create the Market Intelligence Engine workflow
@@ -155,6 +156,11 @@ export async function createWorkflow(
   }
   const marketMicrostructureAgentNode = createAutonomousMarketMicrostructureAgentNode(config);
   
+  // Create Web Research Agent (conditionally enabled)
+  const webResearchAgent = config.webResearch?.enabled !== false 
+    ? createWebResearchAgentNode(config)
+    : null;
+  
   const historicalPatternAgent = createHistoricalPatternAgentNode(config);
   const socialSentimentAgent = createSocialSentimentAgentNode(config);
   const narrativeVelocityAgent = createNarrativeVelocityAgentNode(config);
@@ -169,7 +175,14 @@ export async function createWorkflow(
   const workflow = new StateGraph(GraphState)
     // Add all nodes to the graph
     .addNode('market_ingestion', marketIngestion)
-    .addNode('memory_retrieval', memoryRetrieval)
+    .addNode('memory_retrieval', memoryRetrieval);
+  
+  // Add Web Research Agent node (conditionally)
+  if (webResearchAgent) {
+    workflow.addNode('web_research', webResearchAgent);
+  }
+  
+  workflow
     .addNode('keyword_extraction', keywordExtraction)
     .addNode('dynamic_agent_selection', dynamicAgentSelection)
     
@@ -234,80 +247,72 @@ export async function createWorkflow(
       }
     )
 
-    // Add edge from memory retrieval to keyword extraction
-    .addEdge('memory_retrieval', 'keyword_extraction')
+    // Add edge from memory retrieval to web research or keyword extraction
+    if (webResearchAgent) {
+      workflow.addEdge('memory_retrieval', 'web_research');
+      workflow.addEdge('web_research', 'keyword_extraction');
+    } else {
+      workflow.addEdge('memory_retrieval', 'keyword_extraction');
+    }
 
     // Add edge from keyword extraction to dynamic agent selection
-    .addEdge('keyword_extraction', 'dynamic_agent_selection')
-
-    // Add conditional edges from dynamic agent selection to all agent nodes
-    // Agents execute in parallel based on activeAgents list
-    .addConditionalEdges(
-      'dynamic_agent_selection',
-      () => {
-        // Always proceed to agents (even if only MVP agents are active)
-        return 'agents';
-      },
-      {
-        agents: 'market_microstructure_agent',
-      }
-    )
+    workflow.addEdge('keyword_extraction', 'dynamic_agent_selection');
 
     // Add parallel edges from dynamic_agent_selection to all agent nodes
     // MVP agents (always active)
-    .addEdge('dynamic_agent_selection', 'market_microstructure_agent')
-    .addEdge('dynamic_agent_selection', 'probability_baseline_agent')
-    .addEdge('dynamic_agent_selection', 'risk_assessment_agent')
+    workflow.addEdge('dynamic_agent_selection', 'market_microstructure_agent');
+    workflow.addEdge('dynamic_agent_selection', 'probability_baseline_agent');
+    workflow.addEdge('dynamic_agent_selection', 'risk_assessment_agent');
     
     // Advanced agents (conditionally active based on dynamic selection)
-    .addEdge('dynamic_agent_selection', 'breaking_news_agent')
-    .addEdge('dynamic_agent_selection', 'event_impact_agent')
-    .addEdge('dynamic_agent_selection', 'polling_intelligence_agent')
-    .addEdge('dynamic_agent_selection', 'historical_pattern_agent')
-    .addEdge('dynamic_agent_selection', 'media_sentiment_agent')
-    .addEdge('dynamic_agent_selection', 'social_sentiment_agent')
-    .addEdge('dynamic_agent_selection', 'narrative_velocity_agent')
-    .addEdge('dynamic_agent_selection', 'momentum_agent')
-    .addEdge('dynamic_agent_selection', 'mean_reversion_agent')
-    .addEdge('dynamic_agent_selection', 'catalyst_agent')
-    .addEdge('dynamic_agent_selection', 'tail_risk_agent')
+    workflow.addEdge('dynamic_agent_selection', 'breaking_news_agent');
+    workflow.addEdge('dynamic_agent_selection', 'event_impact_agent');
+    workflow.addEdge('dynamic_agent_selection', 'polling_intelligence_agent');
+    workflow.addEdge('dynamic_agent_selection', 'historical_pattern_agent');
+    workflow.addEdge('dynamic_agent_selection', 'media_sentiment_agent');
+    workflow.addEdge('dynamic_agent_selection', 'social_sentiment_agent');
+    workflow.addEdge('dynamic_agent_selection', 'narrative_velocity_agent');
+    workflow.addEdge('dynamic_agent_selection', 'momentum_agent');
+    workflow.addEdge('dynamic_agent_selection', 'mean_reversion_agent');
+    workflow.addEdge('dynamic_agent_selection', 'catalyst_agent');
+    workflow.addEdge('dynamic_agent_selection', 'tail_risk_agent');
 
     // Add edges from all agents to signal fusion
     // LangGraph waits for all parallel nodes to complete before proceeding
-    .addEdge('market_microstructure_agent', 'agent_signal_fusion')
-    .addEdge('probability_baseline_agent', 'agent_signal_fusion')
-    .addEdge('risk_assessment_agent', 'agent_signal_fusion')
-    .addEdge('breaking_news_agent', 'agent_signal_fusion')
-    .addEdge('event_impact_agent', 'agent_signal_fusion')
-    .addEdge('polling_intelligence_agent', 'agent_signal_fusion')
-    .addEdge('historical_pattern_agent', 'agent_signal_fusion')
-    .addEdge('media_sentiment_agent', 'agent_signal_fusion')
-    .addEdge('social_sentiment_agent', 'agent_signal_fusion')
-    .addEdge('narrative_velocity_agent', 'agent_signal_fusion')
-    .addEdge('momentum_agent', 'agent_signal_fusion')
-    .addEdge('mean_reversion_agent', 'agent_signal_fusion')
-    .addEdge('catalyst_agent', 'agent_signal_fusion')
-    .addEdge('tail_risk_agent', 'agent_signal_fusion')
+    workflow.addEdge('market_microstructure_agent', 'agent_signal_fusion');
+    workflow.addEdge('probability_baseline_agent', 'agent_signal_fusion');
+    workflow.addEdge('risk_assessment_agent', 'agent_signal_fusion');
+    workflow.addEdge('breaking_news_agent', 'agent_signal_fusion');
+    workflow.addEdge('event_impact_agent', 'agent_signal_fusion');
+    workflow.addEdge('polling_intelligence_agent', 'agent_signal_fusion');
+    workflow.addEdge('historical_pattern_agent', 'agent_signal_fusion');
+    workflow.addEdge('media_sentiment_agent', 'agent_signal_fusion');
+    workflow.addEdge('social_sentiment_agent', 'agent_signal_fusion');
+    workflow.addEdge('narrative_velocity_agent', 'agent_signal_fusion');
+    workflow.addEdge('momentum_agent', 'agent_signal_fusion');
+    workflow.addEdge('mean_reversion_agent', 'agent_signal_fusion');
+    workflow.addEdge('catalyst_agent', 'agent_signal_fusion');
+    workflow.addEdge('tail_risk_agent', 'agent_signal_fusion');
 
     // Add edge from signal fusion to thesis construction
-    .addEdge('agent_signal_fusion', 'thesis_construction')
+    workflow.addEdge('agent_signal_fusion', 'thesis_construction');
 
     // Add sequential edges through debate protocol
-    .addEdge('thesis_construction', 'cross_examination')
-    .addEdge('cross_examination', 'consensus_engine')
+    workflow.addEdge('thesis_construction', 'cross_examination');
+    workflow.addEdge('cross_examination', 'consensus_engine');
     
     // Add parallel edges from consensus to risk philosophy agents
-    .addEdge('consensus_engine', 'risk_philosophy_aggressive')
-    .addEdge('consensus_engine', 'risk_philosophy_conservative')
-    .addEdge('consensus_engine', 'risk_philosophy_neutral')
+    workflow.addEdge('consensus_engine', 'risk_philosophy_aggressive');
+    workflow.addEdge('consensus_engine', 'risk_philosophy_conservative');
+    workflow.addEdge('consensus_engine', 'risk_philosophy_neutral');
     
     // Add edges from risk philosophy agents to recommendation generation
-    .addEdge('risk_philosophy_aggressive', 'recommendation_generation')
-    .addEdge('risk_philosophy_conservative', 'recommendation_generation')
-    .addEdge('risk_philosophy_neutral', 'recommendation_generation')
+    workflow.addEdge('risk_philosophy_aggressive', 'recommendation_generation');
+    workflow.addEdge('risk_philosophy_conservative', 'recommendation_generation');
+    workflow.addEdge('risk_philosophy_neutral', 'recommendation_generation');
 
     // Add edge from recommendation to END
-    .addEdge('recommendation_generation', END);
+    workflow.addEdge('recommendation_generation', END);
 
   // Create checkpointer based on configuration
   const checkpointer = await createCheckpointer(config, supabaseManager);

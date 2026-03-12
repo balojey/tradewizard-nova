@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import type { TradeRecommendation } from "@/hooks/useTradeRecommendation";
 
 export interface QuickTradeZone {
-  type: 'entry' | 'target' | 'current';
+  type: 'entry' | 'target' | 'stopLoss' | 'current';
   price: number;
   label: string;
   isActive: boolean;
@@ -12,6 +12,7 @@ export interface QuickTradeZone {
 export interface QuickTradeAnalysis {
   zones: QuickTradeZone[];
   potentialReturn: number;
+  maxLoss: number; // Maximum loss if stop-loss is hit
   isInEntryZone: boolean;
   riskLevel: 'low' | 'medium' | 'high';
   recommendation: string;
@@ -34,14 +35,23 @@ export function useQuickTrade({ recommendation, currentPrice }: UseQuickTradeOpt
     const entryMax = recommendation.entryZone[1];
     const targetMin = recommendation.targetZone[0];
     const targetMax = recommendation.targetZone[1];
+    const stopLoss = recommendation.stopLoss;
 
     const entryMidpoint = (entryMin + entryMax) / 2;
     const targetMidpoint = (targetMin + targetMax) / 2;
 
     const isInEntryZone = currentPrice >= entryMin && currentPrice <= entryMax;
     const potentialReturn = ((targetMidpoint - entryMidpoint) / entryMidpoint) * 100;
+    const maxLoss = ((stopLoss - entryMidpoint) / entryMidpoint) * 100;
 
     const zones: QuickTradeZone[] = [
+      {
+        type: 'stopLoss',
+        price: stopLoss,
+        label: `Stop-Loss (${(stopLoss * 100).toFixed(1)}%)`,
+        isActive: false,
+        color: 'red',
+      },
       {
         type: 'entry',
         price: entryMidpoint,
@@ -68,6 +78,7 @@ export function useQuickTrade({ recommendation, currentPrice }: UseQuickTradeOpt
     return {
       zones,
       potentialReturn,
+      maxLoss,
       isInEntryZone,
       riskLevel: recommendation.liquidityRisk,
       recommendation: recommendation.action.replace('_', ' '),

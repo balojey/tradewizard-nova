@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { usePerformanceData } from "@/hooks/usePerformanceData";
+import React, { useState, useMemo, useEffect } from "react";
+import { useInfinitePerformanceData } from "@/hooks/usePerformanceData";
 import { useTrading } from "@/providers/TradingProvider";
 import Header from "@/components/Header";
 import Card from "@/components/shared/Card";
@@ -9,7 +9,7 @@ import LoadingState from "@/components/shared/LoadingState";
 import ErrorState from "@/components/shared/ErrorState";
 import EmptyState from "@/components/shared/EmptyState";
 import PerformanceMetrics from "@/components/Performance/PerformanceMetrics";
-import ClosedMarketsList from "@/components/Performance/ClosedMarketsList";
+import ClosedMarketsGrid from "@/components/Performance/ClosedMarketsGrid";
 import PerformanceCharts from "@/components/Performance/PerformanceCharts";
 import PerformanceFilters from "@/components/Performance/PerformanceFilters";
 import AgentPerformanceTable from "@/components/Performance/AgentPerformanceTable";
@@ -29,19 +29,72 @@ export default function PerformancePage() {
     timeframe: "all",
     category: "all",
     confidence: "all",
-    limit: 50,
+    limit: 20, // Changed to 20 for pagination
   });
 
   const {
-    data: performanceData,
+    data,
     isLoading,
     error,
-    refetch,
-  } = usePerformanceData(filters);
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfinitePerformanceData({
+    timeframe: filters.timeframe,
+    category: filters.category,
+    confidence: filters.confidence,
+    limit: filters.limit,
+  });
+
+  // Flatten all pages into a single array of markets
+  const allMarkets = useMemo(() => {
+    return data?.pages.flatMap((page) => page.closedMarkets) ?? [];
+  }, [data]);
+
+  // Get the first page data for aggregate metrics
+  const performanceData = data?.pages[0];
+
+  // Calculate total count and current count
+  const totalCount = data?.pages[0]?.pagination?.total;
+  const currentCount = allMarkets.length;
 
   const handleFiltersChange = (newFilters: PerformanceFilters) => {
     setFilters(newFilters);
   };
+
+  /**
+   * Prefetch next page when user scrolls near bottom
+   * This improves perceived performance by loading data before user clicks "Load More"
+   */
+  useEffect(() => {
+    if (!hasNextPage || isFetchingNextPage) return;
+
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY + window.innerHeight;
+      const documentHeight = document.documentElement.scrollHeight;
+      const threshold = 500; // Prefetch when 500px from bottom
+
+      if (scrollPosition >= documentHeight - threshold) {
+        fetchNextPage();
+      }
+    };
+
+    // Throttle scroll events for performance
+    let timeoutId: NodeJS.Timeout;
+    const throttledScroll = () => {
+      if (timeoutId) return;
+      timeoutId = setTimeout(() => {
+        handleScroll();
+        timeoutId = null as any;
+      }, 200);
+    };
+
+    window.addEventListener("scroll", throttledScroll);
+    return () => {
+      window.removeEventListener("scroll", throttledScroll);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const renderContent = () => {
     if (isLoading) {
@@ -82,6 +135,7 @@ export default function PerformancePage() {
           <ErrorState
             title="Failed to load performance data"
             error={error instanceof Error ? error.message : "Unknown error occurred"}
+            onRetry={() => window.location.reload()}
           />
         </div>
       );
@@ -99,10 +153,14 @@ export default function PerformancePage() {
             </p>
           </div>
           <div className="text-center py-16 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-xl">
-            <Target className="h-16 w-16 text-gray-500 mx-auto mb-6 opacity-50" />
             <EmptyState
+              icon={Target}
               title="No performance data available"
-              message="No resolved markets with recommendations found. Performance data will appear here once markets are resolved."
+              message="No resolved markets with recommendations found. Performance data will appear here once markets are resolved and the AI system has generated recommendations."
+              action={{
+                label: "View Active Markets",
+                onClick: () => window.location.href = "/"
+              }}
             />
           </div>
         </div>
@@ -243,15 +301,20 @@ export default function PerformancePage() {
           </div>
         </section>
 
-        {/* Closed Markets List */}
+        {/* Closed Markets Grid */}
         <section className="space-y-4">
           <div className="flex items-center justify-between px-1">
             <h2 className="text-2xl font-bold text-white tracking-tight">Resolved Markets</h2>
             <div className="text-sm text-gray-400">Detailed breakdown of past recommendations</div>
           </div>
-          <ClosedMarketsList
-            markets={performanceData.closedMarkets}
+          <ClosedMarketsGrid
+            markets={allMarkets}
             isLoading={isLoading}
+            hasNextPage={hasNextPage}
+            isFetchingNextPage={isFetchingNextPage}
+            onLoadMore={() => fetchNextPage()}
+            totalCount={totalCount}
+            currentCount={currentCount}
           />
         </section>
       </div>

@@ -44,7 +44,7 @@ export default function CategoryTabs({
       <div
         ref={scrollContainerRef}
         onScroll={checkScroll}
-        className="overflow-x-auto flex items-center gap-1 sm:gap-1.5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] pb-1"
+        className="overflow-x-auto flex items-center gap-2 sm:gap-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] pb-1"
       >
         {categories.map((category) => {
           const isActive = activeCategory === category.id;
@@ -53,11 +53,11 @@ export default function CategoryTabs({
               key={category.id}
               onClick={() => onCategoryChange(category.id)}
               className={cn(
-                "relative transition-colors duration-200 rounded-full whitespace-nowrap outline-none select-none",
-                // Responsive padding and text sizing
-                "px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium",
+                "relative transition-colors duration-200 rounded-full whitespace-nowrap outline-none select-none flex-shrink-0",
+                // Responsive padding and text sizing - increased for better mobile readability
+                "px-4 py-2 sm:px-4 sm:py-2 text-sm sm:text-sm font-medium",
                 // Touch-friendly minimum size on mobile
-                "min-h-[36px] sm:min-h-[auto]",
+                "min-h-[40px] sm:min-h-[auto]",
                 isActive ? "text-white" : "text-gray-400 hover:text-gray-200"
               )}
               style={{ WebkitTapHighlightColor: "transparent" }}
@@ -74,7 +74,7 @@ export default function CategoryTabs({
           );
         })}
         {/* Spacer to prevent cut-off on the right */}
-        <div className="w-6 sm:w-8 shrink-0" />
+        <div className="w-8 sm:w-8 shrink-0" />
       </div>
 
       {/* Right Fade & Chevron Indicator - Responsive */}

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 
 export interface ClosedMarketPerformance {
   market_id: string;
@@ -25,6 +25,13 @@ export interface ClosedMarketPerformance {
   days_to_resolution: number;
   total_agents: number;
   agents_in_agreement: number;
+  // Polymarket details fetched from CLOB API
+  slug?: string; // Polymarket market slug for navigation
+  polymarket_question?: string; // Question from Polymarket (may differ from DB)
+  outcomes?: string[]; // Market outcomes (e.g., ["Yes", "No"])
+  clob_token_ids?: string[]; // CLOB token IDs for trading
+  end_date?: string; // Market end date
+  image?: string; // Market image URL
 }
 
 export interface PerformanceSummary {
@@ -128,6 +135,12 @@ export interface PerformanceData {
     confidence: string;
     limit: number;
   };
+  pagination?: {
+    total: number;
+    offset: number;
+    limit: number;
+    hasMore: boolean;
+  };
 }
 
 export interface UsePerformanceDataOptions {
@@ -136,8 +149,25 @@ export interface UsePerformanceDataOptions {
   confidence?: "all" | "high" | "moderate" | "low";
   limit?: number;
   enabled?: boolean;
+  includeSlug?: boolean;
 }
 
+/**
+ * Hook to fetch performance data with standard pagination
+ * Use this for simple list views without infinite scroll
+ * 
+ * @param options - Filter and pagination options
+ * @returns TanStack Query result with performance data
+ * 
+ * @example
+ * ```tsx
+ * const { data, isLoading } = usePerformanceData({
+ *   timeframe: '30d',
+ *   confidence: 'high',
+ *   limit: 20
+ * });
+ * ```
+ */
 export function usePerformanceData(options: UsePerformanceDataOptions = {}) {
   const {
     timeframe = "all",
@@ -145,16 +175,18 @@ export function usePerformanceData(options: UsePerformanceDataOptions = {}) {
     confidence = "all",
     limit = 50,
     enabled = true,
+    includeSlug = false,
   } = options;
 
   return useQuery<PerformanceData>({
-    queryKey: ["performance", timeframe, category, confidence, limit],
+    queryKey: ["performance", timeframe, category, confidence, limit, includeSlug],
     queryFn: async () => {
       const params = new URLSearchParams({
         timeframe,
         category,
         confidence,
         limit: limit.toString(),
+        includeSlug: includeSlug.toString(),
       });
 
       const response = await fetch(`/api/tradewizard/performance?${params}`);
@@ -168,6 +200,84 @@ export function usePerformanceData(options: UsePerformanceDataOptions = {}) {
     enabled,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchInterval: 10 * 60 * 1000, // 10 minutes
+  });
+}
+
+/**
+ * Hook to fetch performance data with infinite scroll pagination
+ * Use this for paginated list views with "Load More" or infinite scroll
+ * 
+ * @param options - Filter and pagination options
+ * @returns TanStack Query infinite result with performance data
+ * 
+ * @example
+ * ```tsx
+ * const {
+ *   data,
+ *   fetchNextPage,
+ *   hasNextPage,
+ *   isFetchingNextPage
+ * } = useInfinitePerformanceData({
+ *   timeframe: '30d',
+ *   limit: 20
+ * });
+ * 
+ * // Access all pages
+ * const allMarkets = data?.pages.flatMap(page => page.closedMarkets) ?? [];
+ * 
+ * // Load more
+ * <button onClick={() => fetchNextPage()} disabled={!hasNextPage}>
+ *   {isFetchingNextPage ? 'Loading...' : 'Load More'}
+ * </button>
+ * ```
+ */
+export function useInfinitePerformanceData(options: UsePerformanceDataOptions = {}) {
+  const {
+    timeframe = "all",
+    category = "all",
+    confidence = "all",
+    limit = 20,
+    enabled = true,
+    includeSlug = true, // Default to true for navigation
+  } = options;
+
+  return useInfiniteQuery<PerformanceData>({
+    queryKey: ["performance-infinite", timeframe, category, confidence, limit, includeSlug],
+    queryFn: async ({ pageParam = 0 }) => {
+      const params = new URLSearchParams({
+        timeframe,
+        category,
+        confidence,
+        limit: limit.toString(),
+        offset: (pageParam as number).toString(),
+        includeSlug: includeSlug.toString(),
+      });
+
+      const response = await fetch(`/api/tradewizard/performance?${params}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || `Failed to fetch performance data: ${response.status}`
+        );
+      }
+
+      return response.json();
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => {
+      // Return next offset if there are more pages, otherwise undefined
+      if (lastPage.pagination?.hasMore) {
+        return lastPage.pagination.offset + lastPage.pagination.limit;
+      }
+      return undefined;
+    },
+    enabled,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes garbage collection
+    refetchOnWindowFocus: false, // Closed markets don't change frequently
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 }
 

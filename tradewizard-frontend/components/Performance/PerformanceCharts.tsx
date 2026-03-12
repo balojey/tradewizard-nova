@@ -58,8 +58,8 @@ export default function PerformanceCharts({ data }: PerformanceChartsProps) {
                       <span className="text-white">
                         {month.total_recommendations} mkts
                       </span>
-                      <span className={month.win_rate_pct >= 50 ? "text-emerald-400" : "text-red-400"}>
-                        {month.win_rate_pct.toFixed(1)}% WR
+                      <span className={month.win_rate_pct != null && month.win_rate_pct >= 50 ? "text-emerald-400" : "text-red-400"}>
+                        {month.win_rate_pct != null ? month.win_rate_pct.toFixed(1) : "0.0"}% WR
                       </span>
                     </div>
                   </div>
@@ -116,13 +116,13 @@ export default function PerformanceCharts({ data }: PerformanceChartsProps) {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className={`text-sm font-bold ${category.win_rate_pct >= 60 ? 'text-emerald-400' :
-                          category.win_rate_pct >= 50 ? 'text-yellow-400' : 'text-red-400'
+                      <div className={`text-sm font-bold ${category.win_rate_pct != null && category.win_rate_pct >= 60 ? 'text-emerald-400' :
+                          category.win_rate_pct != null && category.win_rate_pct >= 50 ? 'text-yellow-400' : 'text-red-400'
                         }`}>
-                        {category.win_rate_pct.toFixed(1)}%
+                        {category.win_rate_pct != null ? category.win_rate_pct.toFixed(1) : "0.0"}%
                       </div>
                       <div className="text-[10px] text-gray-500 font-mono">
-                        {category.avg_roi >= 0 ? '+' : ''}{category.avg_roi.toFixed(1)}% ROI
+                        {category.avg_roi != null ? `${category.avg_roi >= 0 ? '+' : ''}${category.avg_roi.toFixed(1)}% ROI` : "N/A"}
                       </div>
                     </div>
                   </div>

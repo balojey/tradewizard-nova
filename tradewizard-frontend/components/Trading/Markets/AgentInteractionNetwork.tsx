@@ -517,25 +517,7 @@ export default function AgentInteractionNetwork({
                     </div>
                   </div>
 
-                  <div className="p-5 space-y-5 overflow-y-auto max-h-[400px]">
-                    {/* Key Drivers */}
-                    {selectedNode.keyDrivers.length > 0 && (
-                      <div>
-                        <h5 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
-                          <Target className="w-4 h-4 text-indigo-400" />
-                          Key Drivers
-                        </h5>
-                        <ul className="space-y-2">
-                          {selectedNode.keyDrivers.map((driver, index) => (
-                            <li key={index} className="text-sm text-gray-300 flex items-start gap-3 bg-white/5 p-3 rounded-lg border border-white/5">
-                              <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full mt-1.5 flex-shrink-0 shadow-[0_0_8px_rgba(129,140,248,0.5)]" />
-                              <span className="leading-relaxed">{driver}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
+                  <div className="p-5 space-y-5 overflow-y-auto max-h-[400px] scrollbar-custom">
                     {/* Interactions */}
                     {connections.filter(c => c.from === selectedNode.id || c.to === selectedNode.id).length > 0 && (
                       <div>

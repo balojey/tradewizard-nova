@@ -167,6 +167,26 @@ export interface AlertLog {
   autoResolved: boolean;
 }
 
+/**
+ * Key rotation log entry
+ */
+export interface KeyRotationLog {
+  timestamp: number;
+  eventType: 'rate_limit_detected' | 'key_rotated' | 'all_keys_exhausted' | 'key_available' | 'graceful_degradation';
+  keyId?: string;
+  oldKeyId?: string;
+  newKeyId?: string;
+  expiryTime?: string;
+  earliestExpiry?: string;
+  retryAfterSeconds?: number;
+  totalKeys?: number;
+  endpoint?: string;
+  agentName?: string;
+  parameters?: Record<string, any>;
+  reason?: string;
+  message?: string;
+}
+
 // ============================================================================
 // NewsData Observability Logger Class
 // ============================================================================
@@ -185,6 +205,7 @@ export class NewsDataObservabilityLogger {
   private circuitBreakerLogs: CircuitBreakerLog[] = [];
   private agentUsageLogs: AgentUsageLog[] = [];
   private alertLogs: AlertLog[] = [];
+  private keyRotationLogs: KeyRotationLog[] = [];
 
   // Performance tracking
   private responseTimesByEndpoint: Map<string, number[]> = new Map();
@@ -831,6 +852,71 @@ export class NewsDataObservabilityLogger {
   }
 
   // ============================================================================
+  // Key Rotation Logging
+  // ============================================================================
+
+  /**
+   * Log key rotation events
+   */
+  logKeyRotation(log: KeyRotationLog): void {
+    this.keyRotationLogs.push(log);
+
+    // Determine log level based on event type
+    const logMethod = log.eventType === 'all_keys_exhausted' || log.eventType === 'graceful_degradation'
+      ? this.logger.logError.bind(this.logger)
+      : log.eventType === 'rate_limit_detected'
+      ? this.logger.logWarning.bind(this.logger)
+      : this.logger.logConfig.bind(this.logger);
+
+    // Create log message
+    let message = '';
+    switch (log.eventType) {
+      case 'rate_limit_detected':
+        message = `Rate limit detected for key ${log.keyId}`;
+        break;
+      case 'key_rotated':
+        message = `API key rotated: ${log.oldKeyId} -> ${log.newKeyId}`;
+        break;
+      case 'all_keys_exhausted':
+        message = `All API keys exhausted`;
+        break;
+      case 'key_available':
+        message = `Key ${log.keyId} rate limit expired, now available`;
+        break;
+      case 'graceful_degradation':
+        message = `Graceful degradation: returning empty result set`;
+        break;
+    }
+
+    logMethod(`NewsData key rotation: ${message}`, {
+      component: 'newsdata',
+      eventType: log.eventType,
+      keyId: log.keyId,
+      oldKeyId: log.oldKeyId,
+      newKeyId: log.newKeyId,
+      expiryTime: log.expiryTime,
+      earliestExpiry: log.earliestExpiry,
+      retryAfterSeconds: log.retryAfterSeconds,
+      totalKeys: log.totalKeys,
+      endpoint: log.endpoint,
+      agentName: log.agentName,
+      parameters: log.parameters ? sanitizeLogData(log.parameters) : undefined,
+      reason: log.reason,
+      message: log.message,
+      ...(log.eventType === 'all_keys_exhausted' || log.eventType === 'graceful_degradation' 
+        ? { error: new Error(message) } 
+        : {}),
+    });
+  }
+
+  /**
+   * Get key rotation logs
+   */
+  getKeyRotationLogs(limit: number = 100): KeyRotationLog[] {
+    return this.keyRotationLogs.slice(-limit);
+  }
+
+  // ============================================================================
   // Data Access Methods
   // ============================================================================
 
@@ -970,6 +1056,7 @@ export class NewsDataObservabilityLogger {
     this.circuitBreakerLogs = this.circuitBreakerLogs.filter(log => log.timestamp >= cutoff);
     this.agentUsageLogs = this.agentUsageLogs.filter(log => log.timestamp >= cutoff);
     this.alertLogs = this.alertLogs.filter(log => log.timestamp >= cutoff);
+    this.keyRotationLogs = this.keyRotationLogs.filter(log => log.timestamp >= cutoff);
 
     this.logger.logConfig('NewsData observability logs cleaned up', {
       component: 'newsdata',

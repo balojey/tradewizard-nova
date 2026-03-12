@@ -339,7 +339,7 @@ function transformHistoricalRecommendation(
     liquidityRisk: rec.confidence === 'high' ? 'low' : rec.confidence === 'moderate' ? 'medium' : 'high',
     explanation: {
       summary: rec.explanation || 'No explanation available',
-      coreThesis: rec.explanation || 'No thesis available',
+      coreThesis: rec.core_thesis || 'No detailed thesis available',
       keyCatalysts: catalysts,
       failureScenarios: risks,
       uncertaintyNote: disagreementIndex > 0.15 ? 

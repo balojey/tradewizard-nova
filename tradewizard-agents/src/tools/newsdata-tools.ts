@@ -134,8 +134,8 @@ export const FetchLatestNewsInputSchema = z.object({
     .optional()
     .default('24h')
     .describe('Time window for news'),
-  countries: z.array(z.string()).optional().describe('Country codes to include (e.g., ["us", "uk"])'),
-  categories: z.array(z.string()).optional().describe('News categories to include'),
+  countries: z.array(z.string()).optional().describe('Country codes to include as an array (e.g., ["us", "uk"]). IMPORTANT: Always provide as an array, even for a single country (e.g., ["us"] not "us")'),
+  categories: z.array(z.string()).optional().describe('News categories to include as an array. IMPORTANT: Always provide as an array, even for a single category (e.g., ["politics"] not "politics"). Valid values: ["business"], ["entertainment"], ["environment"], ["food"], ["health"], ["politics"], ["science"], ["sports"], ["technology"], ["top"], ["tourism"], ["world"]'),
   languages: z.array(z.string()).optional().default(['en']).describe('Language codes'),
   sentiment: z
     .enum(['positive', 'negative', 'neutral'])
@@ -155,8 +155,8 @@ export const FetchArchiveNewsInputSchema = z.object({
   toDate: z.string().describe('End date (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)'),
   query: z.string().optional().describe('Search query for article content'),
   queryInTitle: z.string().optional().describe('Search query for article titles only'),
-  countries: z.array(z.string()).optional().describe('Country codes to include'),
-  categories: z.array(z.string()).optional().describe('News categories to include'),
+  countries: z.array(z.string()).optional().describe('Country codes to include as an array (e.g., ["us", "uk"]). IMPORTANT: Always provide as an array, even for a single country (e.g., ["us"] not "us")'),
+  categories: z.array(z.string()).optional().describe('News categories to include as an array. IMPORTANT: Always provide as an array, even for a single category (e.g., ["politics"] not "politics"). Valid values: ["business"], ["entertainment"], ["environment"], ["food"], ["health"], ["politics"], ["science"], ["sports"], ["technology"], ["top"], ["tourism"], ["world"]'),
   languages: z.array(z.string()).optional().default(['en']).describe('Language codes'),
   size: z.number().min(1).max(50).optional().default(20).describe('Number of articles to return'),
   removeDuplicates: z.boolean().optional().default(true).describe('Remove duplicate articles'),
@@ -203,7 +203,7 @@ export const FetchMarketNewsInputSchema = z.object({
     .enum(['positive', 'negative', 'neutral'])
     .optional()
     .describe('Filter by sentiment'),
-  countries: z.array(z.string()).optional().describe('Country codes to include'),
+  countries: z.array(z.string()).optional().describe('Country codes to include as an array (e.g., ["us", "uk"]). IMPORTANT: Always provide as an array, even for a single country (e.g., ["us"] not "us")'),
   languages: z.array(z.string()).optional().default(['en']).describe('Language codes'),
   size: z.number().min(1).max(50).optional().default(20).describe('Number of articles to return'),
   removeDuplicates: z.boolean().optional().default(true).describe('Remove duplicate articles'),
@@ -686,7 +686,7 @@ Parameters:
 - queryInTitle: Search query for article titles only (optional, more precise)
 - timeframe: Time window - '1h', '6h', '12h', '24h', or '48h' (default: '24h')
 - countries: Country codes to filter by (e.g., ["us", "uk"])
-- categories: News categories to filter by (e.g., ["politics", "business"])
+- categories: News categories to filter by as an array (e.g., ["politics", "business"]). IMPORTANT: Always use array format, even for single category: ["politics"] not "politics"
 - languages: Language codes (default: ["en"])
 - sentiment: Filter by sentiment - 'positive', 'negative', or 'neutral'
 - size: Number of articles to return (1-50, default: 20)
@@ -858,8 +858,8 @@ Parameters:
 - toDate: End date in YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format (required)
 - query: Search query for article content (optional)
 - queryInTitle: Search query for article titles only (optional, more precise)
-- countries: Country codes to filter by (e.g., ["us", "uk"])
-- categories: News categories to filter by (e.g., ["politics", "business"])
+- countries: Country codes to filter by (e.g., ["us", "uk"]). IMPORTANT: Always use array format, even for single country: ["us"] not "us"
+- categories: News categories to filter by as an array (e.g., ["politics", "business"]). IMPORTANT: Always use array format, even for single category: ["politics"] not "politics"
 - languages: Language codes (default: ["en"])
 - size: Number of articles to return (1-50, default: 20)
 - removeDuplicates: Remove duplicate articles (default: true)
@@ -1212,7 +1212,7 @@ Parameters:
 - fromDate: Start date in YYYY-MM-DD format (optional)
 - toDate: End date in YYYY-MM-DD format (optional)
 - sentiment: Filter by sentiment - 'positive', 'negative', or 'neutral' (optional)
-- countries: Country codes to filter by (e.g., ["us", "uk"]) (optional)
+- countries: Country codes to filter by (e.g., ["us", "uk"]). IMPORTANT: Always use array format, even for single country: ["us"] not "us"
 - languages: Language codes (default: ["en"])
 - size: Number of articles to return (1-50, default: 20)
 - removeDuplicates: Remove duplicate articles (default: true)
