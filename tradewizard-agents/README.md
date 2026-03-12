@@ -5,8 +5,8 @@
 ## Table of Contents
 
 - [Overview](#overview)
-- [Architecture](#architecture)
 - [Quick Start](#quick-start)
+- [Architecture](#architecture)
 - [Configuration](#configuration)
 - [Usage](#usage)
 - [Development](#development)
@@ -27,20 +27,36 @@ The Market Intelligence Engine transforms raw prediction market data from Polyma
 
 ### Key Features
 
-- 🤖 **Multi-Agent Analysis**: Specialized AI agents analyze markets from different perspectives
-- 🔄 **Structured Debate Protocol**: Bull and bear theses compete through adversarial testing
-- 📊 **Probability-Driven**: Consensus probability estimates with uncertainty quantification
-- 🔍 **Full Observability**: Complete tracing and debugging with Opik integration
-- 🎯 **Actionable Recommendations**: Clear trade signals with entry/exit zones and risk assessment
-- 🛡️ **Robust Error Handling**: Graceful degradation and comprehensive error recovery
-- 🔧 **Autonomous Tool-Calling Agents**: AI agents autonomously fetch news and market data using LangChain tools (ReAct pattern)
-- 📰 **NewsData Integration**: Real-time news intelligence with sentiment analysis and keyword extraction
-- 📈 **Polymarket Tools**: Cross-market analysis, momentum detection, and sentiment shift tracking
-- 🧠 **Agent Memory System**: Closed-loop analysis where agents access and build upon their historical outputs
+- **Multi-Agent Analysis**: Specialized AI agents analyze markets from different perspectives
+- **Structured Debate Protocol**: Bull and bear theses compete through adversarial testing
+- **Probability-Driven**: Consensus probability estimates with uncertainty quantification
+- **Full Observability**: Complete tracing and debugging with Opik integration
+- **Actionable Recommendations**: Clear trade signals with entry/exit zones and risk assessment
+- **Robust Error Handling**: Graceful degradation and comprehensive error recovery
+- **Autonomous Tool-Calling Agents**: AI agents autonomously fetch news and market data using LangChain tools (ReAct pattern)
+- **NewsData Integration**: Real-time news intelligence with sentiment analysis and keyword extraction
+- **Polymarket Tools**: Cross-market analysis, momentum detection, and sentiment shift tracking
+- **Agent Memory System**: Closed-loop analysis where agents access and build upon their historical outputs
 
 ## Architecture
 
 The Market Intelligence Engine is built on **LangGraph**, a framework for building stateful, multi-agent workflows, with **Opik** for comprehensive observability and tracing.
+
+### System Overview
+
+```
+Polymarket APIs → Market Ingestion → Memory Retrieval → Parallel Agents
+                                                              ↓
+                                                    Thesis Construction
+                                                              ↓
+                                                    Cross-Examination
+                                                              ↓
+                                                    Consensus Engine
+                                                              ↓
+                                                    Recommendation Generation
+                                                              ↓
+                                                        Trade Output
+```
 
 ### LangGraph Workflow
 
@@ -286,23 +302,7 @@ ANTHROPIC_DEFAULT_MODEL=claude-3-sonnet-20240229
 
 GOOGLE_API_KEY=...
 GOOGLE_DEFAULT_MODEL=gemini-1.5-flash
-
-# Optional: Amazon Nova (AWS Bedrock)
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=AKIA...
-AWS_SECRET_ACCESS_KEY=...
-NOVA_MODEL_NAME=amazon.nova-lite-v1:0
 ```
-
-**Agent-LLM Mapping:**
-- Market Microstructure Agent → GPT-4-turbo (OpenAI)
-- Probability Baseline Agent → Gemini-2.5-flash (Google)
-- Risk Assessment Agent → Claude-3-sonnet (Anthropic)
-
-**Alternative with Nova (Cost-Optimized):**
-- Market Microstructure Agent → Nova Pro (Amazon)
-- Probability Baseline Agent → Nova Lite (Amazon)
-- Risk Assessment Agent → Nova Lite (Amazon)
 
 **Pros:**
 - ✅ Diverse perspectives reduce model-specific biases
@@ -320,8 +320,8 @@ Uses one LLM for all agents with different system prompts:
 ```bash
 # .env
 LLM_SINGLE_PROVIDER=google
-OPENAI_API_KEY=AI...
-OPENAI_DEFAULT_MODEL=gemini-2.5-flash
+GOOGLE_API_KEY=AI...
+GOOGLE_DEFAULT_MODEL=gemini-2.5-flash
 ```
 
 **Pros:**
@@ -527,53 +527,6 @@ See [Timestamp Formatting Documentation](./src/utils/TIMESTAMP_FORMATTING.md) fo
 MIN_EDGE_THRESHOLD=0.05                # Minimum edge to recommend trade (5%)
 HIGH_DISAGREEMENT_THRESHOLD=0.15       # Disagreement index threshold (15%)
 ```
-
-### Workflow Service Configuration (Remote Execution)
-
-The system supports executing market analysis workflows via HTTP requests to a remote service, enabling deployment flexibility and separation of concerns.
-
-```bash
-# .env
-# Optional: Remote workflow service URL
-WORKFLOW_SERVICE_URL=https://your-workflow-service.com/analyze
-
-# Optional: Authentication token for workflow service
-DIGITALOCEAN_API_TOKEN=your_api_token_here
-
-# Optional: Request timeout in milliseconds (default: 120000 = 2 minutes)
-WORKFLOW_SERVICE_TIMEOUT_MS=120000
-```
-
-**Configuration Modes:**
-
-1. **Local Execution (Default)**: When `WORKFLOW_SERVICE_URL` is not set, workflows execute locally using LangGraph
-2. **Remote Execution**: When `WORKFLOW_SERVICE_URL` is set, all analysis requests are sent to the remote service via HTTP
-
-**How it works:**
-- CLI and Monitor Service automatically route to the configured execution method
-- No code changes needed - just set the environment variable
-- Authentication via Bearer token in Authorization header
-- Graceful error handling with detailed logging
-
-**Benefits:**
-- ✅ Deploy workflow execution separately from CLI/Monitor
-- ✅ Scale workflow processing independently
-- ✅ Centralize LLM API key management
-- ✅ Reduce resource requirements for CLI/Monitor instances
-- ✅ Easy rollback by removing environment variable
-
-**Migration Path:**
-1. Deploy workflow service to remote infrastructure
-2. Test with `WORKFLOW_SERVICE_URL` on one instance
-3. Monitor logs and health metrics
-4. Gradually roll out to more instances
-5. Rollback by removing `WORKFLOW_SERVICE_URL` if needed
-
-**Logging and Monitoring:**
-
-For detailed information about log messages, error formats, and health check responses, see [Workflow Service Logging Documentation](./docs/WORKFLOW_SERVICE_LOGGING.md).
-
-See [Workflow Service Deployment Guide](#workflow-service-deployment) for complete setup instructions.
 
 ## Usage
 
@@ -1126,7 +1079,6 @@ View cost breakdown in Opik:
 - **[Autonomous News Agents](./docs/AUTONOMOUS_NEWS_AGENTS.md)** - Autonomous news intelligence agents with tool-calling capabilities
 - **[Agent Memory System](./src/database/MEMORY_SYSTEM_CONFIG.md)** - Closed-loop analysis with historical context
 - **[Timestamp Formatting](./src/utils/TIMESTAMP_FORMATTING.md)** - Human-readable timestamp formatting for AI agents
-- **[Workflow Service Logging](./docs/WORKFLOW_SERVICE_LOGGING.md)** - Remote workflow execution logging and monitoring
 - **[Database Module](./src/database/README.md)** - Supabase PostgreSQL integration
 
 #### Integration Guides

@@ -2,7 +2,7 @@
 
 A Next.js 16-based web application that provides the user interface for TradeWizard's AI-powered prediction trading platform. Built with TypeScript and Tailwind CSS, it delivers professional-grade market intelligence and seamless trading execution on Polymarket.
 
-## Overview
+## What is TradeWizard Frontend?
 
 TradeWizard transforms prediction markets from speculative guessing into guided, intelligence-driven trading. The frontend provides a Bloomberg Terminal-style interface for prediction markets, featuring:
 
@@ -11,28 +11,28 @@ TradeWizard transforms prediction markets from speculative guessing into guided,
 - **Real Market Integration**: Direct integration with regulated Polymarket infrastructure
 - **Professional-Grade Intelligence**: Advanced analytics for prediction market trading
 
-## Features
+## Key Features
 
-### 🤖 AI-Powered Trade Recommendations
-- **Multi-Agent Analysis**: Display insights from specialized AI agents with adversarial reasoning
-- **LangGraph Integration**: Real-time access to multi-agent workflow results
-- **Supabase Real-time**: Live updates as new recommendations are generated
-- **Explainable AI**: Full transparency into recommendation logic, catalysts, and risk scenarios
-- **Consensus Engine**: Probability consensus from multiple AI perspectives
+### AI-Powered Trade Recommendations
+- Multi-Agent Analysis: Display insights from specialized AI agents with adversarial reasoning
+- LangGraph Integration: Real-time access to multi-agent workflow results
+- Supabase Real-time: Live updates as new recommendations are generated
+- Explainable AI: Full transparency into recommendation logic, catalysts, and risk scenarios
+- Consensus Engine: Probability consensus from multiple AI perspectives
 
-### 📊 Market Intelligence
-- **Market Discovery**: Browse and filter prediction markets with infinite scroll
-- **Real-time Pricing**: Live market prices via Polymarket CLOB API
-- **Market Analytics**: Volume, liquidity, and trend analysis
-- **Event-based Organization**: Markets grouped by events and categories
+### Market Intelligence
+- Market Discovery: Browse and filter prediction markets with infinite scroll
+- Real-time Pricing: Live market prices via Polymarket CLOB API
+- Market Analytics: Volume, liquidity, and trend analysis
+- Event-based Organization: Markets grouped by events and categories
 
-### 💰 Trading Interface
-- **Magic Link Authentication**: Seamless wallet connection with email-based authentication
-- **Safe Wallet Integration**: Deterministic Safe deployment from EOA for enhanced security
-- **Polymarket CLOB API**: Direct order execution via Polymarket's Central Limit Order Book
-- **Token Approvals**: Automated ERC-20 and ERC-1155 approvals for seamless trading
-- **USDC.e Management**: Balance tracking and Polygon network transfers
-- **Risk Management**: Position sizing and liquidity risk assessment
+### Trading Interface
+- Magic Link Authentication: Seamless wallet connection with email-based authentication
+- Safe Wallet Integration: Deterministic Safe deployment from EOA for enhanced security
+- Polymarket CLOB API: Direct order execution via Polymarket's Central Limit Order Book
+- Token Approvals: Automated ERC-20 and ERC-1155 approvals for seamless trading
+- USDC.e Management: Balance tracking and Polygon network transfers
+- Risk Management: Position sizing and liquidity risk assessment
 
 ## Tech Stack
 
@@ -55,6 +55,20 @@ TradeWizard transforms prediction markets from speculative guessing into guided,
 - `zod` - Runtime type validation
 
 ## Architecture
+
+### System Overview
+
+```
+TradeWizard Agents (Backend)
+    ↓ (Stores recommendations)
+Supabase Database
+    ↓ (Real-time queries)
+Frontend Hooks (React Query)
+    ↓ (Caching & state management)
+UI Components
+    ↓ (User interaction)
+Trading Execution (Polymarket CLOB)
+```
 
 ### Core Components
 
@@ -79,27 +93,11 @@ TradeWizard transforms prediction markets from speculative guessing into guided,
 
 The frontend connects directly to the same Supabase database used by the TradeWizard agents backend:
 
-```typescript
-// Database Tables
-- markets: Market metadata and analysis status
-- recommendations: AI-generated trade recommendations
-- agent_signals: Individual agent analysis results
-- analysis_history: Audit trail of analysis runs
-```
-
-### Data Flow
-
-```
-TradeWizard Agents (Backend)
-    ↓ (Stores recommendations)
-Supabase Database
-    ↓ (Real-time queries)
-Frontend Hooks
-    ↓ (React Query caching)
-UI Components
-    ↓ (User interaction)
-Trading Execution
-```
+**Key Tables:**
+- `markets` - Market metadata and analysis status
+- `recommendations` - AI-generated trade recommendations
+- `agent_signals` - Individual agent analysis results
+- `analysis_history` - Audit trail of analysis runs
 
 ## Getting Started
 
@@ -107,7 +105,6 @@ Trading Execution
 
 1. **Supabase Configuration**
    ```bash
-   # Copy environment template
    cp .env.example .env.local
    
    # Configure Supabase connection
@@ -131,12 +128,14 @@ npm install
 npm run dev
 ```
 
+Visit `http://localhost:3000` to access the application.
+
 ### Database Types
 
-The frontend uses auto-generated TypeScript types from the Supabase schema:
+Generate TypeScript types from your Supabase schema:
 
 ```bash
-# Generate types (requires Supabase CLI)
+# Requires Supabase CLI
 npx supabase gen types typescript --local > lib/database.types.ts
 ```
 
@@ -146,10 +145,10 @@ npx supabase gen types typescript --local > lib/database.types.ts
 
 The frontend seamlessly integrates with the TradeWizard agents backend through Supabase:
 
-1. **Automatic Loading**: Recommendations are automatically fetched when viewing markets
-2. **Real-time Updates**: React Query provides caching and background updates
-3. **Detailed Analysis**: Full breakdown of agent reasoning, catalysts, and risks
-4. **Visual Indicators**: Clear action signals (BUY YES, BUY NO, NO TRADE) with expected value
+- **Automatic Loading**: Recommendations are automatically fetched when viewing markets
+- **Real-time Updates**: React Query provides caching and background updates
+- **Detailed Analysis**: Full breakdown of agent reasoning, catalysts, and risks
+- **Visual Indicators**: Clear action signals (BUY YES, BUY NO, NO TRADE) with expected value
 
 ### Market Intelligence
 
@@ -170,6 +169,7 @@ The frontend seamlessly integrates with the TradeWizard agents backend through S
 ### Project Structure
 
 ```
+tradewizard-frontend/
 ├── app/                    # Next.js App Router pages
 ├── components/
 │   ├── Trading/           # Trading-related components
@@ -177,11 +177,14 @@ The frontend seamlessly integrates with the TradeWizard agents backend through S
 │   │   ├── TradeRecommendation/  # AI recommendation components
 │   │   ├── Orders/        # Order management
 │   │   └── Positions/     # Position tracking
+│   ├── Header/            # Navigation and wallet info
+│   ├── TradingSession/    # Trading session management
 │   └── shared/            # Reusable UI components
 ├── hooks/                 # Custom React hooks
 ├── lib/                   # Utility libraries (Supabase, Magic)
 ├── providers/             # React context providers
-└── utils/                 # Pure utility functions
+├── utils/                 # Pure utility functions
+└── __tests__/             # Component and hook tests
 ```
 
 ### Key Hooks
@@ -204,35 +207,52 @@ Components follow a feature-based organization with clear separation of concerns
 
 The frontend is designed to work seamlessly with the TradeWizard agents backend:
 
-1. **Shared Database**: Both systems use the same Supabase database
-2. **Real-time Sync**: Frontend automatically reflects backend analysis results
-3. **Type Safety**: Shared TypeScript types ensure data consistency
-4. **Graceful Degradation**: Frontend handles missing recommendations gracefully
+- **Shared Database**: Both systems use the same Supabase database
+- **Real-time Sync**: Frontend automatically reflects backend analysis results
+- **Type Safety**: Shared TypeScript types ensure data consistency
+- **Graceful Degradation**: Frontend handles missing recommendations gracefully
 
 ## Deployment
 
-The frontend can be deployed independently of the backend:
+### Build for Production
 
 ```bash
-# Build for production
 npm run build
-
-# Start production server
 npm start
 ```
 
-Environment variables must be configured for:
-- Supabase connection
-- Magic Link authentication
+### Environment Configuration
+
+Configure environment variables for:
+- Supabase connection (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`)
+- Magic Link authentication (`NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY`)
 - Application configuration
 
-## Contributing
+### Recommended Deployment
 
-1. Follow the established component patterns
-2. Use TypeScript strictly (no `any` types)
-3. Implement proper error handling
-4. Add loading states for async operations
-5. Test with real Supabase data
+Deploy to Vercel for automatic Next.js optimization:
+
+```bash
+vercel deploy
+```
+
+## Development Guidelines
+
+### Code Quality
+
+- Use TypeScript strictly (no `any` types)
+- Follow component patterns established in the codebase
+- Implement proper error handling and loading states
+- Add loading states for all async operations
+- Test with real Supabase data
+
+### Testing
+
+```bash
+npm test                 # Run all tests
+npm run test:watch      # Watch mode
+npm run test:coverage   # Coverage report
+```
 
 ## License
 

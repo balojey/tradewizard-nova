@@ -2,129 +2,98 @@
 
 > AI-powered prediction trading platform providing intelligent analysis and trading recommendations for real-world outcomes on Polymarket.
 
-## Overview
+## What is TradeWizard?
 
 TradeWizard transforms prediction markets from speculative guessing into guided, intelligence-driven trading. Our multi-agent AI system analyzes markets from multiple perspectives to provide explainable trade recommendations with clear reasoning, catalysts, and risk scenarios.
 
-## Architecture
+## Repository Structure
 
 ```
-├── tradewizard-agents/     # Node.js backend with CLI and monitoring service (Primary)
-├── tradewizard-frontend/   # Web application (Next.js + React)
-├── doa/                    # Python workflow service (Alternative deployment option)
+├── tradewizard-agents/     # Backend: AI analysis engine with CLI & monitoring
+├── tradewizard-frontend/   # Frontend: Next.js web application
 ├── docs/                   # Product and technical documentation
 └── .kiro/                  # AI assistant configuration and specs
 ```
 
-### System Components
+## System Components
 
-**🟢 TradeWizard Agents (tradewizard-agents/)** - Primary System
-- **Purpose**: Complete AI-powered market analysis system with CLI and monitoring
-- **LLM Provider**: Amazon Nova (cost-effective, high-performance models)
-- **Features**: Market discovery, scheduled analysis, data persistence
-- **Workflow Execution**: Built-in LangGraph workflow with 15+ specialized AI agents
-- **Database**: Supabase PostgreSQL for storing analysis results
-- **Monitoring**: 24/7 automated market monitoring with configurable intervals
+### Backend: TradeWizard Agents (Primary System)
+- **Complete AI Analysis Engine**: Market discovery, analysis, and scheduling
+- **LLM Provider**: Amazon Nova (Bedrock) - cost-effective, high-performance
+- **Workflow**: LangGraph with 15+ specialized AI agents
+- **Database**: Supabase PostgreSQL for results persistence
+- **Monitoring**: 24/7 automated analysis with configurable intervals
+- **CLI**: Command-line interface for manual analysis and debugging
 
-**🎨 Frontend (tradewizard-frontend/)**
-- **Modern Web App**: Next.js 16 with App Router and TypeScript
-- **Seamless Trading**: Magic Link authentication with Polymarket integration
-- **Real-time UI**: Live market data and AI recommendations
-- **Professional Analytics**: Bloomberg Terminal-style market intelligence
-
-**🐍 DOA Workflow Service (doa/)** - Alternative Deployment Option
-- **Purpose**: Standalone Python service for remote workflow execution
-- **LLM Provider**: Digital Ocean's Gradient AI Platform (Llama models)
-- **Use Case**: Optional microservice architecture for separating concerns
-- **Note**: Not required for standard deployment
-
-### How They Work Together
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  tradewizard-agents (Complete System)                       │
-│  - Discovers markets                                        │
-│  - Executes LangGraph workflow with Amazon Nova             │
-│  - Runs 15+ specialized AI agents                           │
-│  - Schedules analysis                                       │
-│  - Stores results in Supabase                               │
-└─────────────────────────────────────────────────────────────┘
-```
+### Frontend: Web Application
+- **Framework**: Next.js 16 with App Router
+- **Authentication**: Magic Link for seamless wallet connection
+- **Features**: Live market data, AI recommendations, portfolio management
+- **Analytics**: Bloomberg Terminal-style market intelligence
 
 ## Quick Start
 
-### 🚀 Recommended Setup: TradeWizard with Amazon Nova
+### Prerequisites
 
-**Get the full system running in 5 minutes!**
-
-#### Prerequisites
-
-Before starting, you'll need:
 - Node.js 18+
 - AWS account with Amazon Nova access (Bedrock)
 - Supabase account (free tier works)
-- AWS credentials configured
+- AWS credentials configured locally
 
-#### Step 1: Set Up Database
+### 1. Set Up Database
 
 ```bash
-# 1. Create a Supabase project at https://supabase.com
-# 2. Get your project URL and keys from Settings → API
-
-# 3. Link to your Supabase project
 cd tradewizard-agents
+
+# Link to Supabase project
 npx supabase link --project-ref your-project-ref
 
-# 4. Push database schema
+# Push database schema
 npx supabase db push
 
-# 5. Generate TypeScript types (optional but recommended)
+# Generate TypeScript types (optional)
 npx supabase gen types typescript --linked > src/database/types.ts
 ```
 
-#### Step 2: Configure TradeWizard with Amazon Nova
+### 2. Configure Environment
 
 ```bash
-# 1. Install dependencies
-npm install
-
-# 2. Configure environment
+# Copy example configuration
 cp .env.example .env
-# Edit .env and set:
-# AWS_REGION=us-east-1
-# AWS_ACCESS_KEY_ID=your_access_key
-# AWS_SECRET_ACCESS_KEY=your_secret_key
-# LLM_SINGLE_PROVIDER=bedrock-nova
-# BEDROCK_NOVA_DEFAULT_MODEL=amazon.nova-pro-v1:0
-# SUPABASE_URL and SUPABASE_KEY
-# NEWSDATA_API_KEY (optional)
 
-# 3. Build the project
-npm run build
-
-# 4. Test with a single market analysis
-npm run cli -- analyze <polymarket-condition-id>
+# Edit .env with your credentials:
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+LLM_SINGLE_PROVIDER=bedrock-nova
+BEDROCK_NOVA_DEFAULT_MODEL=amazon.nova-pro-v1:0
+SUPABASE_URL=your_supabase_url
+SUPABASE_KEY=your_supabase_key
 ```
 
-#### Step 3: Start Automated Monitoring
+### 3. Install & Build
 
 ```bash
-# Start the monitor service for 24/7 automated analysis
+npm install
+npm run build
+```
+
+### 4. Test & Run
+
+```bash
+# Test with a single market analysis
+npm run cli -- analyze <polymarket-condition-id>
+
+# Start automated monitoring (24/7)
 npm run monitor:start
 
 # Check monitor status
 npm run monitor:status
-
-# Trigger manual analysis
-npm run monitor:trigger
-
-# View health and logs
-npm run monitor:health
 ```
 
-### 🔧 Alternative: Other LLM Providers
+### Using Alternative LLM Providers
 
-TradeWizard supports multiple LLM providers:
+TradeWizard supports OpenAI, Anthropic, and Google:
 
 ```bash
 # OpenAI (GPT-4)
@@ -143,17 +112,12 @@ GOOGLE_API_KEY=your_key
 GOOGLE_DEFAULT_MODEL=gemini-2.0-flash-exp
 ```
 
-### 🐍 Alternative: DOA Workflow Service (Microservice Architecture)
-
-For advanced deployments requiring service separation, see [DOA Setup Guide](doa/README.md).
-
-### 🎨 Frontend Setup (Optional)
+### Frontend Setup (Optional)
 
 ```bash
 cd tradewizard-frontend
 npm install
 cp .env.example .env.local
-# Configure your environment variables
 npm run dev
 ```
 
@@ -161,18 +125,18 @@ Visit `http://localhost:3000` to access the application.
 
 ## Key Features
 
-### 🤖 Multi-Agent Analysis
+### Multi-Agent AI Analysis
 - **Market Intelligence**: Specialized agents analyze news, polling, sentiment, and market dynamics
 - **Adversarial Testing**: Cross-examination agents challenge assumptions and identify risks
 - **Consensus Engine**: Probability fusion from multiple analytical perspectives
 
-### 📊 Professional Trading Interface
+### Professional Trading Interface
 - **AI Recommendations**: Clear buy/sell signals with detailed reasoning
 - **Risk Assessment**: Scenario analysis and position sizing guidance
 - **Real-time Data**: Live market prices and news integration
 - **Portfolio Management**: Track positions and performance analytics
 
-### 🔗 Polymarket Integration
+### Polymarket Integration
 - **Direct Trading**: Execute trades through regulated prediction market infrastructure
 - **Market Discovery**: Browse and analyze thousands of real-world outcome markets
 - **Wallet Integration**: Seamless authentication via Magic Link
@@ -194,14 +158,6 @@ Visit `http://localhost:3000` to access the application.
 - **State Management**: React Query (@tanstack/react-query)
 - **Authentication**: Magic Link SDK
 - **Blockchain**: ethers.js v5 and viem
-
-### DOA Workflow Service (Optional)
-- **Runtime**: Python 3.10+ with type hints
-- **AI Framework**: LangGraph for multi-agent workflows
-- **LLM Provider**: Digital Ocean Gradient AI (Llama-3.3-70b, Llama-3.1-8b)
-- **HTTP Framework**: FastAPI or Flask for service endpoints
-- **Testing**: pytest with Hypothesis for property-based testing
-- **Use Case**: Microservice architecture for service separation
 
 ## Development
 
@@ -235,38 +191,11 @@ npm run build  # Build for production
 npm run lint   # ESLint checking
 ```
 
-#### DOA Workflow Service (Optional)
-```bash
-cd doa
-
-# Start service locally
-export DIGITALOCEAN_API_TOKEN=your_token
-gradient agent run
-# Service runs on http://localhost:8080
-
-# Deploy to production
-gradient agent deploy
-
-# Test the service
-curl --location 'http://localhost:8080/run' \
-    --header 'Content-Type: application/json' \
-    --data '{"condition_id": "0x1234567890abcdef"}'
-
-# Run tests
-pytest
-pytest --cov=.  # With coverage
-
-# Code quality
-black . --line-length=120
-flake8 . --max-line-length=120
-```
-
 ## Documentation
 
 ### Getting Started
 - **[TradeWizard Agents (tradewizard-agents/README.md)](tradewizard-agents/README.md)** - Primary system with Amazon Nova
 - **[Frontend (tradewizard-frontend/README.md)](tradewizard-frontend/README.md)** - Frontend development guide
-- **[DOA Workflow Service (doa/README.md)](doa/README.md)** - Optional Python microservice
 
 ### Product Documentation
 - [Product Overview](docs/TradeWizard.md) - Detailed product specification
@@ -290,12 +219,6 @@ TradeWizard Agents with Amazon Nova provides a complete, integrated solution:
    - Use OpenAI, Anthropic, or Google instead of Amazon Nova
    - Same integrated architecture
    - Configure via LLM_SINGLE_PROVIDER environment variable
-
-2. **Microservice Architecture (Advanced)**
-   - DOA service handles workflow execution remotely
-   - TradeWizard monitor handles scheduling and persistence
-   - Separates concerns for complex deployments
-   - See [DOA Setup Guide](doa/README.md) for details
 
 ## Configuration
 
@@ -354,25 +277,6 @@ SUPABASE_KEY=your_supabase_anon_key
 NEWSDATA_API_KEY=your_newsdata_key
 ```
 
-**Advanced: Remote Workflow Execution via DOA Service**
-```bash
-# Remote DOA Workflow Service (optional microservice architecture)
-WORKFLOW_SERVICE_URL=http://localhost:8080/run
-WORKFLOW_SERVICE_TIMEOUT_MS=120000
-DIGITALOCEAN_API_TOKEN=your_api_token
-
-# Database
-SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_anon_key
-
-# External APIs
-NEWSDATA_API_KEY=your_newsdata_key
-
-# Monitor Configuration
-ANALYSIS_INTERVAL_HOURS=24
-MAX_MARKETS_PER_CYCLE=3
-```
-
 #### Frontend (.env.local)
 ```bash
 # Supabase
@@ -384,37 +288,6 @@ NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY=your_magic_key
 
 # Polymarket
 NEXT_PUBLIC_POLYMARKET_API_URL=https://clob.polymarket.com
-```
-
-#### DOA Workflow Service (doa/.env) - Optional
-```bash
-# Digital Ocean Gradient AI (REQUIRED for DOA service)
-DIGITALOCEAN_INFERENCE_KEY=your_gradient_model_access_key
-
-# LLM Configuration
-LLM_MODEL_NAME=llama-3.3-70b-instruct
-LLM_TEMPERATURE=0.7
-LLM_MAX_TOKENS=2000
-
-# Polymarket Configuration
-POLYMARKET_GAMMA_API_URL=https://gamma-api.polymarket.com
-POLYMARKET_CLOB_API_URL=https://clob.polymarket.com
-
-# Database (for agent memory system)
-SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-ENABLE_PERSISTENCE=true
-
-# Observability (optional)
-OPIK_API_KEY=your_opik_api_key
-OPIK_PROJECT_NAME=doa-market-analysis
-OPIK_WORKSPACE=your_workspace
-OPIK_TRACK_COSTS=true
-
-# Agent Configuration
-AGENT_TIMEOUT_MS=45000
-AGENT_MAX_RETRIES=3
 ```
 
 ## Deployment
@@ -471,37 +344,7 @@ CMD ["npm", "run", "monitor:start"]
 - **Recommended**: Deploy to Vercel (automatic Next.js optimization)
 - **Alternative**: Docker with nginx
 
-### DOA Workflow Service (Optional Microservice)
-
-**Deploy to Digital Ocean Gradient AI Platform:**
-
-```bash
-cd doa
-
-# Configure agent name in .gradient/agent.yml
-# agent_name: tradewizard-doa-agent
-
-# Deploy to Gradient AI Platform
-gradient agent deploy
-
-# The deployment will return an endpoint URL like:
-# https://agents.do-ai.run/<DEPLOYED_AGENT_ID>/main/run
-```
-
-**Configure TradeWizard to use deployed DOA service:**
-
-```bash
-cd tradewizard-agents
-
-# Set WORKFLOW_SERVICE_URL to your deployed DOA service URL
-# Example: WORKFLOW_SERVICE_URL=https://agents.do-ai.run/<DEPLOYED_AGENT_ID>/main/run
-# Set DIGITALOCEAN_API_TOKEN for authentication
-
-npm run build
-npm run monitor:start
-```
-
-See [TradeWizard Agents Deployment Guide](tradewizard-agents/docs/DEPLOYMENT.md) and [DOA Deployment Guide](doa/README.md#deployment) for detailed instructions.
+See [TradeWizard Agents Deployment Guide](tradewizard-agents/docs/DEPLOYMENT.md) for detailed instructions.
 
 ## Contributing
 
